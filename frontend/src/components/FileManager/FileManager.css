@@ -1,0 +1,123 @@
+.file-manager {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.file-manager__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.file-manager__title {
+  font-size: 24px;
+  color: #333;
+  margin: 0;
+}
+
+.file-manager__tabs {
+  display: flex;
+  gap: 10px;
+}
+
+.file-manager__tab {
+  padding: 10px 20px;
+  border-radius: 6px;
+  background-color: #f4f4f4;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #555;
+}
+
+.file-manager__tab:hover {
+  background-color: #e8e8e8;
+}
+
+.file-manager__tab--active {
+  background-color: #4a90e2;
+  color: white;
+}
+
+.file-manager__content {
+  margin-bottom: 30px;
+}
+
+.file-manager__preview-section {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+}
+
+.file-manager__preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.file-manager__preview-header h3 {
+  font-size: 18px;
+  color: #333;
+  margin: 0;
+}
+
+.file-manager__preview-expires {
+  font-size: 14px;
+  color: #ff9800;
+  background-color: rgba(255, 152, 0, 0.1);
+  padding: 5px 10px;
+  border-radius: 4px;
+}
+
+.file-manager__signed-url-info {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #f5f9ff;
+  border-left: 4px solid #4a90e2;
+  border-radius: 4px;
+}
+
+.file-manager__signed-url-info p {
+  margin: 0 0 10px 0;
+  color: #555;
+}
+
+.file-manager__refresh-url {
+  padding: 8px 16px;
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.file-manager__refresh-url:hover {
+  background-color: #3a80d2;
+}
+
+@media (max-width: 768px) {
+  .file-manager__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .file-manager__tabs {
+    width: 100%;
+  }
+  
+  .file-manager__tab {
+    flex: 1;
+    text-align: center;
+  }
+}

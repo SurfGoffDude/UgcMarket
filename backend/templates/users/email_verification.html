@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Подтверждение email для UGC Market</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .content {
+            padding: 20px 0;
+        }
+        .button {
+            display: inline-block;
+            background-color: #4A90E2;
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            padding: 20px 0;
+            border-top: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>UGC Market</h1>
+        </div>
+        <div class="content">
+            <h2>Здравствуйте, {{ user.first_name|default:user.username }}!</h2>
+            <p>Благодарим вас за регистрацию в сервисе UGC Market. Для завершения регистрации и подтверждения вашего email адреса, пожалуйста, нажмите на кнопку ниже:</p>
+            
+            <a class="button" href="{{ verification_url }}">Подтвердить email</a>
+            
+            <p>Или вы можете скопировать и вставить следующую ссылку в адресную строку вашего браузера:</p>
+            <p>{{ verification_url }}</p>
+            
+            <p>Данная ссылка будет действительна в течение 24 часов.</p>
+            
+            <p>Если вы не регистрировались на UGC Market, просто проигнорируйте это письмо.</p>
+            
+            <p>С уважением,<br>Команда UGC Market</p>
+        </div>
+        <div class="footer">
+            <p>&copy; {% now "Y" %} UGC Market. Все права защищены.</p>
+            <p>Вы получили это письмо, потому что этот email адрес был использован при регистрации на сайте {{ domain }}.</p>
+        </div>
+    </div>
+</body>
+</html>

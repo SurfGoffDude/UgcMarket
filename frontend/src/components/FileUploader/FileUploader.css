@@ -1,0 +1,90 @@
+.file-uploader {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.file-uploader__dropzone {
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: #f9f9f9;
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.file-uploader__dropzone--active {
+  border-color: #4a90e2;
+  background-color: #e6f2ff;
+}
+
+.file-uploader__dropzone--disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.file-uploader__content {
+  color: #666;
+}
+
+.file-uploader__hint {
+  font-size: 0.85em;
+  color: #999;
+  margin-top: 8px;
+}
+
+.file-uploader__loading {
+  width: 100%;
+}
+
+.file-uploader__progress-item {
+  margin: 10px 0;
+  width: 100%;
+}
+
+.file-uploader__progress-filename {
+  font-size: 14px;
+  margin-bottom: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.file-uploader__progress-bar {
+  height: 8px;
+  width: 100%;
+  background-color: #eee;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.file-uploader__progress-fill {
+  height: 100%;
+  background-color: #4a90e2;
+  transition: width 0.3s ease;
+}
+
+.file-uploader__progress-percent {
+  font-size: 12px;
+  text-align: right;
+  margin-top: 2px;
+}
+
+.file-uploader__errors {
+  margin-top: 15px;
+}
+
+.file-uploader__error {
+  color: #e74c3c;
+  font-size: 14px;
+  padding: 8px;
+  margin-bottom: 5px;
+  background-color: #fde8e7;
+  border-radius: 4px;
+}

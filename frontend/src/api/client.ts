@@ -1,0 +1,117 @@
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+
+// Базовая конфигурация для axios
+const apiConfig: AxiosRequestConfig = {
+  baseURL: 'http://localhost:8000/api/',
+  timeout: 30000, // 30 секунд таймаут
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
+};
+
+// Создание экземпляра axios с базовой конфигурацией
+const apiClient: AxiosInstance = axios.create(apiConfig);
+
+// Диагностическая функция для отладки
+const logApiDiagnostics = (message: string, data?: any) => {
+  console.log(`%c[API DIAGNOSTICS] ${message}`, 'color: #9c27b0; font-weight: bold', data || '');
+};
+
+// Перехватчик для добавления токена авторизации ко всем запросам
+apiClient.interceptors.request.use(
+  (config) => {
+    // Пробуем получить токен сначала по ключу 'authToken', затем по 'access_token'
+    let token = localStorage.getItem('authToken');
+    if (!token) {
+      token = localStorage.getItem('access_token');
+    }
+    
+    // Детальный лог запроса API
+    logApiDiagnostics('Отправка запроса', { 
+      url: `${config.baseURL || ''}${config.url || ''}`,
+      method: config.method,
+      hasToken: !!token,
+      tokenType: token ? (token.length < 50 ? 'Короткий токен' : 'JWT/Длинный токен') : 'Нет токена'
+    });
+    
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    logApiDiagnostics('Ошибка при отправке запроса', error);
+    return Promise.reject(error);
+  }
+);
+
+// Перехватчик ответов для обработки ошибок
+apiClient.interceptors.response.use(
+  (response: AxiosResponse) => {
+    // Логируем успешные ответы, особенно для профиля креатора
+    if (response.config.url?.includes('creator-profile') || response.config.url?.includes('creator-profiles')) {
+      logApiDiagnostics('Получен ответ профиля креатора', {
+        url: response.config.url,
+        status: response.status,
+        statusText: response.statusText,
+        data: response.data
+      });
+    }
+    return response;
+  },
+  async (error) => {
+    // Логируем ошибки API
+    logApiDiagnostics('Ошибка API', {
+      url: error.config?.url,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message
+    });
+
+    const originalRequest = error.config;
+    
+    // Если ошибка 401 (не авторизован) и не было попытки обновления токена
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      logApiDiagnostics('Попытка обновления токена');
+      originalRequest._retry = true;
+      
+      try {
+        // Пытаемся обновить токен
+        const refreshToken = localStorage.getItem('refresh_token');
+        if (!refreshToken) {
+          // Если нет токена обновления, выход из системы
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          return Promise.reject(error);
+        }
+        
+        // Запрос на обновление токена
+        const response = await axios.post(
+          `${apiConfig.baseURL}auth/token/refresh/`,
+          { refresh: refreshToken },
+          { headers: { 'Content-Type': 'application/json' } }
+        );
+        
+        if (response.data.access) {
+          // Сохраняем новый токен
+          localStorage.setItem('access_token', response.data.access);
+          
+          // Обновляем заголовок авторизации и повторяем запрос
+          apiClient.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
+          return apiClient(originalRequest);
+        }
+      } catch (refreshError) {
+        // Если не удалось обновить токен, выход из системы
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        return Promise.reject(refreshError);
+      }
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
+export default apiClient;
