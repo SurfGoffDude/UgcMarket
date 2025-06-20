@@ -575,85 +575,9 @@ const CreatorProfilePage = () => {
 
       {/* Основной контент */}
       <div className="container mx-auto mt-20 px-4">
-        <div className="flex flex-col md:flex-row gap-8">
-          {/* Левая колонка с основной информацией */}
-          <div className="md:w-1/3">
-            <Card className="mb-6">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-2xl">{creator.title || "Имя не указано"}</CardTitle>
-                    <CardDescription className="mt-1 text-base">
-                      {creator.specialization || "Профиль креатора"}
-                    </CardDescription>
-                  </div>
-                  <Badge variant={creator.available_for_hire ? "default" : "outline"}>
-                    {creator.available_for_hire ? "Доступен для заказов" : "Не принимает заказы"}
-                  </Badge>
-                </div>
-              </CardHeader>
-              
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center">
-                    <User className="h-4 w-4 mr-2 text-gray-500" />
-                    <span>
-                      {creator.user?.first_name && creator.user?.last_name
-                        ? `${creator.user.first_name} ${creator.user.last_name}`
-                        : creator.user?.username || "Имя не указано"}
-                    </span>
-                  </div>
-                  
-                  {creator.user?.email && (
-                    <div className="flex items-center">
-                      <Mail className="h-4 w-4 mr-2 text-gray-500" />
-                      <span>{creator.user.email}</span>
-                    </div>
-                  )}
-                  
-                  {creator.user?.phone && (
-                    <div className="flex items-center">
-                      <Phone className="h-4 w-4 mr-2 text-gray-500" />
-                      <span>{creator.user.phone}</span>
-                    </div>
-                  )}
-                  
-                  {creator.location && (
-                    <div className="flex items-center">
-                      <MapPin className="h-4 w-4 mr-2 text-gray-500" />
-                      <span>{creator.location}</span>
-                    </div>
-                  )}
-                  
-                  {creator.created_at && (
-                    <div className="flex items-center">
-                      <Calendar className="h-4 w-4 mr-2 text-gray-500" />
-                      <span>На платформе с {new Date(creator.created_at).toLocaleDateString()}</span>
-                    </div>
-                  )}
-
-                  {creator.website && (
-                    <div className="flex items-center">
-                      <Globe className="h-4 w-4 mr-2 text-gray-500" />
-                      <a href={creator.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                        {creator.website.replace(/^https?:\/\//, '')}
-                      </a>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="mt-6">
-                  <Button 
-                    variant={creator.available_for_hire ? "outline" : "default"} 
-                    onClick={() => toggleAvailability(!creator.available_for_hire)}
-                    className="w-full"
-                  >
-                    {creator.available_for_hire ? "Отключить доступность" : "Включить доступность"}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-            
+        <div className="flex flex-col gap-8">
+          {/* Блок навыков и социальных сетей */}
+          <div className="w-full">
             <Card className="mb-6">
               <CardHeader>
                 <CardTitle>Навыки</CardTitle>
