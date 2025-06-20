@@ -63,11 +63,23 @@ export function useCreatorProfile(id?: string) {
       console.log('[INFO] useCreatorProfile - получен базовый профиль:', profileResponse.data);
       const profileData = profileResponse.data;
       
+      // Если поле user пришло как ID, загружаем объект пользователя
+      let userObj = profileData.user;
+      if (userObj && (typeof userObj === 'number' || typeof userObj === 'string')) {
+        try {
+          const userRes = await apiClient.get(`users/${userObj}/`);
+          userObj = userRes.data;
+        } catch (uErr) {
+          console.error('[ERROR] useCreatorProfile - не удалось загрузить данные пользователя', uErr);
+        }
+      }
+
       // Шаг 2: Получаем дополнительные данные
       
       // Создаем базовый профиль с пустыми массивами
       const completeProfile = {
         ...profileData,
+        user: userObj,
         skills: [],
         portfolio: [],
         portfolio_items: [],

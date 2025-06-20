@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useCreatorProfile } from '@/hooks/useCreatorProfile';
-import { User, Star, MapPin, Users } from 'lucide-react';
+import { User, Star, MapPin, Users, Plus } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 import PortfolioItem from '@/components/PortfolioItem';
 import ServiceCard from '@/components/ServiceCard';
@@ -30,6 +31,8 @@ const CreatorProfilePage: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { creator, loading, error } = useCreatorProfile(!id ? undefined : id);
+  const { user: currentUser } = useAuth();
+  const isOwner = currentUser?.id === creator?.user?.id;
 
   // Безопасное преобразование рейтинга в число для корректного вывода
   const ratingValue = creator && creator.rating !== undefined && creator.rating !== null ? Number(creator.rating) : null;
@@ -66,7 +69,7 @@ const CreatorProfilePage: React.FC = () => {
 
             <div className="space-y-1">
               <h1 className="text-2xl font-semibold leading-tight">
-                {creator.title || 'Имя не указано'}
+                {creator.user?.first_name || creator.user?.last_name ? `${creator.user.first_name ?? ''} ${creator.user.last_name ?? ''}`.trim() : creator.title || 'Имя не указано'}
               </h1>
               <div className="text-sm text-gray-500">@{creator.user?.username}</div>
 
@@ -89,6 +92,26 @@ const CreatorProfilePage: React.FC = () => {
 
           {/* Правая секция: кнопки действий */}
           <div className="flex gap-3 w-full md:w-auto">
+            {isOwner && (
+              <Button variant="ghost" size="icon" title="Редактировать профиль" onClick={() => navigate('/profile/edit')}> 
+                <User className="h-5 w-5" />
+              </Button>
+            )}
+            {isOwner && (
+              <Button variant="outline" size="sm" onClick={() => navigate('/skills/add')}>
+                <Plus className="h-4 w-4 mr-1" />Навык
+              </Button>
+            )}
+            {isOwner && (
+              <Button variant="outline" size="sm" onClick={() => navigate('/services/add')}>
+                <Plus className="h-4 w-4 mr-1" />Услугу
+              </Button>
+            )}
+            {isOwner && (
+              <Button variant="outline" size="sm" onClick={() => navigate('/portfolio/add')}>
+                <Plus className="h-4 w-4 mr-1" />Работу
+              </Button>
+            )}
             <Button variant="outline" className="w-full md:w-auto">
               Написать
             </Button>
@@ -97,8 +120,8 @@ const CreatorProfilePage: React.FC = () => {
         </div>
 
         {/* Описание */}
-        {creator.user?.bio && (
-          <p className="text-gray-700 whitespace-pre-line">{creator.user.bio}</p>
+        {(creator.user?.bio || (creator as any).bio) && (
+          <p className="text-gray-700 whitespace-pre-line">{creator.user?.bio || (creator as any).bio}</p>
         )}
 
         {/* Теги-навыки */}

@@ -27,6 +27,10 @@ import OrderDetailPage from "@/pages/OrderDetailPage";
 import OrderDeliveryPage from "@/pages/OrderDeliveryPage";
 import MessagesPage from "@/pages/MessagesPage";
 import CreatorReviews from "@/pages/CreatorReviews";
+import ProfileEditPage from "@/pages/ProfileEditPage";
+import SkillAddPage from "@/pages/SkillAddPage";
+import ServiceAddPage from "@/pages/ServiceAddPage";
+import PortfolioAddPage from "@/pages/PortfolioAddPage";
 
 // Новые страницы для уведомлений
 import NotificationsPage from "@/pages/NotificationsPage";
@@ -101,6 +105,10 @@ const App = () => {
                 <Route path="/notifications/settings" element={<NotificationSettingsPage />} />
                 
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="/profile/edit" element={<ProfileEditPage />} />
+                <Route path="/skills/add" element={<SkillAddPage />} />
+                <Route path="/services/add" element={<ServiceAddPage />} />
+                <Route path="/portfolio/add" element={<PortfolioAddPage />} />
                 <Route path="*" element={<NotFound />} />
             </Routes>
           </Layout>
