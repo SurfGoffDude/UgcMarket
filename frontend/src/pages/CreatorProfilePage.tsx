@@ -575,9 +575,13 @@ const CreatorProfilePage = () => {
 
       {/* Основной контент */}
       <div className="container mx-auto mt-20 px-4">
-        <div className="flex flex-col gap-8">
-          {/* Блок навыков и социальных сетей */}
-          <div className="w-full">
+        <div className="flex flex-col md:flex-row gap-8">
+          {/* Левая колонка: статус, навыки, соцсети */}
+          <div className="w-full md:w-1/3 space-y-6">
+            {/* Плашка статуса доступности */}
+            <Badge variant={creator.available_for_hire ? "default" : "outline"}>
+              {creator.available_for_hire ? "Доступен для заказов" : "Не принимает заказы"}
+            </Badge>
             <Card className="mb-6">
               <CardHeader>
                 <CardTitle>Навыки</CardTitle>
