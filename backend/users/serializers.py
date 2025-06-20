@@ -129,25 +129,32 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
     Обеспечивает сериализацию и десериализацию модели CreatorProfile.
     Поддерживает все поля для полноценного профиля креатора.
     """
-    user = UserSerializer(read_only=True)
+    # Делаем вложенный объект `user` записываемым, чтобы можно было обновлять
+    # first_name, last_name, bio и другие поля через PATCH-запрос
+    user = UserSerializer(required=False)
     social_links = SocialLinkSerializer(many=True, required=False)
     skills = serializers.ListField(child=serializers.DictField(), required=False, write_only=True)
     full_name = serializers.SerializerMethodField()
     username = serializers.SerializerMethodField()
     avatar = serializers.SerializerMethodField()
     bio = serializers.SerializerMethodField()
+    # Убираем SerializerMethodField для location, чтобы его можно было записывать
+    # location = serializers.SerializerMethodField()
+    # Используем SerializerMethodField для чтения location из User
     location = serializers.SerializerMethodField()
+    # Дополнительное поле для записи location
+    location_write = serializers.CharField(max_length=100, required=False, allow_blank=True, write_only=True)
     review_count = serializers.IntegerField(source='completed_orders', read_only=True)
     
     class Meta:
         model = CreatorProfile
         fields = [
-            'id', 'user', 'nickname', 'full_name', 'username', 'avatar', 'bio', 'location',
+            'id', 'user', 'nickname', 'full_name', 'username', 'avatar', 'bio', 'location', 'location_write',
             'specialization', 'experience', 'portfolio_link', 'cover_image', 'is_online',
             'available_for_hire', 'social_links', 'skills', 'rating', 'review_count',
             'completed_orders', 'average_response_time', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'user', 'rating', 'review_count', 
+        read_only_fields = ['id', 'rating', 'review_count', 
                            'completed_orders', 'created_at', 'updated_at']
     
     def get_full_name(self, obj):
@@ -200,22 +207,39 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
         """
         Обновляет профиль креатора и его социальные ссылки.
         Также обновляет связанные поля пользователя (bio, avatar, location, nickname) и навыки.
+        
+        Args:
+            instance: Экземпляр CreatorProfile для обновления
+            validated_data: Проверенные данные для обновления профиля и вложенных объектов
+            
+        Returns:
+            CreatorProfile: Обновленный экземпляр профиля креатора
         """
+        # Выводим полученные данные для отладки
+        import json
+        print(f"PATCH validated_data: {json.dumps(validated_data, default=str)}")
+        
         social_links_data = validated_data.pop('social_links', None)
         skills_data = validated_data.pop('skills', None)
+        # Данные вложенного пользователя (first_name, last_name, bio, location, avatar и др.)
+        user_data = validated_data.pop('user', {})
+        print(f"Extracted user_data: {json.dumps(user_data, default=str)}")
         
         # Обработка полей пользователя, которые могут быть переданы в запросе
         bio = validated_data.pop('bio', None)
-        location = validated_data.pop('location', None)
+        # Проверяем наличие location_write (для записи поля location в user)
+        location = validated_data.pop('location_write', None)
         avatar = validated_data.pop('avatar', None)
         nickname = validated_data.pop('nickname', None)
         
         # Обновление полей модели CreatorProfile
         for attr, value in validated_data.items():
+            print(f"Setting instance.{attr} = {value}")
             setattr(instance, attr, value)
         
         # Обновляем nickname, который является частью CreatorProfile
         if nickname is not None:
+            print(f"Setting instance.nickname = {nickname}")
             instance.nickname = nickname
         
         # Сохраняем изменения CreatorProfile
@@ -226,20 +250,34 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
         updated_user = False
         
         if bio is not None:
+            print(f"Setting user.bio = {bio}")
             user.bio = bio
             updated_user = True
         
         if location is not None:
+            print(f"Setting user.location = {location}")
             user.location = location
             updated_user = True
         
         if avatar is not None:
+            print(f"Setting user.avatar = {avatar}")
             user.avatar = avatar
             updated_user = True
+        
+        # Обновляем вложенные поля пользователя, если они переданы во вложенном объекте `user`
+        if user_data:
+            print(f"Updating user with data: {json.dumps(user_data, default=str)}")
+            for attr, value in user_data.items():
+                # Игнорируем None, чтобы частичный PATCH не затирал существующие значения
+                if value is not None:
+                    print(f"Setting user.{attr} = {value}")
+                    setattr(user, attr, value)
+                    updated_user = True
         
         # Сохранение пользователя, если были изменения
         if updated_user:
             user.save()
+            print(f"User saved: {user.id}, first_name={user.first_name}, last_name={user.last_name}, bio={user.bio}, location={user.location}")
         
         # Обновление навыков, если они предоставлены
         if skills_data is not None:

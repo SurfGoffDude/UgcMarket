@@ -80,10 +80,10 @@ const CreatorProfilePage: React.FC = () => {
                     {ratingValue.toFixed(1)}
                   </span>
                 )}
-                {creator.location && (
+                {(creator.user?.location || creator.location) && (
                   <span className="flex items-center gap-1">
                     <MapPin className="h-4 w-4" />
-                    {creator.location}
+                    {creator.user?.location || creator.location}
                   </span>
                 )}
               </div>
