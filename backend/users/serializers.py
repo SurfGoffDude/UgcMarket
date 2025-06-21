@@ -395,9 +395,33 @@ class SkillSerializer(serializers.ModelSerializer):
     """
     Сериализатор для модели навыка.
     """
+    slug = serializers.CharField(required=False)
+    
     class Meta:
         model = Skill
         fields = ['id', 'name', 'slug', 'description']
+        
+    def create(self, validated_data):
+        """
+        Создает навык и автоматически генерирует slug из имени.
+        """
+        # Если slug не предоставлен, генерируем его из имени
+        if 'slug' not in validated_data:
+            from django.utils.text import slugify
+            name = validated_data['name']
+            slug = slugify(name)
+            
+            # Проверяем уникальность слага
+            from django.db.models import Max
+            base_slug = slug
+            counter = 1
+            while Skill.objects.filter(slug=slug).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+                
+            validated_data['slug'] = slug
+            
+        return super().create(validated_data)
 
 
 class CreatorSkillSerializer(serializers.ModelSerializer):

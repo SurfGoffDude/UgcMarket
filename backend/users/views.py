@@ -477,7 +477,7 @@ class CreatorProfileViewSet(viewsets.ModelViewSet):
             
         return Response(data)
 
-class SkillViewSet(viewsets.ReadOnlyModelViewSet):
+class SkillViewSet(viewsets.ModelViewSet):
     """
     Представление для работы с навыками.
     

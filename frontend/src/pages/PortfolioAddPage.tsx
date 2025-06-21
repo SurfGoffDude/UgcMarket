@@ -249,7 +249,7 @@ const PortfolioAddPage = () => {
       }
 
       // Создаем элемент портфолио
-      const portfolioResponse = await apiClient.post('/portfolio-items/', formData, {
+      const portfolioResponse = await apiClient.post('portfolio/', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -267,7 +267,7 @@ const PortfolioAddPage = () => {
           imageData.append('caption', img.caption || '');
           imageData.append('order', index.toString());
 
-          await apiClient.post('/portfolio-images/', imageData, {
+          await apiClient.post('portfolio-images/', imageData, {
             headers: {
               'Content-Type': 'multipart/form-data',
             },
