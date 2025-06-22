@@ -8,7 +8,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from .models import (
-    ClientProfile, CreatorProfile, SocialLink, 
+    ClientProfile, CreatorProfile, SocialLink,
     Skill, CreatorSkill, PortfolioItem, PortfolioImage, Service, ServiceImage
 )
 
@@ -21,13 +21,13 @@ class UserSerializer(serializers.ModelSerializer):
     has_creator_profile = serializers.BooleanField(read_only=True)
     has_client_profile = serializers.BooleanField(read_only=True)
     creator_profile_id = serializers.IntegerField(source='creator_profile.id', read_only=True)
-    
+
     class Meta:
         model = User
         fields = [
-            'id', 'username', 'email', 'first_name', 'last_name', 
-            'full_name', 'avatar', 'phone', 'bio', 'location', 'is_verified', 
-            'user_type', 'date_joined', 'has_creator_profile', 
+            'id', 'username', 'email', 'first_name', 'last_name',
+            'full_name', 'avatar', 'phone', 'bio', 'location', 'is_verified',
+            'user_type', 'date_joined', 'has_creator_profile',
             'has_client_profile', 'creator_profile_id'
         ]
         read_only_fields = ['id', 'email', 'is_verified', 'date_joined']
@@ -43,7 +43,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
     password_confirm = serializers.CharField(write_only=True, required=True)
     phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
     user_type = serializers.ChoiceField(choices=[('client', 'Клиент'), ('creator', 'Креатор')], required=True)
-    
+
     class Meta:
         model = User
         fields = [
@@ -54,7 +54,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
             'first_name': {'required': False},
             'last_name': {'required': False},
         }
-    
+
     def validate(self, attrs):
         """
         Проверяет соответствие паролей.
@@ -70,14 +70,14 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         """
         if attrs['password'] != attrs['password_confirm']:
             raise serializers.ValidationError({"password": "Пароли не совпадают"})
-        
+
         # Проверка на уникальность email
         email = attrs.get('email')
         if User.objects.filter(email=email).exists():
             raise serializers.ValidationError({"email": "Пользователь с таким email уже существует"})
-            
+
         return attrs
-    
+
     def create(self, validated_data):
         """
         Создает нового пользователя с предоставленными данными.
@@ -92,7 +92,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         validated_data.pop('password_confirm')
         user_type = validated_data.pop('user_type', 'client')
         phone = validated_data.pop('phone', '')
-        
+
         # Создаем нового пользователя
         user = User.objects.create_user(
             username=validated_data['username'],
@@ -101,7 +101,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
             first_name=validated_data.get('first_name', ''),
             last_name=validated_data.get('last_name', '')
         )
-        
+
         # Создаем профиль в зависимости от типа пользователя
         if user_type == 'creator':
             # Для креаторов создаем профиль креатора
@@ -109,7 +109,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         else:
             # Для клиентов создаем профиль клиента
             ClientProfile.objects.create(user=user)
-        
+
         return user
 
 
@@ -117,6 +117,7 @@ class SocialLinkSerializer(serializers.ModelSerializer):
     """
     Сериализатор для социальных ссылок креатора.
     """
+
     class Meta:
         model = SocialLink
         fields = ['name', 'url']
@@ -145,7 +146,7 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
     # Дополнительное поле для записи location
     location_write = serializers.CharField(max_length=100, required=False, allow_blank=True, write_only=True)
     review_count = serializers.IntegerField(source='completed_orders', read_only=True)
-    
+
     class Meta:
         model = CreatorProfile
         fields = [
@@ -154,9 +155,9 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
             'available_for_hire', 'social_links', 'skills', 'rating', 'review_count',
             'completed_orders', 'average_response_time', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'rating', 'review_count', 
-                           'completed_orders', 'created_at', 'updated_at']
-    
+        read_only_fields = ['id', 'rating', 'review_count',
+                            'completed_orders', 'created_at', 'updated_at']
+
     def get_full_name(self, obj):
         """
         Возвращает полное имя пользователя.
@@ -164,13 +165,13 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
         if obj.user.first_name and obj.user.last_name:
             return f"{obj.user.first_name} {obj.user.last_name}"
         return obj.user.username
-    
+
     def get_username(self, obj):
         """
         Возвращает имя пользователя.
         """
         return obj.user.username
-    
+
     def get_avatar(self, obj):
         """
         Возвращает URL аватара пользователя.
@@ -178,31 +179,31 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
         if obj.user.avatar:
             return obj.user.avatar.url
         return None
-    
+
     def get_bio(self, obj):
         """
         Возвращает описание пользователя.
         """
         return obj.user.bio
-    
+
     def get_location(self, obj):
         """
         Возвращает местоположение пользователя.
         """
         return obj.user.location
-    
+
     def create(self, validated_data):
         """
         Создает профиль креатора с социальными ссылками.
         """
         social_links_data = validated_data.pop('social_links', [])
         creator_profile = CreatorProfile.objects.create(**validated_data)
-        
+
         for link_data in social_links_data:
             SocialLink.objects.create(creator_profile=creator_profile, **link_data)
-        
+
         return creator_profile
-    
+
     def update(self, instance, validated_data):
         """
         Обновляет профиль креатора и его социальные ссылки.
@@ -218,52 +219,52 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
         # Выводим полученные данные для отладки
         import json
         print(f"PATCH validated_data: {json.dumps(validated_data, default=str)}")
-        
+
         social_links_data = validated_data.pop('social_links', None)
         skills_data = validated_data.pop('skills', None)
         # Данные вложенного пользователя (first_name, last_name, bio, location, avatar и др.)
         user_data = validated_data.pop('user', {})
         print(f"Extracted user_data: {json.dumps(user_data, default=str)}")
-        
+
         # Обработка полей пользователя, которые могут быть переданы в запросе
         bio = validated_data.pop('bio', None)
         # Проверяем наличие location_write (для записи поля location в user)
         location = validated_data.pop('location_write', None)
         avatar = validated_data.pop('avatar', None)
         nickname = validated_data.pop('nickname', None)
-        
+
         # Обновление полей модели CreatorProfile
         for attr, value in validated_data.items():
             print(f"Setting instance.{attr} = {value}")
             setattr(instance, attr, value)
-        
+
         # Обновляем nickname, который является частью CreatorProfile
         if nickname is not None:
             print(f"Setting instance.nickname = {nickname}")
             instance.nickname = nickname
-        
+
         # Сохраняем изменения CreatorProfile
         instance.save()
-        
+
         # Обновление полей пользователя (User), если они были переданы
         user = instance.user
         updated_user = False
-        
+
         if bio is not None:
             print(f"Setting user.bio = {bio}")
             user.bio = bio
             updated_user = True
-        
+
         if location is not None:
             print(f"Setting user.location = {location}")
             user.location = location
             updated_user = True
-        
+
         if avatar is not None:
             print(f"Setting user.avatar = {avatar}")
             user.avatar = avatar
             updated_user = True
-        
+
         # Обновляем вложенные поля пользователя, если они переданы во вложенном объекте `user`
         if user_data:
             print(f"Updating user with data: {json.dumps(user_data, default=str)}")
@@ -273,17 +274,18 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
                     print(f"Setting user.{attr} = {value}")
                     setattr(user, attr, value)
                     updated_user = True
-        
+
         # Сохранение пользователя, если были изменения
         if updated_user:
             user.save()
-            print(f"User saved: {user.id}, first_name={user.first_name}, last_name={user.last_name}, bio={user.bio}, location={user.location}")
-        
+            print(
+                f"User saved: {user.id}, first_name={user.first_name}, last_name={user.last_name}, bio={user.bio}, location={user.location}")
+
         # Обновление навыков, если они предоставлены
         if skills_data is not None:
             # Удаляем существующие навыки
             instance.creator_skills.all().delete()
-            
+
             # Создаем новые навыки
             for skill_data in skills_data:
                 # Проверяем наличие обязательных полей
@@ -302,7 +304,7 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
                     # Если навык передан по имени, пытаемся найти или создать
                     skill_name = skill_data['name']
                     level = skill_data.get('level', 1)
-                    
+
                     try:
                         skill = Skill.objects.get(name=skill_name)
                     except Skill.DoesNotExist:
@@ -312,13 +314,13 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
                             name=skill_name,
                             slug=slugify(skill_name)
                         )
-                    
+
                     CreatorSkill.objects.create(
                         creator_profile=instance,
                         skill=skill,
                         level=level
                     )
-        
+
         # Обновление социальных ссылок, если они предоставлены
         if social_links_data is not None:
             # Удаляем существующие ссылки
@@ -326,7 +328,7 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
             # Создаем новые ссылки
             for link_data in social_links_data:
                 SocialLink.objects.create(creator_profile=instance, **link_data)
-        
+
         return instance
 
 
@@ -334,25 +336,25 @@ class ClientProfileSerializer(serializers.ModelSerializer):
     """
     Сериализатор для профиля клиента.
     """
-    user = UserSerializer(read_only=True)
-    
+    user = UserSerializer()
+
     # Добавляем поля из User для обновления
     first_name = serializers.CharField(source='user.first_name', required=False)
     last_name = serializers.CharField(source='user.last_name', required=False)
     phone = serializers.CharField(source='user.phone', required=False, allow_blank=True, allow_null=True)
     bio = serializers.CharField(source='user.bio', required=False, allow_blank=True, allow_null=True)
     location = serializers.CharField(source='user.location', required=False, allow_blank=True, allow_null=True)
-    
+
     class Meta:
         model = ClientProfile
         fields = [
             'id', 'user', 'first_name', 'last_name', 'phone', 'bio', 'location',
-            'company_name', 'position', 'website', 'about', 
+            'company_name', 'position', 'website', 'about',
             'notifications_enabled', 'email_notifications',
             'push_notifications', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
-        
+
     def update(self, instance, validated_data):
         """
         Обновляет данные профиля клиента и связанного пользователя.
@@ -366,21 +368,21 @@ class ClientProfileSerializer(serializers.ModelSerializer):
         """
         # Извлекаем данные пользователя
         user_data = validated_data.pop('user', {})
-        
+
         # Обновляем поля профиля
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-        
+
         # Если есть данные пользователя, обновляем их
         if user_data:
             user = instance.user
             for attr, value in user_data.items():
                 setattr(user, attr, value)
             user.save()
-        
+
         # Сохраняем профиль
         instance.save()
-        
+
         return instance
 
 
@@ -396,11 +398,11 @@ class SkillSerializer(serializers.ModelSerializer):
     Сериализатор для модели навыка.
     """
     slug = serializers.CharField(required=False)
-    
+
     class Meta:
         model = Skill
         fields = ['id', 'name', 'slug', 'description']
-        
+
     def create(self, validated_data):
         """
         Создает навык и автоматически генерирует slug из имени.
@@ -410,7 +412,7 @@ class SkillSerializer(serializers.ModelSerializer):
             from django.utils.text import slugify
             name = validated_data['name']
             slug = slugify(name)
-            
+
             # Проверяем уникальность слага
             from django.db.models import Max
             base_slug = slug
@@ -418,9 +420,9 @@ class SkillSerializer(serializers.ModelSerializer):
             while Skill.objects.filter(slug=slug).exists():
                 slug = f"{base_slug}-{counter}"
                 counter += 1
-                
+
             validated_data['slug'] = slug
-            
+
         return super().create(validated_data)
 
 
@@ -434,7 +436,7 @@ class CreatorSkillSerializer(serializers.ModelSerializer):
         source='skill',
         write_only=True
     )
-    
+
     class Meta:
         model = CreatorSkill
         fields = ['id', 'creator_profile', 'skill', 'skill_id', 'level']
@@ -446,13 +448,13 @@ class PortfolioImageSerializer(serializers.ModelSerializer):
     Сериализатор для модели изображения портфолио.
     """
     image_url = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = PortfolioImage
         fields = ['id', 'portfolio_item', 'image', 'image_url', 'caption', 'order']
         read_only_fields = ['portfolio_item']
         extra_kwargs = {'image': {'write_only': True}}
-    
+
     def get_image_url(self, obj):
         """Возвращает URL-адрес изображения."""
         if obj.image:
@@ -474,17 +476,17 @@ class PortfolioItemSerializer(serializers.ModelSerializer):
         required=False
     )
     cover_image_url = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = PortfolioItem
         fields = [
             'id', 'creator_profile', 'title', 'description',
-            'cover_image', 'cover_image_url', 'external_url', 
+            'cover_image', 'cover_image_url', 'external_url',
             'images', 'uploaded_images', 'created_at', 'updated_at'
         ]
         read_only_fields = ['creator_profile', 'created_at', 'updated_at']
         extra_kwargs = {'cover_image': {'write_only': True}}
-    
+
     def get_cover_image_url(self, obj):
         """Возвращает URL-адрес обложки."""
         if obj.cover_image:
@@ -493,14 +495,14 @@ class PortfolioItemSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.cover_image.url)
             return obj.cover_image.url
         return None
-    
+
     def create(self, validated_data):
         """
         Создает новый элемент портфолио с изображениями.
         """
         uploaded_images = validated_data.pop('uploaded_images', [])
         portfolio_item = PortfolioItem.objects.create(**validated_data)
-        
+
         # Создаем дополнительные изображения
         for i, image in enumerate(uploaded_images):
             PortfolioImage.objects.create(
@@ -508,31 +510,31 @@ class PortfolioItemSerializer(serializers.ModelSerializer):
                 image=image,
                 order=i
             )
-        
+
         return portfolio_item
-    
+
     def update(self, instance, validated_data):
         """
         Обновляет элемент портфолио и его изображения.
         """
         uploaded_images = validated_data.pop('uploaded_images', None)
-        
+
         # Обновляем поля модели
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
-        
+
         # Добавляем новые изображения, если они предоставлены
         if uploaded_images:
             last_order = instance.images.aggregate(models.Max('order'))['order__max'] or 0
-            
+
             for i, image in enumerate(uploaded_images):
                 PortfolioImage.objects.create(
                     portfolio_item=instance,
                     image=image,
                     order=last_order + i + 1
                 )
-        
+
         return instance
 
 
@@ -542,16 +544,16 @@ class CreatorProfileDetailSerializer(CreatorProfileSerializer):
     """
     skills = CreatorSkillSerializer(source='creator_skills', many=True, read_only=True)
     portfolio = PortfolioItemSerializer(source='portfolio_items', many=True, read_only=True)
-    
+
     class Meta(CreatorProfileSerializer.Meta):
         fields = CreatorProfileSerializer.Meta.fields + ['skills', 'portfolio']
-    
+
     def to_representation(self, instance):
         """
         Добавляем навыки в виде удобного списка.
         """
         representation = super().to_representation(instance)
-        
+
         # Формируем удобный список навыков с уровнями
         skills_list = []
         for skill_data in representation.get('skills', []):
@@ -562,7 +564,7 @@ class CreatorProfileDetailSerializer(CreatorProfileSerializer):
                 'level': skill_data['level']
             })
         representation['skills'] = skills_list
-        
+
         return representation
 
 
@@ -580,21 +582,21 @@ class ServiceSerializer(serializers.ModelSerializer):
     """
     # Для вывода имени пользователя-креатора
     creator_username = serializers.SerializerMethodField(read_only=True)
-    
+
     # Поле для приема ID профиля креатора из запроса фронтенда
     creator_profile = serializers.PrimaryKeyRelatedField(
         queryset=CreatorProfile.objects.all(),
         required=False,  # Не обязательно, т.к. может быть установлено в perform_create
         write_only=False  # Используется и для чтения и для записи
     )
-    
+
     # Правильная обработка цены, представленной как строка или число
     price = serializers.DecimalField(
         max_digits=10,
         decimal_places=2,
         coerce_to_string=False  # Возвращаем число, а не строку
     )
-    
+
     # Цена с правками
     modifications_price = serializers.DecimalField(
         max_digits=10,
@@ -603,7 +605,7 @@ class ServiceSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True
     )
-    
+
     images = ServiceImageSerializer(many=True, read_only=True)
     uploaded_images = serializers.ListField(
         child=serializers.ImageField(allow_empty_file=False, use_url=False),
@@ -621,7 +623,7 @@ class ServiceSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
-    
+
     def get_creator_username(self, obj):
         """
         Возвращает имя пользователя-креатора.
@@ -652,7 +654,7 @@ class ServiceSerializer(serializers.ModelSerializer):
         отдельный эндпоинт или доп. логика в запросе.
         """
         images_data = validated_data.pop('uploaded_images', None)
-        
+
         # Обновляем основные поля услуги
         instance = super().update(instance, validated_data)
 
@@ -662,5 +664,5 @@ class ServiceSerializer(serializers.ModelSerializer):
             # instance.images.all().delete()
             for image_data in images_data:
                 ServiceImage.objects.create(service=instance, image=image_data)
-        
+
         return instance

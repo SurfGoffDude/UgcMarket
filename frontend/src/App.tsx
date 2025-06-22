@@ -16,6 +16,7 @@ import Layout from "@/components/Layout";
 import Index from "@/pages/Index";
 import CatalogPage from "@/pages/CatalogPage";
 import CreatorProfilePage from "@/pages/CreatorProfilePage";
+import CreatorProfileEditPage from "@/pages/CreatorProfileEditPage";
 import ServicePage from "@/pages/ServicePage";
 import CreateOrder from "@/pages/CreateOrder";
 import NotFound from "@/pages/NotFound";
@@ -85,6 +86,7 @@ const App = () => {
                 <Route path="/catalog" element={<CatalogPage />} />
                 <Route path="/creator-profile" element={<CreatorProfilePage />} />
                 <Route path="/creators/:id" element={<CreatorProfilePage />} />
+                <Route path="/creator/:id/edit" element={<CreatorProfileEditPage />} />
                 <Route path="/creators/:id/reviews" element={<CreatorReviews />} />
                 <Route path="/creators/:creatorId/service/:serviceId" element={<ServicePage />} />
                 <Route path="/create-order" element={<CreateOrder />} />

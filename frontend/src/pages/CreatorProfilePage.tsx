@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useCreatorProfile } from '@/hooks/useCreatorProfile';
-import { Star, MapPin, Users, Plus } from 'lucide-react';
+import { Star, MapPin, Users, Plus, Pencil } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 import PortfolioItem from '@/components/PortfolioItem';
@@ -43,7 +43,17 @@ const CreatorProfilePage: React.FC = () => {
   return (
     <div className="container mx-auto p-4 md:p-6">
       {/* "Шапка" профиля */}
-      <Card className="rounded-xl p-6 mt-8 space-y-4 shadow-md">
+      <Card className="relative rounded-xl p-6 mt-8 space-y-4 shadow-md">
+        {isOwner && (
+          <Button
+            variant="outline"
+            className="absolute top-6 right-6"
+            onClick={() => navigate(`/creator/${creator.id}/edit`)}
+          >
+            <Pencil className="h-4 w-4 mr-2" />
+            Редактировать
+          </Button>
+        )}
         {/* Верхняя часть: Аватар, инфо, кнопки */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="flex gap-4 w-full md:w-auto">
@@ -63,11 +73,9 @@ const CreatorProfilePage: React.FC = () => {
                 </span>
                 <span className="flex items-center gap-1">
                   <MapPin className="h-4 w-4" />
-                  {creator.user?.country}, {creator.user?.city}
+                  {creator.user?.location}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Users className="h-4 w-4" />
-                  {creator.subscribers_count} подписчиков
                 </span>
               </div>
             </div>
