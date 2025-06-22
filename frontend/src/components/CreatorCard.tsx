@@ -171,7 +171,7 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
       {/* Header with avatar and online status */}
       <div className="relative p-6 pb-4">
         <div className="flex items-start justify-between">
-          <Link to={`/creator/${creator.id}`} className="flex items-center space-x-3 flex-1">
+          <Link to={`/creators/${creator.id}`} className="flex items-center space-x-3 flex-1">
             <div className="relative">
               <img 
                 src={getAvatar()} 
@@ -266,7 +266,7 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
 
       {/* Action buttons */}
       <div className="px-6 pb-6 pt-2 flex space-x-2">
-        <Link to={`/creator/${creator.id}`} className="flex-1">
+        <Link to={`/creators/${creator.id}`} className="flex-1">
           <Button 
             variant="outline"
             size="sm" 

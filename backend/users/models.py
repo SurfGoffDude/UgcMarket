@@ -388,7 +388,9 @@ class Service(models.Model):
     estimated_time = models.CharField(
         max_length=100,
         verbose_name=_('Примерное время выполнения'),
-        help_text=_('Например: 2-3 дня, 1 неделя и т.д.')
+        help_text=_('Например: 2-3 дня, 1 неделя и т.д.'),
+        blank=True,
+        null=True
     )
     allows_modifications = models.BooleanField(
         default=True,
@@ -433,7 +435,7 @@ class ServiceImage(models.Model):
         Service,
         on_delete=models.CASCADE,
         related_name='images',
-        verbose_name=_('Услуга')
+        verbose_name=_('Услуга'), blank=True, null=True
     )
     image = models.ImageField(
         upload_to='services/',
