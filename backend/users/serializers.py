@@ -538,7 +538,37 @@ class PortfolioItemSerializer(serializers.ModelSerializer):
         return instance
 
 
-class CreatorProfileDetailSerializer(CreatorProfileSerializer):
+class CreatorProfileListSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для представления креаторов в списке.
+    
+    Предоставляет "плоскую" структуру с основными полями из профиля
+    и связанной модели User для удобного отображения в карточках.
+    """
+    username = serializers.CharField(source='user.username', read_only=True)
+    first_name = serializers.CharField(source='user.first_name', read_only=True)
+    last_name = serializers.CharField(source='user.last_name', read_only=True)
+    avatar = serializers.ImageField(source='user.avatar', read_only=True)
+    
+    services_count = serializers.SerializerMethodField()
+    reviews_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CreatorProfile
+        fields = [
+            'id', 'username', 'first_name', 'last_name', 'avatar', 'bio', 
+            'rating', 'hourly_rate', 'services_count', 'reviews_count'
+        ]
+
+    def get_services_count(self, obj):
+        return obj.services.count()
+
+    def get_reviews_count(self, obj):
+        # Заглушка, пока не реализована система отзывов
+        return 0
+
+
+class CreatorProfileDetailSerializer(serializers.ModelSerializer):
     """
     Расширенный сериализатор для профиля креатора с навыками и портфолио.
     """

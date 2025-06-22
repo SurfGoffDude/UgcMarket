@@ -6,14 +6,22 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Creator as MockCreator } from '@/data/creators';
 
+// Тип для вложенного объекта пользователя от API
+interface UserData {
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  avatar: string;
+  location: string;
+  is_verified: boolean;
+}
+
 // Тип для API-формата данных креатора
 interface APICreator {
   id: string | number;
-  username?: string;
-  email?: string;
-  first_name?: string;
-  last_name?: string;
-  avatar?: string;
+  user?: UserData; // Используем вложенный тип
   bio?: string;
   creator_name?: string;
   categories?: { id: number; name: string; slug: string }[];
@@ -26,7 +34,7 @@ interface APICreator {
   platform?: string;
   social_links?: Record<string, string>;
   location?: string;
-  is_online?: boolean;
+  is_online?: boolean; // Это поле может быть на верхнем уровне
   is_verified?: boolean;
   response_time?: string;
   completion_rate?: number;
@@ -43,22 +51,29 @@ interface CreatorCardProps {
 
 const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
   // Адаптеры для получения данных из разных форматов
+  const getNestedUser = () => {
+    return 'user' in creator ? creator.user : null;
+  }
+
   const getName = (): string => {
-    if ('name' in creator) return creator.name;
-    if (creator.first_name || creator.last_name) {
-      return `${creator.first_name || ''} ${creator.last_name || ''}`.trim();
+    if ('name' in creator) return creator.name; // Mock data
+    const user = getNestedUser();
+    if (user && (user.first_name || user.last_name)) {
+      return `${user.first_name || ''} ${user.last_name || ''}`.trim();
     }
-    return creator.creator_name || creator.username || 'Неизвестный креатор';
+    return user?.username || creator.creator_name || 'Неизвестный креатор';
   };
   
   const getUsername = (): string => {
-    if ('username' in creator) return creator.username;
-    return creator.username || '';
+    const user = getNestedUser();
+    return user?.username || ('username' in creator ? creator.username : '');
   };
   
   const getAvatar = (): string => {
+    const user = getNestedUser();
+    if (user && user.avatar) return user.avatar;
     if ('avatar' in creator && typeof creator.avatar === 'string') return creator.avatar;
-    return creator.avatar || 'https://via.placeholder.com/150';
+    return 'https://via.placeholder.com/150';
   };
   
   const getPlatform = (): string => {
@@ -67,8 +82,9 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
   };
   
   const getIsVerified = (): boolean => {
-    if ('isVerified' in creator) return !!creator.isVerified;
-    return !!(creator as APICreator).is_verified;
+    if ('isVerified' in creator) return !!creator.isVerified; // Mock
+    const user = getNestedUser();
+    return !!user?.is_verified;
   };
   
   const getIsOnline = (): boolean => {
@@ -77,7 +93,9 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
   };
   
   const getLocation = (): string | undefined => {
-    return 'location' in creator ? creator.location : creator.location;
+    if ('location' in creator && typeof creator.location === 'string') return creator.location; // Mock
+    const user = getNestedUser();
+    return user?.location;
   };
   
   const getDescription = (): string | undefined => {
@@ -90,10 +108,10 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
     return creator.tags || [];
   };
   
-  const getRating = (): number => {
-    if ('rating' in creator) return creator.rating;
-    return creator.rating || 0;
-  };
+  // const getRating = (): number => {
+  //  if ('rating' in creator) return creator.rating;
+  //  return creator.rating || 0;
+  // };
   
   const getReviews = (): number => {
     if ('reviews' in creator) return creator.reviews;
@@ -211,7 +229,7 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
           <div className="flex items-center space-x-3">
             <div className="flex items-center space-x-1 bg-gray-50 dark:bg-gray-700/50 px-2 py-1 rounded-full">
               <Star className="w-4 h-4 text-yellow-500 fill-current" />
-              <span className="font-semibold text-gray-900 dark:text-white">{getRating().toFixed(1)}</span>
+              {/* <span className="font-semibold text-gray-900 dark:text-white">{getRating().toFixed(1)}</span> */}
               <span className="text-gray-500 dark:text-gray-400 text-xs">
                 ({getReviews()})
               </span>
@@ -238,7 +256,7 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
             Написать
           </Button>
         </Link>
-        <Link to={`/creator/${creator.id}`} className="flex-1">
+        <Link to={`/creators/${creator.id}`} className="flex-1">
           <Button 
             size="sm" 
             className="w-full rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white transition-all"

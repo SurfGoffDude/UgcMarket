@@ -12,236 +12,183 @@ import {
 } from '@/types/search';
 import { Service } from '@/types/services';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
-/**
- * Универсальный хук для выполнения запросов
- * @param initialFetch - выполнять ли запрос автоматически
- */
+// --- Вспомогательные хуки и функции ---
+
 function useApiRequest<T>(url: string, initialFetch = false) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [options, setOptions] = useState<RequestInit>({});
 
   const execute = useCallback(async (requestOptions?: RequestInit) => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-
-      const fetchOptions = requestOptions || options;
-      const jwtToken = localStorage.getItem('token');
-
+      const jwtToken = localStorage.getItem('access_token');
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
-        ...fetchOptions.headers,
+        ...requestOptions?.headers,
       };
-
       if (jwtToken) {
         headers['Authorization'] = `Bearer ${jwtToken}`;
       }
 
-      const response = await fetch(url, {
-        ...fetchOptions,
-        headers,
-      });
-
+      const response = await fetch(url, { ...requestOptions, headers });
       if (!response.ok) {
-        throw new Error(`Ошибка запроса: ${response.status}`);
+        const errorData = await response.json().catch(() => null);
+        throw new Error(`Ошибка запроса: ${response.status} ${response.statusText}. ${errorData?.detail || ''}`);
       }
-
       const result = await response.json();
       setData(result);
       return result;
-    } catch (error) {
-      setError(error instanceof Error ? error : new Error('Неизвестная ошибка'));
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Неизвестная ошибка'));
       return null;
     } finally {
       setLoading(false);
     }
-  }, [url, options]);
+  }, [url]);
 
-  // Опционально выполнить запрос при монтировании
   useEffect(() => {
     if (initialFetch) {
       execute();
     }
   }, [initialFetch, execute]);
 
-  return { data, loading, error, execute, setOptions };
-}
-
-/**
- * Хук для получения услуг с расширенным поиском
- * @param params - параметры поиска
- * @param initialFetch - выполнять ли запрос автоматически
- */
-export function useServiceSearch(params: SearchParams = {}, initialFetch = false) {
-  const queryString = searchParamsToQueryString(params);
-  const url = `${API_URL}/services/?${queryString}`;
-  
-  const { data, loading, error, execute } = useApiRequest<{
-    count: number;
-    next: string | null;
-    previous: string | null;
-    results: Service[];
-  }>(url, initialFetch);
-
   return { data, loading, error, execute };
 }
 
-/**
- * Хук для получения истории поиска
- * @param page - номер страницы
- * @param pageSize - размер страницы
- * @param initialFetch - выполнять ли запрос автоматически
- */
-export function useSearchHistory(page = 1, pageSize = 10, initialFetch = false) {
-  const url = `${API_URL}/services/search-history/?page=${page}&page_size=${pageSize}`;
-  
-  const { data, loading, error, execute } = useApiRequest<SearchHistoryResponse>(url, initialFetch);
+// --- Основные хуки ---
 
-  return { data, loading, error, execute };
+/**
+ * Хук для поиска услуг с пагинацией
+ */
+export function useServiceSearch(params: SearchParams, page: number) {
+  const [services, setServices] = useState<Service[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const queryString = searchParamsToQueryString({ ...params, page });
+      const url = `${API_URL}/services/search/?${queryString}`;
+      const jwtToken = localStorage.getItem('token');
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      if (jwtToken) {
+        headers['Authorization'] = `Bearer ${jwtToken}`;
+      }
+
+      const response = await fetch(url, { headers });
+      if (!response.ok) throw new Error('Ошибка при загрузке услуг');
+      
+      const data = await response.json();
+      setServices(prev => page === 1 ? data.results : [...prev, ...data.results]);
+      setHasMore(data.next !== null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Неизвестная ошибка'));
+    } finally {
+      setLoading(false);
+    }
+  }, [params, page]);
+
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
+  return { services, loading, error, refetch, hasMore };
 }
 
 /**
- * Хук для очистки истории поиска
+ * Хук для управления историей поиска
  */
-export function useClearSearchHistory() {
-  const url = `${API_URL}/services/search-history/clear/`;
-  
-  const { loading, error, execute } = useApiRequest<{status: string}>(url, false);
-
-  const clearHistory = useCallback(async () => {
-    return execute({
-      method: 'DELETE',
-    });
-  }, [execute]);
-
-  return { clearHistory, loading, error };
+export function useSearchHistory() {
+  const url = `${API_URL}/search-history/`;
+  const { data, loading, error, execute: refetch } = useApiRequest<SearchHistoryResponse>(url, true);
+  return { history: data?.results || [], loading, error, refetch };
 }
 
 /**
- * Хук для добавления просмотренного элемента в историю поиска
- * @param searchHistoryId - ID записи в истории поиска
+ * Хук для получения рекомендаций по поиску
  */
-export function useAddClickedItem(searchHistoryId: number) {
-  const url = `${API_URL}/services/search-history/${searchHistoryId}/add_clicked_item/`;
-  
-  const { loading, error, execute } = useApiRequest<{status: string}>(url, false);
-
-  const addClickedItem = useCallback(async (itemId: number) => {
-    return execute({
-      method: 'POST',
-      body: JSON.stringify({ item_id: itemId }),
-    });
-  }, [execute]);
-
-  return { addClickedItem, loading, error };
+export function useSearchRecommendations(query: string) {
+  const url = `${API_URL}/search-recommendations/?q=${query}`;
+  const { data, loading, error } = useApiRequest<SearchRecommendation[]>(url, !!query);
+  return { recommendations: data, loading, error };
 }
 
 /**
- * Хук для получения рекомендаций поиска
+ * Хук для отслеживания кликов по элементам (заглушка)
  */
-export function useSearchRecommendations(initialFetch = false) {
-  const url = `${API_URL}/services/search-recommendations/`;
-  
-  const { data, loading, error, execute } = useApiRequest<SearchRecommendation[]>(url, initialFetch);
+export function useAddClickedItem() {
+  const addClickedItem = useCallback((itemId: number) => {
+    console.log(`Отслеживание клика по элементу ${itemId}. Логика еще не реализована.`);
+  }, []);
+  return { addClickedItem };
+}
 
-  return { data, loading, error, execute };
+// --- Хуки для фильтров ---
+
+export interface FilterOption {
+  value: string;
+  label: string;
+  count: number;
+}
+
+export interface Filter {
+  id: string;
+  name: string;
+  options: FilterOption[];
 }
 
 /**
- * Хук для получения рекомендуемых услуг
+ * Хук для получения данных для фильтров
  */
-export function useRelatedServices(initialFetch = false) {
-  const url = `${API_URL}/services/related-services/`;
-  
-  const { data, loading, error, execute } = useApiRequest<{
-    count: number;
-    next: string | null;
-    previous: string | null;
-    results: Service[];
-  }>(url, initialFetch);
+/**
+ * Хук для получения списка всех креаторов
+ */
+export function useCreatorsList() {
+  const url = `${API_URL}/creator-profiles/`;
+  const { data, loading, error, execute: refetch } = useApiRequest<any>(url, true);
 
-  return { data, loading, error, execute };
+  // Django REST Framework часто возвращает пагинированные данные в объекте { results: [...] }.
+  // Этот код проверяет, есть ли поле results, и возвращает его.
+  // В противном случае, он возвращает сами данные (если ответ не пагинирован).
+  const creatorsList = data && data.results && Array.isArray(data.results) ? data.results : data;
+
+  return { creators: creatorsList || [], loading, error, refetch };
 }
 
-/**
- * Хук для получения доступных фильтров для поисковой формы
- * Загружает категории, платформы и языки с сервера
- */
 export function useFilterOptions(initialFetch = true) {
-  // Общая структура данных для фильтров
-  interface FilterData {
-    platforms: Array<{id: number; name: string; service_count?: number}>;
-    categories: Array<{id: number; name: string; service_count?: number}>;
-    languages: Array<{id: number; name: string; service_count?: number}>;
-  }
-  
-  const [data, setData] = useState<FilterData | null>(null);
-  const [filters, setFilters] = useState<any[]>([]); // Преобразованные фильтры для UI
-  const [loading, setLoading] = useState<boolean>(false);
+  const [filters, setFilters] = useState<Filter[]>([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   const fetchFilters = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      
-      // Параллельная загрузка всех фильтров
-      const [platformsRes, categoriesRes, languagesRes] = await Promise.all([
-        fetch(`${API_URL}/platforms/`),
-        fetch(`${API_URL}/categories/`),
-        fetch(`${API_URL}/languages/`)
-      ]);
+      const skillsRes = await fetch(`${API_URL}/skills/`);
+      if (!skillsRes.ok) throw new Error('Ошибка при загрузке фильтров');
+      const skills = await skillsRes.json();
 
-      if (!platformsRes.ok || !categoriesRes.ok || !languagesRes.ok) {
-        throw new Error('Ошибка при загрузке фильтров');
-      }
-
-      const platforms = await platformsRes.json();
-      const categories = await categoriesRes.json();
-      const languages = await languagesRes.json();
-
-      const filterData: FilterData = { platforms, categories, languages };
-      setData(filterData);
-      
-      // Преобразование данных в формат для фильтров UI
-      const formattedFilters = [
+      const formattedFilters: Filter[] = [
         {
-          id: 'platforms',
-          name: 'Платформа',
-          options: platforms.map((p: any) => ({
-            value: p.id.toString(),
-            label: p.name,
-            count: p.service_count || 0
-          }))
+          id: 'skills',
+          name: 'Навыки',
+          options: skills.map((s: any) => ({
+            value: s.id.toString(),
+            label: s.name,
+            count: s.creator_count || 0,
+          })),
         },
-        {
-          id: 'category',
-          name: 'Категория',
-          options: categories.map((c: any) => ({
-            value: c.id.toString(),
-            label: c.name,
-            count: c.service_count || 0
-          }))
-        },
-        {
-          id: 'languages',
-          name: 'Языки',
-          options: languages.map((l: any) => ({
-            value: l.id.toString(),
-            label: l.name,
-            count: l.service_count || 0
-          }))
-        }
       ];
-      
       setFilters(formattedFilters);
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Неизвестная ошибка при загрузке фильтров'));
-      console.error('Ошибка при загрузке фильтров:', err);
+      setError(err instanceof Error ? err : new Error('Неизвестная ошибка'));
     } finally {
       setLoading(false);
     }
@@ -251,7 +198,7 @@ export function useFilterOptions(initialFetch = true) {
     if (initialFetch) {
       fetchFilters();
     }
-  }, [fetchFilters, initialFetch]);
+  }, [initialFetch, fetchFilters]);
 
-  return { data, filters, loading, error, refetch: fetchFilters };
+  return { filters, loading, error, refetch: fetchFilters };
 }
