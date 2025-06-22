@@ -41,7 +41,7 @@ class CurrentCreatorProfileView(generics.RetrieveUpdateAPIView):
     Предоставляет прямой доступ к профилю креатора текущего пользователя
     без необходимости указывать ID профиля.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     serializer_class = CreatorProfileDetailSerializer
     
     def get_object(self):
