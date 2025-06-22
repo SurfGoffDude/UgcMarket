@@ -589,11 +589,21 @@ class ServiceSerializer(serializers.ModelSerializer):
         coerce_to_string=False  # Возвращаем число, а не строку
     )
     
+    # Цена с правками
+    modifications_price = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        coerce_to_string=False,
+        required=False,
+        allow_null=True
+    )
+    
     class Meta:
         model = Service
         fields = [
             'id', 'creator_profile', 'creator_username',
-            'title', 'description', 'price', 'is_active',
+            'title', 'description', 'price', 'estimated_time',
+            'allows_modifications', 'modifications_price', 'is_active',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']

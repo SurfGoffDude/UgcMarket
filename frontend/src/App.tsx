@@ -31,6 +31,7 @@ import ProfileEditPage from "@/pages/ProfileEditPage";
 import SkillAddPage from "@/pages/SkillAddPage";
 import ServiceAddPage from "@/pages/ServiceAddPage";
 import PortfolioAddPage from "@/pages/PortfolioAddPage";
+import PortfolioDetailPage from "@/pages/PortfolioDetailPage";
 
 // Новые страницы для уведомлений
 import NotificationsPage from "@/pages/NotificationsPage";
@@ -109,6 +110,7 @@ const App = () => {
                 <Route path="/skills/add" element={<SkillAddPage />} />
                 <Route path="/services/add" element={<ServiceAddPage />} />
                 <Route path="/portfolio/add" element={<PortfolioAddPage />} />
+                <Route path="/portfolio/:id" element={<PortfolioDetailPage />} />
                 <Route path="*" element={<NotFound />} />
             </Routes>
           </Layout>

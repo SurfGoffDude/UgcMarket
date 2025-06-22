@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Clock, RotateCcw, Tags } from 'lucide-react';
+import { Clock, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
@@ -56,10 +55,9 @@ type Service = MockService | APIService;
 
 interface ServiceCardProps {
   service: Service;
-  creatorId?: number | string;
 }
 
-const ServiceCard: React.FC<ServiceCardProps> = ({ service, creatorId }) => {
+const ServiceCard: React.FC<ServiceCardProps> = ({ service }) => {
   // Адаптеры для получения данных из разных форматов
   const getTitle = (): string => {
     return service.title || '';
@@ -78,8 +76,10 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, creatorId }) => {
   const getDuration = (): string => {
     if ('duration' in service) return service.duration;
     const deliveryTime = (service as APIService).delivery_time;
-    if (typeof deliveryTime === 'number') return `${deliveryTime} дней`;
-    return deliveryTime || '3-5 дней';
+    if (typeof deliveryTime === 'number') {
+      return `${deliveryTime} дней`;
+    }
+    return deliveryTime || 'N/A';
   };
   
   const getRevisions = (): number => {
@@ -87,16 +87,10 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, creatorId }) => {
     return (service as APIService).revisions || 0;
   };
   
-  const getServiceUrl = (): string => {
-    const serviceId = (service as APIService).slug || service.id;
-    const creator = (service as APIService).creator;
-    const actualCreatorId = creatorId || (creator ? creator.id : null);
-    return `/creator/${actualCreatorId}/service/${serviceId}`;
-  };
-  
   const getTags = (): string[] => {
     return (service as APIService).tags || [];
   };
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow duration-300">
       <h3 className="font-semibold text-gray-900 mb-2">{getTitle()}</h3>
@@ -131,21 +125,14 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, creatorId }) => {
             {getPrice().toLocaleString('ru-RU')}₽
           </div>
         </div>
-        {creatorId ? (
-          <Link to={getServiceUrl()}>
-            <Button size="sm" className="rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
-              Подробнее
-            </Button>
-          </Link>
-        ) : (
+        <Link to={`/service/${service.id}`}>
           <Button size="sm" className="rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
-            Заказать
+            Подробнее
           </Button>
-        )}
+        </Link>
       </div>
     </div>
   );
 };
 
 export default ServiceCard;
-

@@ -350,6 +350,9 @@ class Service(models.Model):
         title (CharField): Название услуги.
         description (TextField): Описание услуги.
         price (DecimalField): Стоимость услуги.
+        estimated_time (CharField): Примерное время выполнения услуги.
+        allows_modifications (BooleanField): Допустимы ли правки к услуге.
+        modifications_price (DecimalField): Стоимость версии с правками (если разрешены).
         is_active (BooleanField): Доступность услуги для заказа.
         created_at (DateTimeField): Дата создания.
         updated_at (DateTimeField): Дата обновления.
@@ -371,6 +374,23 @@ class Service(models.Model):
         max_digits=10, 
         decimal_places=2, 
         verbose_name=_('Цена')
+    )
+    estimated_time = models.CharField(
+        max_length=100,
+        verbose_name=_('Примерное время выполнения'),
+        help_text=_('Например: 2-3 дня, 1 неделя и т.д.')
+    )
+    allows_modifications = models.BooleanField(
+        default=True,
+        verbose_name=_('Разрешены правки')
+    )
+    modifications_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name=_('Цена с правками'),
+        help_text=_('Стоимость заказа с возможностью внесения правок'),
+        null=True,
+        blank=True
     )
     is_active = models.BooleanField(
         default=True, 

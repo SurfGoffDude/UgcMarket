@@ -59,6 +59,7 @@ class OrderViewSet(viewsets.ModelViewSet):
     Представление для работы с заказами.
     
     Поддерживает создание, просмотр, обновление и удаление заказов.
+    Поддерживает создание заказа на основе услуги с возможностью внесения правок.
     """
     queryset = Order.objects.all()
     permission_classes = [permissions.IsAuthenticated, IsClientOrReadOnly]
@@ -130,8 +131,14 @@ class OrderViewSet(viewsets.ModelViewSet):
         """
         Переопределяем метод для установки статуса заказа.
         """
-        # Устанавливаем статус заказа "опубликован"
-        serializer.save(status='published')
+        # Если заказ создается на основе услуги, то устанавливаем статус "в работе"
+        if 'service' in serializer.validated_data and serializer.validated_data['service']:
+            # Услуга указана, исполнитель известен, сразу ставим статус "в работе"
+            service = serializer.validated_data['service']
+            serializer.save(status='in_progress', creator=service.creator_profile.user)
+        else:
+            # Обычный заказ, устанавливаем статус "опубликован"
+            serializer.save(status='published')
     
     @action(detail=False, methods=['get'])
     def my_orders(self, request):

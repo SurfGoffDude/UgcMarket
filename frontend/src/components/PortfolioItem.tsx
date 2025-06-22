@@ -1,7 +1,8 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Play, Eye, Heart, Calendar } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Link } from 'react-router-dom';
 
 /**
  * Тип для моковых данных элемента портфолио
@@ -22,6 +23,8 @@ interface APIPortfolioItem {
   title?: string;
   description?: string;
   image?: string;
+  cover_image?: string; // Поле для основного изображения
+  cover_image_url?: string; // Фактически используемое API поле для URL обложки
   thumbnail_url?: string;
   video_url?: string;
   external_url?: string;
@@ -61,6 +64,10 @@ interface PortfolioItemProps {
  * @returns {React.ReactElement}
  */
 const PortfolioItem: React.FC<PortfolioItemProps> = ({ item }) => {
+  // Отладочный код - выводим в консоль структуру объекта
+  useEffect(() => {
+    console.log('[DEBUG] PortfolioItem - получены данные:', item);
+  }, [item]);
   /**
    * Получает заголовок элемента портфолио
    * @returns {string} Заголовок
@@ -76,16 +83,48 @@ const PortfolioItem: React.FC<PortfolioItemProps> = ({ item }) => {
    */
   const getThumbnail = (): string => {
     if ('thumbnail' in item) return item.thumbnail;
-    if ((item as APIPortfolioItem).thumbnail_url) return (item as APIPortfolioItem).thumbnail_url!;
-    if ((item as APIPortfolioItem).image) return (item as APIPortfolioItem).image!;
     
-    // Проверяем наличие изображений в формате нового API
     const apiItem = item as APIPortfolioItem;
-    if (apiItem.images && apiItem.images.length > 0) {
+    
+    // Проверяем поле cover_image_url (фактически используемое API)
+    if (apiItem.cover_image_url) {
+      console.log('[DEBUG] Используем cover_image_url:', apiItem.cover_image_url);
+      return apiItem.cover_image_url;
+    }
+    
+    // Другие возможные поля с URL изображений
+    if (apiItem.thumbnail_url) {
+      console.log('[DEBUG] Используем thumbnail_url:', apiItem.thumbnail_url);
+      return apiItem.thumbnail_url;
+    }
+    
+    if (apiItem.cover_image) {
+      console.log('[DEBUG] Используем cover_image:', apiItem.cover_image);
+      return apiItem.cover_image;
+    }
+    
+    if (apiItem.image) {
+      console.log('[DEBUG] Используем image:', apiItem.image);
+      return apiItem.image;
+    }
+    
+    // Проверяем наличие изображений в массиве
+    if (apiItem.images && apiItem.images.length > 0 && apiItem.images[0]?.image) {
+      console.log('[DEBUG] Используем изображение из массива:', apiItem.images[0].image);
       return apiItem.images[0].image;
     }
     
+    console.log('[DEBUG] Изображения не найдены, используем placeholder');
     return 'https://via.placeholder.com/300';
+  };
+  
+  /**
+   * Проверяет, является ли элемент видео
+   * @returns {boolean} Флаг видео
+   */
+  const isVideo = (): boolean => {
+    const apiItem = item as APIPortfolioItem;
+    return Boolean(apiItem.video_url);
   };
   
   /**
@@ -135,19 +174,27 @@ const PortfolioItem: React.FC<PortfolioItemProps> = ({ item }) => {
     }
     return num.toString();
   };
+  // Получаем ID элемента портфолио для формирования URL
+  const getItemId = (): string | number => {
+    return item.id || 0;
+  };
+  
   return (
-    <div className="group cursor-pointer bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300">
+    <Link to={`/portfolio/${getItemId()}`} className="block">
+      <div className="group cursor-pointer bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300">
       <div className="relative">
         <img 
           src={getThumbnail()} 
           alt={getTitle()}
           className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
         />
-        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-300 flex items-center justify-center">
-          <div className="bg-white/90 rounded-full p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <Play className="w-6 h-6 text-gray-900" />
+        {isVideo() && (
+          <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-300 flex items-center justify-center">
+            <div className="bg-white/90 rounded-full p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <Play className="w-6 h-6 text-gray-900" />
+            </div>
           </div>
-        </div>
+        )}
       </div>
       
       <div className="p-4">
@@ -178,6 +225,7 @@ const PortfolioItem: React.FC<PortfolioItemProps> = ({ item }) => {
         </div>
       </div>
     </div>
+    </Link>
   );
 };
 

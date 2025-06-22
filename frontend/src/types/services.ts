@@ -73,6 +73,9 @@ export interface Service {
   average_rating?: number;
   review_count?: number;
   delivery_time: number; // в днях
+  estimated_time: string;
+  allows_modifications: boolean;
+  modifications_price: number;
   is_featured: boolean;
   is_active: boolean;
   created_at: string;

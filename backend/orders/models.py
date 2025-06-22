@@ -9,6 +9,7 @@ from django.db import models
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
+from users.models import Service
 
 
 class Category(models.Model):
@@ -145,6 +146,27 @@ class Order(models.Model):
     views_count = models.PositiveIntegerField(_('количество просмотров'), default=0)
     created_at = models.DateTimeField(_('дата создания'), auto_now_add=True)
     updated_at = models.DateTimeField(_('дата обновления'), auto_now=True)
+    
+    # Связь с услугой
+    service = models.ForeignKey(
+        Service,
+        on_delete=models.SET_NULL,
+        related_name='orders',
+        null=True,
+        blank=True,
+        verbose_name=_('услуга')
+    )
+    
+    # Поля для заказа с правками
+    with_modifications = models.BooleanField(
+        default=False,
+        verbose_name=_('с правками')
+    )
+    modifications_description = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name=_('описание правок')
+    )
     
     class Meta:
         verbose_name = _('заказ')

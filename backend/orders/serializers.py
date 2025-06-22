@@ -7,11 +7,12 @@
 
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from users.serializers import UserSerializer
+from users.serializers import UserSerializer, ServiceSerializer
 from .models import (
     Category, Tag, Order, OrderAttachment, 
     OrderResponse, Delivery, DeliveryFile, Review
 )
+from users.models import Service
 
 User = get_user_model()
 
@@ -161,6 +162,8 @@ class OrderListSerializer(serializers.ModelSerializer):
     client = UserSerializer(read_only=True)
     category = CategorySerializer(read_only=True)
     tags = TagSerializer(read_only=True, many=True)
+    service = ServiceSerializer(read_only=True)
+    service_name = serializers.SerializerMethodField(read_only=True)
     responses_count = serializers.SerializerMethodField()
     days_left = serializers.IntegerField(read_only=True)
     
@@ -168,13 +171,19 @@ class OrderListSerializer(serializers.ModelSerializer):
         model = Order
         fields = [
             'id', 'title', 'client', 'category', 'tags',
-            'budget', 'deadline', 'status', 'days_left',
-            'responses_count', 'views_count', 'created_at'
+            'service', 'service_name', 'budget', 'deadline', 'status', 'days_left',
+            'responses_count', 'views_count', 'created_at', 'with_modifications'
         ]
     
     def get_responses_count(self, obj):
         """Возвращает количество откликов на заказ."""
         return obj.responses.count()
+    
+    def get_service_name(self, obj):
+        """Возвращает название услуги, если заказ основан на услуге."""
+        if obj.service:
+            return obj.service.title
+        return None
 
 
 class OrderDetailSerializer(serializers.ModelSerializer):
@@ -185,6 +194,7 @@ class OrderDetailSerializer(serializers.ModelSerializer):
     creator = UserSerializer(read_only=True)
     category = CategorySerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
+    service = ServiceSerializer(read_only=True)
     attachments = OrderAttachmentSerializer(many=True, read_only=True)
     responses = serializers.SerializerMethodField()
     days_left = serializers.IntegerField(read_only=True)
@@ -195,10 +205,10 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         model = Order
         fields = [
             'id', 'title', 'description', 'client', 'creator',
-            'category', 'tags', 'budget', 'deadline', 'status',
+            'category', 'tags', 'service', 'budget', 'deadline', 'status',
             'is_private', 'days_left', 'attachments', 'responses',
             'deliveries', 'reviews', 'views_count', 'created_at',
-            'updated_at'
+            'updated_at', 'with_modifications', 'modifications_description'
         ]
         read_only_fields = [
             'client', 'creator', 'days_left', 'views_count',
@@ -253,6 +263,12 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         many=True,
         required=False
     )
+    service_id = serializers.PrimaryKeyRelatedField(
+        queryset=Service.objects.all(),
+        source='service',
+        required=False,
+        allow_null=True
+    )
     attachments = serializers.ListField(
         child=serializers.FileField(max_length=100000, allow_empty_file=False),
         required=False
@@ -262,7 +278,8 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         model = Order
         fields = [
             'title', 'description', 'category_id', 'tags_ids', 
-            'budget', 'deadline', 'is_private', 'attachments'
+            'budget', 'deadline', 'is_private', 'attachments',
+            'service_id', 'with_modifications', 'modifications_description'
         ]
     
     def create(self, validated_data):
@@ -274,6 +291,25 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         
         # Получаем текущего пользователя из контекста запроса
         client = self.context['request'].user
+        
+        # Если заказ основан на услуге, получаем информацию о креаторе и бюджете
+        service = validated_data.get('service')
+        if service:
+            # Устанавливаем креатора заказа на основе услуги
+            validated_data['creator'] = service.creator_profile.user
+            
+            # Если заказ с правками, используем цену с правками
+            if validated_data.get('with_modifications') and service.modifications_price:
+                validated_data['budget'] = service.modifications_price
+            else:
+                # Иначе используем стандартную цену
+                validated_data['budget'] = service.price
+                # Сбрасываем признак правок, если заказ без правок
+                validated_data['with_modifications'] = False
+                validated_data['modifications_description'] = None
+            
+            # Устанавливаем статус заказа как 'в работе'
+            validated_data['status'] = 'in_progress'
         
         # Создаем заказ
         order = Order.objects.create(client=client, **validated_data)
