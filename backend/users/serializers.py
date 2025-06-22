@@ -123,6 +123,29 @@ class SocialLinkSerializer(serializers.ModelSerializer):
         fields = ['name', 'url']
 
 
+class CreatorProfileListSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для списка профилей креаторов.
+
+    Предоставляет "плоскую" структуру с основной информацией о пользователе
+    и аннотированными полями для производительности.
+    """
+    username = serializers.CharField(source='user.username', read_only=True)
+    avatar = serializers.ImageField(source='user.avatar', read_only=True)
+    
+    # Аннотированные поля из ViewSet
+    services_count = serializers.IntegerField(read_only=True)
+    base_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+
+    class Meta:
+        model = CreatorProfile
+        fields = [
+            'id', 'user', 'username', 'avatar', 'nickname', 'category',
+            'services_count', 'base_price', 'average_rating'
+        ]
+        read_only_fields = fields
+
+
 class CreatorProfileSerializer(serializers.ModelSerializer):
     """
     Сериализатор для профиля креатора.
@@ -539,36 +562,31 @@ class PortfolioItemSerializer(serializers.ModelSerializer):
 
 
 class CreatorProfileListSerializer(serializers.ModelSerializer):
-    """
-    Сериализатор для представления креаторов в списке.
-    
-    Предоставляет "плоскую" структуру с основными полями из профиля
-    и связанной модели User для удобного отображения в карточках.
-    """
+    """Сериализатор для списка креаторов в каталоге."""
     username = serializers.CharField(source='user.username', read_only=True)
     first_name = serializers.CharField(source='user.first_name', read_only=True)
     last_name = serializers.CharField(source='user.last_name', read_only=True)
     avatar = serializers.ImageField(source='user.avatar', read_only=True)
+    bio = serializers.CharField(source='user.bio', read_only=True)
     
-    services_count = serializers.SerializerMethodField()
-    reviews_count = serializers.SerializerMethodField()
+    # Эти поля теперь приходят из аннотированного queryset во ViewSet
+    services_count = serializers.IntegerField(read_only=True)
+    base_price = serializers.DecimalField(read_only=True, max_digits=10, decimal_places=2)
+    reviews_count = serializers.SerializerMethodField() # Оставляем как есть, пока нет логики
 
     class Meta:
         model = CreatorProfile
         fields = [
-            'id', 'username', 'first_name', 'last_name', 'avatar', 'bio', 
-            'rating', 'hourly_rate', 'services_count', 'reviews_count'
+            'id', 'username', 'first_name', 'last_name', 'avatar', 'bio',
+            'services_count', 'base_price', 'reviews_count'
         ]
-
-    def get_services_count(self, obj):
-        return obj.services.count()
 
     def get_reviews_count(self, obj):
         # Заглушка, пока не реализована система отзывов
         return 0
 
 
-class CreatorProfileDetailSerializer(serializers.ModelSerializer):
+class CreatorProfileDetailSerializer(CreatorProfileSerializer):
     """
     Расширенный сериализатор для профиля креатора с навыками и портфолио.
     """

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Star, Heart, MessageSquare, Check, ExternalLink } from 'lucide-react';
+import { Star, Heart, MessageSquare, Check, ExternalLink, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Creator as MockCreator } from '@/data/creators';
@@ -27,8 +27,8 @@ interface APICreator {
   categories?: { id: number; name: string; slug: string }[];
   rating?: number;
   reviews_count?: number;
-  services_count?: number;
-  base_price?: number;
+  services_count?: number | string;
+  base_price?: number | string;
   max_price?: number;
   tags?: string[];
   platform?: string;
@@ -104,8 +104,8 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
   };
   
   const getTags = (): string[] => {
-    if ('tags' in creator && creator.tags) return creator.tags;
-    return creator.tags || [];
+    if ('tags' in creator) return creator.tags;
+    return (creator as APICreator).tags || [];
   };
   
   // const getRating = (): number => {
@@ -115,12 +115,21 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
   
   const getReviews = (): number => {
     if ('reviews' in creator) return creator.reviews;
-    return creator.reviews_count || 0;
+    return (creator as APICreator).reviews_count || 0;
   };
-  
-  const getMinPrice = (): number => {
-    if ('priceRange' in creator) return creator.priceRange.min;
-    return creator.base_price || 0;
+
+  const getBasePrice = (): number => {
+    if ('base_price' in creator) {
+      const price = (creator as any).base_price;
+      if (typeof price === 'number') return price;
+      if (typeof price === 'string') return parseFloat(price) || 0;
+    }
+    return 0;
+  };
+
+  const getSocialLinks = (): Record<string, string> | undefined => {
+    if ('socialLinks' in creator) return creator.socialLinks;
+    return (creator as APICreator).social_links;
   };
   
   const getCategories = (): string[] => {
@@ -133,11 +142,16 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
     }
     return [];
   };
-  
-  const getSocialLinks = (): Record<string, string> | undefined => {
-    if ('socialLinks' in creator) return creator.socialLinks;
-    return (creator as APICreator).social_links;
+
+  const getServicesCount = (): number => {
+    if ('services_count' in creator) {
+      const count = (creator as any).services_count;
+      if (typeof count === 'string') return Number(count) || 0;
+      return count || 0;
+    }
+    return 0;
   };
+
   // Функция для отображения названия платформы
   const getPlatformName = (platform: string) => {
     switch (platform.toLowerCase()) {
@@ -234,12 +248,18 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
                 ({getReviews()})
               </span>
             </div>
+            <div className="flex items-center space-x-1 bg-gray-50 dark:bg-gray-700/50 px-2 py-1 rounded-full">
+              <Briefcase className="w-4 h-4 text-blue-500" />
+              <span className="text-gray-500 dark:text-gray-400 text-xs">
+                {getServicesCount()} услуг
+              </span>
+            </div>
           </div>
+
+          {/* Price */}
           <div className="text-right">
-            <p className="text-xs text-gray-500 dark:text-gray-400">от</p>
-            <p className="text-lg font-bold text-purple-600 dark:text-purple-400">
-              {getMinPrice().toLocaleString('ru-RU')}₽
-            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">от</p>
+            <p className="text-lg font-bold text-purple-600 dark:text-purple-400">{getBasePrice()}₽</p>
           </div>
         </div>
       </div>

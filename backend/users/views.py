@@ -7,7 +7,8 @@
 from django.shortcuts import get_object_or_404
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
-from django.db.models import Q
+from django.db.models import Count, Min, Value, DecimalField, F, Q
+from django.db.models.functions import Coalesce
 from rest_framework import status, viewsets, generics, permissions, filters
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
@@ -22,7 +23,8 @@ from .serializers import (
     UserSerializer, UserRegisterSerializer, ClientProfileSerializer,
     CreatorProfileSerializer, EmailVerificationSerializer,
     SkillSerializer, CreatorSkillSerializer, PortfolioItemSerializer,
-    PortfolioImageSerializer, CreatorProfileDetailSerializer, ServiceSerializer
+    PortfolioImageSerializer, CreatorProfileDetailSerializer, ServiceSerializer,
+    CreatorProfileListSerializer
 )
 from .tokens import email_verification_token
 from .utils import send_verification_email
@@ -312,6 +314,45 @@ class ClientProfileViewSet(viewsets.ModelViewSet):
 
 
 class CreatorProfileViewSet(viewsets.ModelViewSet):
+    serializer_class = CreatorProfileSerializer  # Сериализатор по умолчанию
+
+    def get_serializer_class(self):
+        """
+        Возвращает класс сериализатора в зависимости от действия.
+        
+        - 'list': CreatorProfileListSerializer (оптимизированный для списков)
+        - 'retrieve': CreatorProfileDetailSerializer (полная информация)
+        - 'default': CreatorProfileSerializer (для create, update)
+        """
+        if self.action == 'list':
+            return CreatorProfileListSerializer
+        if self.action == 'retrieve':
+            return CreatorProfileDetailSerializer
+        return self.serializer_class
+    def get_queryset(self):
+        """
+        Возвращает queryset для профилей креаторов.
+        
+        Для действия 'list' предварительно загружает связанные данные
+        и аннотирует их для оптимизации запросов.
+        """
+        queryset = CreatorProfile.objects.select_related('user').prefetch_related(
+            'creator_skills', 'portfolio_items', 'social_links'
+        ).annotate(
+            services_count=Count('services', distinct=True),
+            base_price=Coalesce(
+                Min('services__price'),
+                Value(0),
+                output_field=DecimalField()
+            )
+        ).order_by('id')
+
+        # Фильтрация по ID пользователя
+        user_id = self.request.query_params.get('user_id')
+        if user_id:
+            queryset = queryset.filter(user__id=user_id)
+            
+        return queryset
     """
     Представление для работы с профилем креатора.
     
@@ -324,12 +365,12 @@ class CreatorProfileViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     
+    # Переопределяем метод ещё раз, чтобы избежать дублирования и гарантировать корректный сериализатор
     def get_serializer_class(self):
-        """
-        Возвращает соответствующий сериализатор в зависимости от действия.
-        """
-        detail = self.request.query_params.get('detail', 'false').lower() == 'true'
-        if detail or self.action == 'retrieve_detail':
+        """Возвращает класс сериализатора в зависимости от текущего действия."""
+        if self.action == 'list':
+            return CreatorProfileListSerializer
+        if self.action in ('retrieve', 'retrieve_detail'):
             return CreatorProfileDetailSerializer
         return CreatorProfileSerializer
     
@@ -648,15 +689,23 @@ class PortfolioImageViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         """
-        Фильтрует результаты, возвращая только изображения портфолио текущего пользователя.
-        """
-        if not self.request.user.is_authenticated:
-            return PortfolioImage.objects.none()
+        Возвращает queryset для профилей креаторов.
         
-        # Если указан portfolio_item_id, фильтруем по нему
-        portfolio_item_id = self.request.query_params.get('portfolio_item_id')
-        if portfolio_item_id:
-            queryset = PortfolioImage.objects.filter(portfolio_item_id=portfolio_item_id)
+        Для действия 'list' предварительно загружает связанные данные
+        и аннотирует их для оптимизации запросов.
+        """
+        queryset = CreatorProfile.objects.select_related('user').prefetch_related(
+            'skills', 'portfolio', 'social_links'
+        ).annotate(
+            services_count=Count('services', distinct=True),
+            base_price=Coalesce(Min('services__price'), Value(0), output_field=DecimalField())
+        ).all()
+
+        # Фильтрация по ID пользователя
+        user_id = self.request.query_params.get('user_id')
+        if user_id:
+            queryset = queryset.filter(user__id=user_id)
+            
             # Проверяем, принадлежит ли элемент портфолио текущему пользователю
             try:
                 portfolio_item = PortfolioItem.objects.get(id=portfolio_item_id)
