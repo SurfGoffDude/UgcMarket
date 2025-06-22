@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from .models import (
     ClientProfile, CreatorProfile, SocialLink, 
-    Skill, CreatorSkill, PortfolioItem, PortfolioImage, Service
+    Skill, CreatorSkill, PortfolioItem, PortfolioImage, Service, ServiceImage
 )
 
 User = get_user_model()
@@ -566,6 +566,12 @@ class CreatorProfileDetailSerializer(CreatorProfileSerializer):
         return representation
 
 
+class ServiceImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ServiceImage
+        fields = ['id', 'image', 'caption', 'order']
+
+
 class ServiceSerializer(serializers.ModelSerializer):
     """
     Сериализатор для услуг, предоставляемых креатором.
@@ -598,12 +604,20 @@ class ServiceSerializer(serializers.ModelSerializer):
         allow_null=True
     )
     
+    images = ServiceImageSerializer(many=True, read_only=True)
+    uploaded_images = serializers.ListField(
+        child=serializers.ImageField(allow_empty_file=False, use_url=False),
+        write_only=True,
+        required=False
+    )
+
     class Meta:
         model = Service
         fields = [
             'id', 'creator_profile', 'creator_username',
             'title', 'description', 'price', 'estimated_time',
             'allows_modifications', 'modifications_price', 'is_active',
+            'images', 'uploaded_images',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
@@ -613,11 +627,40 @@ class ServiceSerializer(serializers.ModelSerializer):
         Возвращает имя пользователя-креатора.
         """
         return obj.creator_profile.user.username if obj.creator_profile else None
+
+    def create(self, validated_data):
+        """
+        Создает новую услугу с изображениями.
         
-        # Создаем услугу
-        service = Service.objects.create(
-            creator_profile=creator_profile,
-            **validated_data
-        )
-        
+        Поле 'uploaded_images' извлекается из validated_data, чтобы не передавать его
+        в Service.objects.create(), так как в модели Service такого поля нет.
+        Изображения сохраняются отдельно и связываются с созданной услугой.
+        """
+        images_data = validated_data.pop('uploaded_images', [])
+        service = Service.objects.create(**validated_data)
+        for image_data in images_data:
+            ServiceImage.objects.create(service=service, image=image_data)
         return service
+
+    def update(self, instance, validated_data):
+        """
+        Обновляет существующую услугу и ее изображения.
+        
+        Поле 'uploaded_images' обрабатывается отдельно.
+        Текущая реализация добавляет новые изображения к существующим.
+        Для более сложной логики (удаление/замена) потребовался бы
+        отдельный эндпоинт или доп. логика в запросе.
+        """
+        images_data = validated_data.pop('uploaded_images', None)
+        
+        # Обновляем основные поля услуги
+        instance = super().update(instance, validated_data)
+
+        # Если были переданы новые изображения, добавляем их
+        if images_data:
+            # Опционально: удалить старые изображения перед добавлением новых
+            # instance.images.all().delete()
+            for image_data in images_data:
+                ServiceImage.objects.create(service=instance, image=image_data)
+        
+        return instance

@@ -916,6 +916,28 @@
 - **Требует авторизации**: Да
 - **Ответ** (204 No Content)
 
+### Получение детальной информации об услуге
+- **URL**: `/api/services/{id}/`
+- **Метод**: `GET`
+- **Требует авторизации**: Нет
+- **Ответ** (200 OK):
+  ```json
+  {
+    "id": 0,
+    "creator_profile": 0,
+    "creator_username": "string",
+    "title": "string",
+    "description": "string",
+    "price": "string",
+    "estimated_time": "string",
+    "allows_modifications": true,
+    "modifications_price": "string",
+    "is_active": true,
+    "created_at": "2024-06-22T18:00:00Z",
+    "updated_at": "2024-06-22T18:00:00Z"
+  }
+  ```
+
 ## Коды ошибок
 
 - **400** - Некорректный запрос

@@ -423,3 +423,36 @@ class Service(models.Model):
     def __str__(self):
         """Строковое представление объекта."""
         return f"{self.title} ({self.creator_profile.user.username})"
+
+
+class ServiceImage(models.Model):
+    """
+    Модель для хранения изображений, связанных с услугой.
+    """
+    service = models.ForeignKey(
+        Service,
+        on_delete=models.CASCADE,
+        related_name='images',
+        verbose_name=_('Услуга')
+    )
+    image = models.ImageField(
+        upload_to='services/',
+        verbose_name=_('Изображение')
+    )
+    caption = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name=_('Подпись')
+    )
+    order = models.PositiveIntegerField(
+        default=0,
+        verbose_name=_('Порядок')
+    )
+
+    class Meta:
+        verbose_name = _('Изображение услуги')
+        verbose_name_plural = _('Изображения услуг')
+        ordering = ['order']
+
+    def __str__(self):
+        return f"Изображение для {self.service.title}"

@@ -731,6 +731,7 @@ class PortfolioImageViewSet(viewsets.ModelViewSet):
 
 
 class ServiceViewSet(viewsets.ModelViewSet):
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     """
     Представление для работы с услугами креаторов.
     
