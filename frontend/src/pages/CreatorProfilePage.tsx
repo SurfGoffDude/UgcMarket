@@ -7,121 +7,85 @@ import {
 } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { useCreatorProfile } from '@/hooks/useCreatorProfile';
-import { User, Star, MapPin, Users, Plus } from 'lucide-react';
+import { Star, MapPin, Users, Plus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 import PortfolioItem from '@/components/PortfolioItem';
 import ServiceCard from '@/components/ServiceCard';
 
-/**
- * CreatorProfilePageNew
- * ---------------------
- * Новый редизайн страницы профиля креатора (по макету от пользователя).
- * Структура:
- * 1. "Шапка" — карточка с аватаром, именем, @username, рейтингом, локацией, подписчиками, описанием,
- *    тегами-навыками и кнопками действий.
- * 2. Ниже — две колонки: Портфолио (слева) и Услуги (справа).
- *
- * NB: Пока реализована только шапка + заготовка для колонок.
- * Последующая логика (рендер работ, услуг, обработчики) будет добавляться по мере разработки.
- */
 const CreatorProfilePage: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { creator, loading, error } = useCreatorProfile(!id ? undefined : id);
+  const { creator, loading, error } = useCreatorProfile(id);
   const { user: currentUser } = useAuth();
   const isOwner = currentUser?.id === creator?.user?.id;
 
-  // Безопасное преобразование рейтинга в число для корректного вывода
   const ratingValue = creator && creator.rating !== undefined && creator.rating !== null ? Number(creator.rating) : null;
 
-  if (loading || !creator) {
+  if (loading) {
     return (
-      <div className="flex justify-center pt-20">
-        <Loader2 className="animate-spin mr-2" /> Загрузка…
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
 
   if (error) {
-    return (
-      <div className="text-center text-red-500 pt-20">
-        Ошибка загрузки профиля
-      </div>
-    );
+    return <div className="text-red-500 text-center p-4">{error}</div>;
+  }
+
+  if (!creator) {
+    return <div className="text-center p-4">Профиль не найден.</div>;
   }
 
   return (
-    <div className="container mx-auto px-4 pb-12">
-      {/* Шапка профиля */}
+    <div className="container mx-auto p-4 md:p-6">
+      {/* "Шапка" профиля */}
       <Card className="rounded-xl p-6 mt-8 space-y-4 shadow-md">
+        {/* Верхняя часть: Аватар, инфо, кнопки */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          {/* Левая секция: аватар и информация */}
           <div className="flex gap-4 w-full md:w-auto">
-            <Avatar className="h-24 w-24">
-              <AvatarImage src={creator.user?.avatar || ''} alt={creator.user?.username || ''} />
+            <Avatar className="h-20 w-20 md:h-24 md:w-24">
+              <AvatarImage src={creator.user?.avatar} alt={creator.user?.username} />
               <AvatarFallback>
-                {creator.user?.username?.charAt(0).toUpperCase() || 'U'}
+                {creator.user?.first_name?.[0] || 'A'}
               </AvatarFallback>
             </Avatar>
-
-            <div className="space-y-1">
-              <h1 className="text-2xl font-semibold leading-tight">
-                {creator.user?.first_name || creator.user?.last_name ? `${creator.user.first_name ?? ''} ${creator.user.last_name ?? ''}`.trim() : creator.title || 'Имя не указано'}
-              </h1>
-              <div className="text-sm text-gray-500">@{creator.user?.username}</div>
-
-              <div className="flex flex-wrap gap-2 text-sm mt-2 text-gray-600">
-                {ratingValue !== null && !Number.isNaN(ratingValue) && (
-                  <span className="flex items-center gap-1">
-                    <Star className="h-4 w-4 text-yellow-500" />
-                    {ratingValue.toFixed(1)}
-                  </span>
-                )}
-                {(creator.user?.location || creator.location) && (
-                  <span className="flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
-                    {creator.user?.location || creator.location}
-                  </span>
-                )}
+            <div className="flex flex-col justify-center">
+              <h1 className="text-2xl font-bold">{creator.user?.first_name} {creator.user?.last_name}</h1>
+              <p className="text-gray-500">@{creator.user?.username}</p>
+              <div className="flex items-center gap-4 text-sm text-gray-600 mt-2">
+                <span className="flex items-center gap-1">
+                  <Star className="h-4 w-4 text-yellow-400" />
+                  {ratingValue !== null ? ratingValue.toFixed(1) : 'N/A'}
+                </span>
+                <span className="flex items-center gap-1">
+                  <MapPin className="h-4 w-4" />
+                  {creator.user?.country}, {creator.user?.city}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Users className="h-4 w-4" />
+                  {creator.subscribers_count} подписчиков
+                </span>
               </div>
             </div>
           </div>
-
-          {/* Правая секция: кнопки действий */}
-          <div className="flex gap-3 w-full md:w-auto">
-            {isOwner && (
-              <Button variant="ghost" size="icon" title="Редактировать профиль" onClick={() => navigate('/profile/edit')}> 
-                <User className="h-5 w-5" />
-              </Button>
+          <div className="flex-shrink-0">
+            {/* Кнопки действий (не для владельца) */}
+            {!isOwner && (
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => creator.user?.id && navigate(`/chat/${creator.user.id}`)}>Написать</Button>
+                <Button onClick={() => navigate(`/creator/${creator.id}/order`)}>Заказать услугу</Button>
+              </div>
             )}
-            {isOwner && (
-              <Button variant="outline" size="sm" onClick={() => navigate('/skills/add')}>
-                <Plus className="h-4 w-4 mr-1" />Навык
-              </Button>
-            )}
-            {isOwner && (
-              <Button variant="outline" size="sm" onClick={() => navigate('/services/add')}>
-                <Plus className="h-4 w-4 mr-1" />Услугу
-              </Button>
-            )}
-            {isOwner && (
-              <Button variant="outline" size="sm" onClick={() => navigate('/portfolio/add')}>
-                <Plus className="h-4 w-4 mr-1" />Работу
-              </Button>
-            )}
-            <Button variant="outline" className="w-full md:w-auto">
-              Написать
-            </Button>
-            <Button className="w-full md:w-auto">Заказать услугу</Button>
           </div>
         </div>
 
-        {/* Описание */}
-        {(creator.user?.bio || (creator as any).bio) && (
-          <p className="text-gray-700 whitespace-pre-line">{creator.user?.bio || (creator as any).bio}</p>
+        {/* Описание/био */}
+        {creator.user?.bio && (
+          <p className="text-gray-700 whitespace-pre-line">{creator.user?.bio}</p>
         )}
 
         {/* Теги-навыки */}
@@ -136,8 +100,26 @@ const CreatorProfilePage: React.FC = () => {
         )}
       </Card>
 
+      {/* Кнопки для добавления контента (только для владельца) */}
+      {isOwner && (
+        <div className="flex justify-start gap-2 my-4">
+          <Button variant="outline" onClick={() => navigate(`/skills/add`)}>
+            <Plus className="h-4 w-4 mr-1" />
+            Навык
+          </Button>
+          <Button variant="outline" onClick={() => navigate(`/services/add`)}>
+            <Plus className="h-4 w-4 mr-1" />
+            Услугу
+          </Button>
+          <Button variant="outline" onClick={() => navigate(`/portfolio/add`)}>
+            <Plus className="h-4 w-4 mr-1" />
+            Работу
+          </Button>
+        </div>
+      )}
+
       {/* Основная область: Портфолио / Услуги */}
-      <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Портфолио (2/3) */}
         <section className="md:col-span-2 space-y-4">
           <h2 className="text-xl font-semibold">Портфолио</h2>
@@ -160,7 +142,7 @@ const CreatorProfilePage: React.FC = () => {
           {creator.services && creator.services.length > 0 ? (
             <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
               {creator.services.map((service, idx) => (
-                <ServiceCard key={idx} service={service as any} creatorId={creator.id} />
+                <ServiceCard key={idx} service={service as any} creatorId={creator.id!} />
               ))}
             </div>
           ) : (
