@@ -94,7 +94,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service }) => {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow duration-300">
       <h3 className="font-semibold text-gray-900 mb-2">{getTitle()}</h3>
-      <p className="text-gray-600 text-sm mb-4">{getDescription()}</p>
+      <p className="text-gray-600 text-sm mb-4 break-words">{getDescription()}</p>
       
       {/* Теги услуги */}
       {getTags().length > 0 && (

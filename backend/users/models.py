@@ -42,6 +42,16 @@ class User(AbstractUser):
     def full_name(self):
         """Возвращает полное имя пользователя."""
         return f"{self.first_name} {self.last_name}".strip()
+
+    @property
+    def has_creator_profile(self):
+        """Проверяет, есть ли у пользователя профиль креатора."""
+        return hasattr(self, 'creator_profile')
+
+    @property
+    def has_client_profile(self):
+        """Проверяет, есть ли у пользователя профиль клиента."""
+        return hasattr(self, 'client_profile')
     
     @property
     def user_type(self):

@@ -158,7 +158,7 @@ const CreatorProfilePage: React.FC = () => {
         <section className="space-y-4">
           <h2 className="text-xl font-semibold">Услуги</h2>
           {creator.services && creator.services.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
               {creator.services.map((service, idx) => (
                 <ServiceCard key={idx} service={service as any} creatorId={creator.id} />
               ))}
