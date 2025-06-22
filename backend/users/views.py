@@ -266,81 +266,49 @@ class UserViewSet(viewsets.ModelViewSet):
 
 class ClientProfileViewSet(viewsets.ModelViewSet):
     """
-    Представление для работы с профилями клиентов.
+    ViewSet для управления профилями клиентов.
     
-    Предоставляет CRUD функциональность для управления профилями клиентов.
+    Предоставляет CRUD операции для профилей клиентов.
     """
     queryset = ClientProfile.objects.all()
     serializer_class = ClientProfileSerializer
     permission_classes = [IsAuthenticated]
-    
+
     def get_queryset(self):
         """
-        Возвращает профили клиентов с фильтрацией.
+        Фильтрует профили, чтобы пользователи могли видеть только свои.
+        Администраторы видят все профили.
         """
-        queryset = ClientProfile.objects.all()
-        
-        # Если пользователь не авторизован, возвращаем только базовую информацию
-        if not self.request.user.is_authenticated:
-            return queryset
-            
-        return queryset
-    
+        user = self.request.user
+        if user.is_staff:
+            return ClientProfile.objects.all()
+        # Пользователь может видеть/редактировать только свой профиль
+        return ClientProfile.objects.filter(user=user)
+
     def perform_create(self, serializer):
         """
-        Создает новый профиль клиента, привязанный к текущему пользователю.
+        Запрещает создание профиля через POST, так как он создается автоматически.
         """
-        serializer.save(user=self.request.user)
-        
-    def update(self, request, *args, **kwargs):
+        from rest_framework.exceptions import MethodNotAllowed
+        raise MethodNotAllowed('POST', detail="Профиль клиента создается автоматически, используйте PATCH для обновления.")
+
+    def partial_update(self, request, *args, **kwargs):
         """
-        Обновляет профиль клиента и связанные данные пользователя.
+        Частично обновляет профиль клиента для текущего пользователя.
         
-        Переопределяет стандартный метод обновления, чтобы добавить логирование и убедиться в корректности обновления.
+        Использует get_or_create для создания профиля, если он не существует.
+        Игнорирует 'pk' из URL для повышения надежности.
         """
-        partial = kwargs.pop('partial', False)
-        instance = self.get_object()
-        
-        logger.debug(f"\n\nОбновление профиля клиента {instance.id}. Полученные данные: {request.data}\n\n")
-        
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        # Мы игнорируем 'pk' из URL и всегда работаем с профилем текущего пользователя
+        profile, created = ClientProfile.objects.get_or_create(user=request.user)
+        if created:
+            logger.info(f"Создан новый профиль клиента для пользователя {request.user.username} при попытке обновления.")
+
+        serializer = self.get_serializer(profile, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
-        
-        if getattr(instance, '_prefetched_objects_cache', None):
-            # If 'prefetch_related' has been applied to a queryset, we need to
-            # forcibly invalidate the prefetch cache on the instance.
-            instance._prefetched_objects_cache = {}
-        
         return Response(serializer.data)
-    
-    @action(detail=False, methods=['get', 'put', 'patch'])
-    def me(self, request):
-        """
-        Получение и обновление профиля текущего пользователя-клиента.
-        """
-        try:
-            profile = ClientProfile.objects.get(user=request.user)
-            
-            if request.method == 'GET':
-                serializer = self.get_serializer(profile)
-                return Response(serializer.data)
-            
-            # Обновление данных профиля (PUT или PATCH)
-            serializer = self.get_serializer(profile, data=request.data, partial=True)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            return Response(serializer.data)
-            
-        except ClientProfile.DoesNotExist:
-            if request.method == 'GET':
-                return Response({"detail": "Профиль клиента не найден"}, status=status.HTTP_404_NOT_FOUND)
-                
-            # Создание нового профиля при запросе PUT/PATCH если он не существует
-            serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            serializer.save(user=request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 
 class CreatorProfileViewSet(viewsets.ModelViewSet):
