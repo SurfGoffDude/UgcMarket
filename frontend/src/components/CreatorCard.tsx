@@ -40,6 +40,10 @@ interface APICreator {
   completion_rate?: number;
   date_joined?: string;
   last_login?: string;
+  // Дополнительные поля, которые приходят с API
+  first_name?: string;
+  last_name?: string;
+  nickname?: string;
 }
 
 // Тип для компонента, который поддерживает оба формата данных
@@ -56,12 +60,30 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
   }
 
   const getName = (): string => {
+    // Приоритет: Mock -> поля верхнего уровня -> вложенный user -> creator_name -> nickname
     if ('name' in creator) return creator.name; // Mock data
+
+    // Проверяем поля, пришедшие на верхнем уровне
+    if ('first_name' in creator || 'last_name' in creator) {
+      const fn = (creator as APICreator).first_name || '';
+      const ln = (creator as APICreator).last_name || '';
+      const full = `${fn} ${ln}`.trim();
+      if (full) return full;
+    }
+
+    // Проверяем вложенный объект user
     const user = getNestedUser();
     if (user && (user.first_name || user.last_name)) {
       return `${user.first_name || ''} ${user.last_name || ''}`.trim();
     }
-    return user?.username || creator.creator_name || 'Неизвестный креатор';
+
+    // Проверяем другие возможные варианты
+    return (
+      (creator as APICreator).nickname ||
+      user?.username ||
+      creator.creator_name ||
+      'Неизвестный креатор'
+    );
   };
   
   const getUsername = (): string => {
@@ -224,16 +246,23 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
         </div>
       )}
 
-      {/* Tags */}
-      {getTags().length > 0 && (
+      {/* Категории */}
+      {getCategories().length > 0 && (
         <div className="px-6 pb-4">
           <div className="flex flex-wrap gap-2">
-            {getTags().slice(0, 3).map((tag, index) => (
-              <Badge key={index} variant="secondary" className="text-xs">
-                {tag}
-              </Badge>
+            {getCategories().map((cat, idx) => (
+              <Badge key={idx} variant="secondary" className="text-xs">{cat}</Badge>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Теги */}
+      {getTags().length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-1">
+          {getTags().slice(0, 10).map((tag, idx) => (
+            <Badge key={idx} variant="outline" className="text-xs">{`#${tag}`}</Badge>
+          ))}
         </div>
       )}
 

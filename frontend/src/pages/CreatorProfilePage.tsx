@@ -96,13 +96,11 @@ const CreatorProfilePage: React.FC = () => {
           <p className="text-gray-700 whitespace-pre-line">{creator.user?.bio}</p>
         )}
 
-        {/* Теги-навыки */}
-        {creator.skills && creator.skills.length > 0 && (
+        {/* Теги */}
+        {creator.tags && creator.tags.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-2">
-            {creator.skills.slice(0, 10).map((skill, idx) => (
-              <Badge key={idx} variant="secondary" className="text-sm">
-                {'name' in skill ? skill.name : skill.skill?.name || 'Навык'}
-              </Badge>
+            {creator.tags.slice(0, 10).map((tag: string, idx: number) => (
+              <Badge key={idx} variant="outline" className="text-sm">{`#${tag}`}</Badge>
             ))}
           </div>
         )}
@@ -111,14 +109,16 @@ const CreatorProfilePage: React.FC = () => {
       {/* Кнопки для добавления контента (только для владельца) */}
       {isOwner && (
         <div className="flex justify-start gap-2 my-4">
-          <Button variant="outline" onClick={() => navigate(`/skills/add`)}>
-            <Plus className="h-4 w-4 mr-1" />
-            Навык
-          </Button>
-          <Button variant="outline" onClick={() => navigate(`/services/add`)}>
-            <Plus className="h-4 w-4 mr-1" />
-            Услугу
-          </Button>
+          
+          <Button variant="outline" onClick={() => navigate(`/tags/add`)}>
+             <Plus className="h-4 w-4 mr-1" />
+             Тег
+           </Button>
+
+           <Button variant="outline" onClick={() => navigate(`/services/add`)}>
+             <Plus className="h-4 w-4 mr-1" />
+             Услугу
+           </Button>
           <Button variant="outline" onClick={() => navigate(`/portfolio/add`)}>
             <Plus className="h-4 w-4 mr-1" />
             Работу

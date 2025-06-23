@@ -8,7 +8,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import apiClient from '@/api/client';
-import { CreatorProfile, CreatorSkill, PortfolioItem } from '@/types/auth';
+import { CreatorProfile, PortfolioItem } from '@/types/auth';
 
 /**
  * Хук для работы с профилем креатора
@@ -86,25 +86,7 @@ export function useCreatorProfile(id?: string) {
         services: [] // услуги креатора
       };
       
-      // Загружаем навыки
-      try {
-        console.log(`[DEBUG] useCreatorProfile - запрос навыков для профиля id=${profileData.id}`);
-        const skillsResponse = await apiClient.get(`creator-skills/?creator_profile=${profileData.id}`);
-        console.log('[DEBUG] useCreatorProfile - ответ навыков:', skillsResponse.data);
-        
-        // Проверяем структуру данных
-        if (skillsResponse.data.results) {
-          console.log('[DEBUG] useCreatorProfile - найдены навыки в results:', skillsResponse.data.results);
-          completeProfile.skills = skillsResponse.data.results || [];
-        } else {
-          console.log('[DEBUG] useCreatorProfile - нет поля results в ответе навыков');
-          completeProfile.skills = skillsResponse.data || [];
-        }
-        
-        console.log('[DEBUG] useCreatorProfile - итоговые навыки профиля:', completeProfile.skills);
-      } catch (skillsError) {
-        console.error('[ERROR] useCreatorProfile - ошибка при загрузке навыков:', skillsError);
-      }
+      // Навыки устарели – используем теги, поэтому просто пропускаем загрузку skills
       
       // Загружаем портфолио
       try {

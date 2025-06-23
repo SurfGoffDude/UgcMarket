@@ -9,7 +9,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     UserViewSet, ClientProfileViewSet, CreatorProfileViewSet,
     UserRegistrationView, EmailVerificationView,
-    SkillViewSet, CreatorSkillViewSet, PortfolioItemViewSet, PortfolioImageViewSet,
+    PortfolioItemViewSet, PortfolioImageViewSet,
     CurrentCreatorProfileView, CurrentClientProfileView, ServiceViewSet
 )
 
@@ -18,8 +18,6 @@ router = DefaultRouter()
 router.register('users', UserViewSet)
 router.register('client-profiles', ClientProfileViewSet)
 router.register('creator-profiles', CreatorProfileViewSet)
-router.register('skills', SkillViewSet)
-router.register('creator-skills', CreatorSkillViewSet)
 router.register('portfolio', PortfolioItemViewSet)
 router.register('portfolio-images', PortfolioImageViewSet)
 router.register('services', ServiceViewSet)

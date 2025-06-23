@@ -180,6 +180,13 @@ class CreatorProfile(models.Model):
     rating = models.DecimalField(_('rating'), max_digits=3, decimal_places=2, default=0)
     completed_orders = models.PositiveIntegerField(_('completed orders'), default=0)
     average_response_time = models.DurationField(_('average response time'), null=True, blank=True)
+    # Новое поле тегов, заменяющее навыки
+    tags = models.ManyToManyField(
+        'Tag',
+        related_name='creators',
+        verbose_name=_('Теги'),
+        blank=True
+    )
     created_at = models.DateTimeField(_('created at'), auto_now_add=True)
     updated_at = models.DateTimeField(_('updated at'), auto_now=True)
     
@@ -195,6 +202,32 @@ class CreatorProfile(models.Model):
     def social_links_dict(self):
         """Возвращает словарь с социальными ссылками."""
         return {link.name.lower(): link.url for link in self.social_links.all()}
+
+
+class Tag(models.Model):
+    """
+    Модель тега.
+
+    Представляет собой метку, по которой можно фильтровать креаторов.
+    """
+    name = models.CharField(
+        verbose_name=_('Название'),
+        max_length=100,
+        unique=True
+    )
+    slug = models.SlugField(
+        verbose_name=_('Slug'),
+        max_length=100,
+        unique=True
+    )
+
+    class Meta:
+        verbose_name = _('Тег')
+        verbose_name_plural = _('Теги')
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
 
 
 class Skill(models.Model):

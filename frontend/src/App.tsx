@@ -32,6 +32,7 @@ import ProfileEditPage from "@/pages/ProfileEditPage";
 import SkillAddPage from "@/pages/SkillAddPage";
 import ServiceAddPage from "@/pages/ServiceAddPage";
 import PortfolioAddPage from "@/pages/PortfolioAddPage";
+import TagAddPage from "@/pages/TagAddPage";
 import PortfolioDetailPage from "@/pages/PortfolioDetailPage";
 import ServiceDetailPage from "@/pages/ServiceDetailPage";
 
@@ -110,7 +111,7 @@ const App = () => {
                 
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="/profile/edit" element={<ProfileEditPage />} />
-                <Route path="/skills/add" element={<SkillAddPage />} />
+                <Route path="/tags/add" element={<TagAddPage />} />
                 <Route path="/services/add" element={<ServiceAddPage />} />
                 <Route path="/portfolio/add" element={<PortfolioAddPage />} />
                 <Route path="/portfolio/:id" element={<PortfolioDetailPage />} />
