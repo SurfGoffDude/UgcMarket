@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
+import apiClient from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,11 +26,12 @@ const TagAddPage: React.FC = () => {
   const queryClient = useQueryClient();
 
   // Запрос текущего профиля ("me") чтобы получить уже выбранные теги
-  interface CreatorProfile { id: number; tags: number[] }
+  // Профиль креатора. Теги могут быть как id, так и строковыми именами
+  interface CreatorProfile { id: number; tags: (number | string)[] }
   const { data: profileData, isPending: profilePending } = useQuery<CreatorProfile>({
     queryKey: ['creator-profile-me'],
     queryFn: async () => {
-      const res = await axios.get<CreatorProfile>('/api/creator-profiles/me/');
+      const res = await apiClient.get<CreatorProfile>('creator-profiles/me/?detail=true');
       return res.data;
     },
     retry: false,
@@ -38,34 +39,47 @@ const TagAddPage: React.FC = () => {
 
   const [selected, setSelected] = useState<number[]>([]);
 
-  // Когда пришли данные профиля – проставляем выбранные теги
-  useEffect(() => {
-    if (profileData) {
-      setSelected(profileData.tags || []);
-    }
-  }, [profileData]);
+  
 
   // Получить все теги
-  interface Tag { id: number; name: string }
+  interface Tag { id: number; name: string; category: string }
+
+  
 
   const { data: tags = [], isPending, isError } = useQuery<Tag[]>({
     queryKey: ['tags'],
     queryFn: async () => {
-      const res = await axios.get('/api/tags/');
-      const payload = res.data;
-      // API может возвращать либо массив, либо пагинационный объект { results: [] }
-      if (Array.isArray(payload)) return payload as Tag[];
-      return (payload?.results ?? []) as Tag[];
+      try {
+        const res = await apiClient.get('tags/');
+        const payload = res.data;
+        if (Array.isArray(payload)) return payload as Tag[];
+        return (payload?.results ?? []) as Tag[];
+      } catch (e: any) {
+        if (e?.response?.status === 404) {
+          // Бэк вернул 404 — считаем, что тегов нет
+          return [];
+        }
+        throw e; // Прочие ошибки отдадим react-query
+      }
     },
     retry: false,
   });
+
+  // Когда и профиль, и список тегов загружены — конвертируем теги из профиля (имена/id) в id
+  useEffect(() => {
+    if (!profileData || tags.length === 0) return;
+    const mappedIds = profileData.tags
+      .map(item => typeof item === 'number' ? item : tags.find(t => t.name === item)?.id)
+      .filter((id): id is number => typeof id === 'number');
+    setSelected(mappedIds);
+  }, [profileData, tags]);
 
   const {
     mutate: saveTags,
     isPending: isSaving
   } = useMutation({
     mutationFn: async () => {
-      await axios.patch('/api/creator-profiles/me/', { tags: selected });
+      await apiClient.patch('creator-profiles/me/', { tags: selected });
     },
     onSuccess: () => {
       toast({ title: 'Теги обновлены' });
@@ -76,8 +90,16 @@ const TagAddPage: React.FC = () => {
     onError: () => toast({ title: 'Ошибка', variant: 'destructive' }),
   });
 
+  const MAX = 10;
   const toggle = (id: number) => {
-    setSelected(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]);
+    setSelected(prev => {
+      if (prev.includes(id)) return prev.filter(t => t !== id);
+      if (prev.length >= MAX) {
+        toast({ title: `Можно выбрать не более ${MAX} тегов`, variant: 'destructive' });
+        return prev;
+      }
+      return [...prev, id];
+    });
   };
 
   if (isPending) {
@@ -91,14 +113,26 @@ const TagAddPage: React.FC = () => {
   return (
     <div className="container mx-auto p-4 md:p-6 max-w-2xl">
       <h1 className="text-2xl font-bold mb-4">Выберите теги</h1>
-      <Card className="p-4 space-y-2">
-        {tags?.map(tag => (
-          <label key={tag.id} className="flex items-center gap-2 cursor-pointer">
-            <Checkbox checked={selected.includes(tag.id)} onCheckedChange={() => toggle(tag.id)} />
-            <span>{tag.name}</span>
-          </label>
+      <div className="columns-2 gap-4">
+        {Object.entries(
+          tags.reduce<Record<string, Tag[]>>((acc, t) => {
+            acc[t.category] = acc[t.category] ? [...acc[t.category], t] : [t];
+            return acc;
+          }, {})
+        ).map(([cat, list]) => (
+          <Card key={cat} className="p-4 mb-4 break-inside-avoid">
+            <h2 className="font-semibold mb-2">{cat}</h2>
+            <div className="space-y-1">
+              {list.map(tag => (
+                <label key={tag.id} className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox checked={selected.includes(tag.id)} onCheckedChange={() => toggle(tag.id)} />
+                  <span>{tag.name}</span>
+                </label>
+              ))}
+            </div>
+          </Card>
         ))}
-      </Card>
+      </div>
 
       <div className="flex gap-2 mt-6">
         <Button onClick={() => navigate(-1)} variant="outline">Отмена</Button>

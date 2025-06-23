@@ -11,6 +11,7 @@ from rest_framework_simplejwt.views import (
     TokenVerifyView,
 )
 from users.views import UserRegistrationView, EmailVerificationView, CurrentUserView
+from .views import TagsView
 
 urlpatterns = [
     # Маршруты для аутентификации
@@ -25,6 +26,9 @@ urlpatterns = [
         path('user/', CurrentUserView.as_view(), name='current_user'),
     ])),
     
+    # Теги
+    path('tags/', TagsView.as_view(), name='tags'),
+
     # Маршруты для пользователей и профилей (включая верификацию email)
     path('', include('users.urls')),
     

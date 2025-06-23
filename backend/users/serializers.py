@@ -166,12 +166,17 @@ class SocialLinkSerializer(serializers.ModelSerializer):
 
 
 class CreatorProfileSerializer(serializers.ModelSerializer):
+    """Полный профиль креатора (базовый).
+
+    Всегда приводит список тегов к списку их имён для удобства фронтенда.
+    """
     """
     Полный профиль креатора.
     """
     user = UserSerializer(required=False)
     social_links = SocialLinkSerializer(many=True, required=False)
     skills = serializers.ListField(child=serializers.DictField(), required=False, write_only=True)
+    tags = serializers.ListField(child=serializers.IntegerField(), required=False, write_only=True)
 
     full_name = serializers.SerializerMethodField()
     username = serializers.SerializerMethodField()
@@ -200,6 +205,7 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
             "is_online",
             "available_for_hire",
             "social_links",
+            "skills",
             "tags",
             "rating",
             "review_count",
@@ -271,7 +277,9 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
 
         # --- tags
         if tags_data is not None:
-            instance.tags.set(Tag.objects.filter(id__in=tags_data))
+            
+
+            instance.tags.set(tags_data)
 
         # --- social links
         if social_links is not None:

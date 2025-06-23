@@ -37,11 +37,11 @@ export function useCreatorProfile(id?: string) {
         if (!id) {
           // Получаем текущий профиль пользователя
           console.log('[DEBUG] useCreatorProfile - запрос к creator-profile/');
-          profileResponse = await apiClient.get('creator-profile/');
+          profileResponse = await apiClient.get('creator-profiles/me/?detail=true');
         } else {
           // Получаем профиль по ID
           console.log('[DEBUG] useCreatorProfile - запрос к creator-profiles/' + id);
-          profileResponse = await apiClient.get(`creator-profiles/${id}/`);
+          profileResponse = await apiClient.get(`creator-profiles/${id}/retrieve_detail/`);
         }
       } catch (error: any) {
         if (error.response && error.response.status === 404) {
