@@ -97,12 +97,7 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
     if ('avatar' in creator && typeof creator.avatar === 'string') return creator.avatar;
     return 'https://via.placeholder.com/150';
   };
-  
-  const getPlatform = (): string => {
-    if ('platform' in creator) return creator.platform;
-    return creator.platform || 'other';
-  };
-  
+
   const getIsVerified = (): boolean => {
     if ('isVerified' in creator) return !!creator.isVerified; // Mock
     const user = getNestedUser();
@@ -226,9 +221,6 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
 
         {/* Platform and categories */}
         <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-          <Badge variant="outline" className="text-xs">
-            {getPlatformName(getPlatform())}
-          </Badge>
           {getLocation() && (
             <span className="text-xs text-gray-500 dark:text-gray-400">
               {getLocation()?.split(',')[0]}
@@ -259,10 +251,14 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
 
       {/* Теги */}
       {getTags().length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-1">
-          {getTags().slice(0, 10).map((tag, idx) => (
-            <Badge key={idx} variant="outline" className="text-xs">{`#${tag}`}</Badge>
-          ))}
+        <div className="px-6 pb-4">
+          <div className="overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div className="flex gap-2 pb-1" style={{ minWidth: 'max-content' }}>
+              {getTags().map((tag, idx) => (
+                <Badge key={idx} variant="outline" className="text-xs whitespace-nowrap">{`#${tag}`}</Badge>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 

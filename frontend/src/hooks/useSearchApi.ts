@@ -148,11 +148,46 @@ export interface Filter {
  * Хук для получения данных для фильтров
  */
 /**
- * Хук для получения списка всех креаторов
+ * Интерфейс для выбранных тегов
  */
-export function useCreatorsList() {
-  const url = `${API_URL}/creator-profiles/`;
+export interface SelectedTags {
+  [categoryId: string]: string[];
+}
+
+/**
+ * Хук для получения списка всех креаторов с поддержкой фильтрации и поиска
+ */
+export function useCreatorsList(filters?: { tags: SelectedTags; query: string }) {
+  const [url, setUrl] = useState(`${API_URL}/creator-profiles/`);
   const { data, loading, error, execute: refetch } = useApiRequest<any>(url, true);
+
+  // Обновление URL при изменении фильтров
+  useEffect(() => {
+    if (!filters) {
+      setUrl(`${API_URL}/creator-profiles/`);
+      return;
+    }
+
+    let queryParams = new URLSearchParams();
+    
+    // Добавление поискового запроса
+    if (filters.query) {
+      queryParams.append('search', filters.query);
+    }
+    
+    // Добавление тегов
+    const allTags: string[] = [];
+    Object.values(filters.tags).forEach(tags => {
+      allTags.push(...tags);
+    });
+    
+    if (allTags.length > 0) {
+      queryParams.append('tags', allTags.join(','));
+    }
+    
+    const queryString = queryParams.toString();
+    setUrl(`${API_URL}/creator-profiles/${queryString ? `?${queryString}` : ''}`);
+  }, [filters]);
 
   // Django REST Framework часто возвращает пагинированные данные в объекте { results: [...] }.
   // Этот код проверяет, есть ли поле results, и возвращает его.

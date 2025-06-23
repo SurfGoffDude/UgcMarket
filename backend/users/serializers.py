@@ -102,14 +102,38 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         return user
 
 
+# ───────────────────────── TAGS ─────────────────────────
+class TagSerializer(serializers.ModelSerializer):
+    slug = serializers.CharField(required=False)
+
+    class Meta:
+        model = Tag
+        fields = ["id", "name", "slug"]
+
+    def create(self, validated_data):
+        if "slug" not in validated_data:
+            from django.utils.text import slugify
+
+            base_slug = slugify(validated_data["name"])
+            slug = base_slug
+            counter = 1
+            while Tag.objects.filter(slug=slug).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            validated_data["slug"] = slug
+        return super().create(validated_data)
+
+
 # ─────────────────────── CREATOR PROFILES (список) ───────────────────────
 class CreatorProfileListSerializer(serializers.ModelSerializer):
     """Список профилей креаторов для каталога."""
     username = serializers.CharField(source="user.username", read_only=True)
+    first_name = serializers.CharField(source="user.first_name", read_only=True)
+    last_name = serializers.CharField(source="user.last_name", read_only=True)
     avatar = serializers.ImageField(source="user.avatar", read_only=True)
     services_count = serializers.IntegerField(read_only=True)
     base_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
-    tags = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    tags = TagSerializer(many=True, read_only=True)
 
     class Meta:
         model = CreatorProfile
@@ -117,14 +141,22 @@ class CreatorProfileListSerializer(serializers.ModelSerializer):
             "id",
             "user",
             "username",
+            "first_name",
+            "last_name",
             "avatar",
             "nickname",
             "tags",
             "services_count",
             "base_price",
-            "average_rating",
+            "rating",
         ]
         read_only_fields = fields
+        
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        # Преобразуем список объектов тегов в список их имён
+        representation["tags"] = [tag["name"] for tag in representation.get("tags", [])]
+        return representation
 
 
 class CreatorProfileCatalogSerializer(serializers.ModelSerializer):
@@ -349,26 +381,7 @@ class EmailVerificationSerializer(serializers.Serializer):
 
     pass
 
-# ───────────────────────── TAGS ─────────────────────────
-class TagSerializer(serializers.ModelSerializer):
-    slug = serializers.CharField(required=False)
 
-    class Meta:
-        model = Tag
-        fields = ["id", "name", "slug"]
-
-    def create(self, validated_data):
-        if "slug" not in validated_data:
-            from django.utils.text import slugify
-
-            base_slug = slugify(validated_data["name"])
-            slug = base_slug
-            counter = 1
-            while Tag.objects.filter(slug=slug).exists():
-                slug = f"{base_slug}-{counter}"
-                counter += 1
-            validated_data["slug"] = slug
-        return super().create(validated_data)
 
 
 

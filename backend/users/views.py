@@ -6,7 +6,7 @@ import logging
 
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
-from django.db.models import Count, Min, Value, DecimalField
+from django.db.models import Count, Min, Value, DecimalField, Q
 from django.db.models.functions import Coalesce
 from rest_framework import status, viewsets, generics, permissions
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -230,6 +230,30 @@ class CreatorProfileViewSet(viewsets.ModelViewSet):
         user_id = self.request.query_params.get("user_id")
         if user_id:
             qs = qs.filter(user__id=user_id)
+            
+        # Получаем параметры запроса для фильтрации по тегам
+        tag_ids_param = self.request.query_params.get('tag_ids')
+        tag_match_type = self.request.query_params.get('tag_match_type', 'any').lower()
+
+        # Если указаны ID тегов, применяем фильтрацию
+        if tag_ids_param:
+            try:
+                tag_ids = [int(tag_id.strip()) for tag_id in tag_ids_param.split(',') if tag_id.strip()]
+                
+                if tag_ids:
+                    if tag_match_type == 'all':
+                        # Фильтрация по всем указанным тегам (AND)
+                        # Аннотируем количество совпадающих тегов и фильтруем по этому количеству
+                        qs = qs.annotate(
+                            matching_tags_count=Count('tags', filter=Q(tags__id__in=tag_ids), distinct=True)
+                        ).filter(matching_tags_count=len(tag_ids))
+                    else:  # 'any' или любое другое значение
+                        # Фильтрация по любому из указанных тегов (OR)
+                        qs = qs.filter(tags__id__in=tag_ids).distinct()
+            except ValueError:
+                # Если в параметре tag_ids передано некорректное значение, игнорируем фильтрацию
+                pass
+                
         return qs
 
     # ------ actions -------------------------------------------------

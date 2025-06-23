@@ -2,15 +2,26 @@
  * Страница каталога креаторов
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 
 import CreatorCard from '@/components/CreatorCard';
-import { useCreatorsList } from '@/hooks/useSearchApi';
+import CreatorFilters from '@/components/CreatorFilters';
+import { useCreatorsList, SelectedTags } from '@/hooks/useSearchApi';
 import { Button } from '@/components/ui/button';
 
+interface Filters {
+  tags: SelectedTags;
+  query: string;
+}
+
 const CatalogPage: React.FC = () => {
-  const { creators, loading, error, refetch } = useCreatorsList();
+  const [filters, setFilters] = useState<Filters>({ tags: {}, query: '' });
+  const { creators, loading, error, refetch } = useCreatorsList(filters);
+
+  const handleFilterChange = (newFilters: Filters) => {
+    setFilters(newFilters);
+  };
 
   return (
     <div className="bg-gray-50 dark:bg-gray-950 min-h-screen">
@@ -23,6 +34,8 @@ const CatalogPage: React.FC = () => {
             Найдите лучших создателей контента для вашего проекта.
           </p>
         </header>
+
+        <CreatorFilters onFilterChange={handleFilterChange} initialFilters={filters} />
 
         <main>
           {loading ? (
