@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useCreatorProfile } from '@/hooks/useCreatorProfile';
@@ -9,10 +9,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, Trash2, AlertCircle } from 'lucide-react';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
+import { Loader2, Trash2, AlertCircle, Plus, Upload } from 'lucide-react';
 import apiClient from '@/api/client';
 import { useToast } from '@/components/ui/use-toast';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Label } from '@/components/ui/label';
 
 const profileFormSchema = z.object({
   // Общие поля
@@ -22,10 +26,18 @@ const profileFormSchema = z.object({
   phone: z.string().max(20, 'Слишком длинный номер телефона').optional(),
   bio: z.string().max(500, 'Слишком длинное описание').optional(),
   location: z.string().max(100, 'Слишком длинное название локации').optional(),
+  avatar: z.instanceof(File).optional().nullable(),
+  
+  // Специфические поля для CreatorProfile
+  specialization: z.string().max(255, 'Слишком длинная специализация').optional(),
+  experience: z.string().max(255, 'Слишком длинное описание опыта').optional(),
+  available_for_hire: z.boolean().default(true),
   social_links: z.array(z.object({
     platform: z.string().min(1, "Платформа не может быть пустой"),
     url: z.string().url("Неверный формат URL"),
-  })).optional(),
+  })).default([]),
+  
+  // Другие поля CreatorProfile, как rating и verified будут read-only
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -38,6 +50,11 @@ const CreatorProfileEditPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const { toast } = useToast();
+  
+  // Состояние для управления превью аватара
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  
+  // Состояние для управления формой
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -48,11 +65,16 @@ const CreatorProfileEditPage: React.FC = () => {
       phone: '',
       bio: '',
       location: '',
+      avatar: null,
+      specialization: '',
+      experience: '',
+      available_for_hire: true,
       social_links: [],
     }
   });
-
-  const { fields, append, remove } = useFieldArray({
+  
+  // Получаем методы для работы с массивами полей
+  const { fields: socialFields, append: appendSocial, remove: removeSocial } = useFieldArray({
     control: form.control,
     name: 'social_links'
   });
@@ -72,14 +94,40 @@ const CreatorProfileEditPage: React.FC = () => {
         last_name: creator.user?.last_name || '',
         username: creator.user?.username || '',
         phone: creator.user?.phone || '',
-        // Для описания берем значение из профиля креатора или из пользователя
         bio: creator.bio || creator.user?.bio || '',
-        // Для местоположения аналогично
         location: creator.location || creator.user?.location || '',
+        avatar: null, // Файл не может быть загружен из API
+        specialization: creator.specialization || '',
+        experience: creator.experience || '',
+        available_for_hire: creator.available_for_hire !== undefined ? creator.available_for_hire : true,
         social_links: creator.social_links || [],
       });
+      
+      // Установка превью аватара, если он есть
+      if (creator.user?.avatar) {
+        setAvatarPreview(creator.user.avatar);
+      }
     }
   }, [creator, form]);
+
+  // Обработчик изменения файла аватара
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      form.setValue('avatar', file);
+      
+      // Создаем URL для превью
+      const fileReader = new FileReader();
+      fileReader.onload = (e) => {
+        if (e.target?.result) {
+          setAvatarPreview(e.target.result as string);
+        }
+      };
+      fileReader.readAsDataURL(file);
+    }
+  };
+  
+
 
   const onSubmit = async (data: ProfileFormValues) => {
     setIsSubmitting(true);
@@ -87,8 +135,9 @@ const CreatorProfileEditPage: React.FC = () => {
     try {
       // Получаем данные из формы
       const { 
-        first_name, last_name, username, phone, 
-        bio, location, social_links, 
+      first_name, last_name, username, phone, 
+      bio, location, avatar, social_links,
+      specialization, experience, available_for_hire,
         ...otherData 
       } = data;
       
@@ -122,12 +171,18 @@ const CreatorProfileEditPage: React.FC = () => {
         userFields.username = username;
       }
 
+      // Создаем FormData для отправки файлов
+      const formData = new FormData();
+      
       // Формируем данные для обновления CreatorProfile
       const creatorProfileData: Record<string, any> = {
         ...otherData,
         bio, // Поле bio для CreatorProfile
         location_write: location || '', // location_write с пустой строкой по умолчанию
         social_links: social_links || [],
+        specialization,
+        experience,
+        available_for_hire
       };
       
       // Добавляем поля User только если есть изменения
@@ -135,10 +190,38 @@ const CreatorProfileEditPage: React.FC = () => {
         creatorProfileData.user = userFields;
       }
       
-      console.log('[DEBUG] Отправка данных профиля:', creatorProfileData);
+      // Преобразуем данные в FormData
+      Object.entries(creatorProfileData).forEach(([key, value]) => {
+        if (key === 'social_links' || key === 'user') {
+          formData.append(key, JSON.stringify(value));
+        } else if (key === 'available_for_hire') {
+          formData.append(key, value ? 'true' : 'false');
+        } else {
+          formData.append(key, value === null ? '' : String(value));
+        }
+      });
+      
+      // Вариант с аватаром - тестируем другой подход
+      if (avatar) {
+        // Добавляем аватар как "avatar" (DRF основной корень) и как "user.avatar" (вложенный объект)
+        formData.append('avatar', avatar);
+        formData.append('user.avatar', avatar);
+      }
+      
+      console.log('[DEBUG] Отправка данных профиля:', {
+        formData: Array.from(formData.entries()).reduce((obj, [key, value]) => {
+          obj[key] = value;
+          return obj;
+        }, {} as Record<string, any>),
+        creatorProfileData
+      });
       
       // Отправляем обновление профиля креатора
-      await apiClient.patch(`creator-profiles/${id}/`, creatorProfileData);
+      await apiClient.patch(`creator-profiles/${id}/`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       
       // Показываем уведомление об успехе
       toast({
@@ -151,7 +234,6 @@ const CreatorProfileEditPage: React.FC = () => {
       await reload();
       
       // Возвращаемся на страницу профиля
-      // Проверяем, какой URL использовать для возврата
       if (id) {
         navigate(`/creators/${id}?updated=true`);
       } else {
@@ -253,6 +335,35 @@ const CreatorProfileEditPage: React.FC = () => {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              
+              {/* Аватар */}
+              <div className="flex flex-col items-center">
+                <div className="mb-4">
+                  <Avatar className="w-24 h-24">
+                    <AvatarImage src={avatarPreview || undefined} alt="Аватар" />
+                    <AvatarFallback>
+                      {creator?.user?.first_name?.[0] || creator?.user?.username?.[0] || '?'}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+                <Label htmlFor="avatar" className="cursor-pointer flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 rounded-md text-sm font-medium">
+                  <Upload className="h-4 w-4" />
+                  Загрузить аватар
+                </Label>
+                <input
+                  id="avatar"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  className="sr-only"
+                />
+                <FormDescription className="text-xs mt-2 text-center">
+                  Рекомендуемый размер: 200x200 пикселей
+                </FormDescription>
+              </div>
+              
+              <Separator className="my-4" />
+              
               <div className="space-y-4">
                 <FormField
                   control={form.control}
@@ -339,10 +450,61 @@ const CreatorProfileEditPage: React.FC = () => {
                   )}
                 />
                 
-                <div className="space-y-4">
-                  <FormLabel className="block text-base">Социальные сети</FormLabel>
+                {/* Поля профиля креатора */}
+                <FormField
+                  control={form.control}
+                  name="specialization"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Специализация</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ваша специализация" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="experience"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Опыт работы</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ваш опыт работы" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="available_for_hire"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                      <FormControl>
+                        <input
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={field.onChange}
+                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        />
+                      </FormControl>
+                      <FormLabel className="font-normal cursor-pointer">Доступен для найма</FormLabel>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <Separator className="my-4" />
+                
+                {/* Социальные сети */}
+                <div>
+                  <FormLabel className="block mb-2">Социальные сети</FormLabel>
                   <div className="space-y-2">
-                    {fields.map((field, index) => (
+                    {socialFields.map((field, index) => (
                       <div key={field.id} className="flex items-end gap-2">
                         <FormField
                           control={form.control}
@@ -368,7 +530,7 @@ const CreatorProfileEditPage: React.FC = () => {
                             </FormItem>
                           )}
                         />
-                        <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}>
+                        <Button type="button" variant="destructive" size="icon" onClick={() => removeSocial(index)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -379,14 +541,14 @@ const CreatorProfileEditPage: React.FC = () => {
                     variant="outline"
                     size="sm"
                     className="mt-2"
-                    onClick={() => append({ platform: '', url: '' })}
+                    onClick={() => appendSocial({ platform: '', url: '' })}
                   >
                     Добавить ссылку
                   </Button>
                 </div>
               </div>
 
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting} className="w-full">
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Сохранить изменения
               </Button>

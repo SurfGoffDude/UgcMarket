@@ -48,7 +48,7 @@ const CreatorProfilePage: React.FC = () => {
           <Button
             variant="outline"
             className="absolute top-6 right-6"
-            onClick={() => navigate(`/creator/${creator.id}/edit`)}
+            onClick={() => navigate(`/creators/${creator.id}/edit`)}
           >
             <Pencil className="h-4 w-4 mr-2" />
             Редактировать
@@ -58,7 +58,7 @@ const CreatorProfilePage: React.FC = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="flex gap-4 w-full md:w-auto">
             <Avatar className="h-20 w-20 md:h-24 md:w-24">
-              <AvatarImage src={creator.user?.avatar} alt={creator.user?.username} />
+              <AvatarImage src={`${creator.user?.avatar}?t=${Date.now()}`} alt={creator.user?.username} />
               <AvatarFallback>
                 {creator.user?.first_name?.[0] || 'A'}
               </AvatarFallback>
