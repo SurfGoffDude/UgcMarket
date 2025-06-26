@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Star, Heart, MessageSquare, Check, ExternalLink, Briefcase } from 'lucide-react';
+import { Star, Heart, MessageSquare, Check, ExternalLink, Briefcase, MapPin, GraduationCap, Lock, Unlock, Phone, Mail, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Creator as MockCreator } from '@/data/creators';
@@ -16,6 +15,8 @@ interface UserData {
   avatar: string;
   location: string;
   is_verified: boolean;
+  phone?: string;
+  bio?: string;
 }
 
 // Тип для API-формата данных креатора
@@ -32,18 +33,22 @@ interface APICreator {
   max_price?: number;
   tags?: string[];
   platform?: string;
-  social_links?: Record<string, string>;
+  social_links?: Array<{ platform: string; url: string }>;
   location?: string;
-  is_online?: boolean; // Это поле может быть на верхнем уровне
+  is_online?: boolean;
   is_verified?: boolean;
   response_time?: string;
   completion_rate?: number;
   date_joined?: string;
   last_login?: string;
-  // Дополнительные поля, которые приходят с API
+  // Дополнительные поля
   first_name?: string;
   last_name?: string;
   nickname?: string;
+  specialization?: string;
+  experience?: string;
+  available_for_hire?: boolean;
+  phone?: string;
 }
 
 // Тип для компонента, который поддерживает оба формата данных
@@ -51,13 +56,15 @@ type CreatorProps = MockCreator | APICreator;
 
 interface CreatorCardProps {
   creator: CreatorProps;
+  useLink?: boolean;
+  showDetailedProfile?: boolean;
 }
 
-const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
+const CreatorCard: React.FC<CreatorCardProps> = ({ creator, useLink, showDetailedProfile }) => {
   // Адаптеры для получения данных из разных форматов
   const getNestedUser = () => {
     return 'user' in creator ? creator.user : null;
-  }
+  };
 
   const getName = (): string => {
     // Приоритет: Mock -> поля верхнего уровня -> вложенный user -> creator_name -> nickname
@@ -81,7 +88,7 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
     return (
       (creator as APICreator).nickname ||
       user?.username ||
-      creator.creator_name ||
+      (creator as APICreator).creator_name ||
       'Неизвестный креатор'
     );
   };
@@ -91,7 +98,6 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
     return user?.username || ('username' in creator ? creator.username : '');
   };
   
-  // Функция для получения URL аватара или null если аватара нет
   const getAvatar = (): string | null => {
     const user = getNestedUser();
     if (user && user.avatar && user.avatar.trim().length > 0) return user.avatar;
@@ -121,284 +127,279 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
     return (creator as APICreator).bio;
   };
   
-  const getTags = (): string[] => {
-    if ('tags' in creator) return creator.tags;
-    return (creator as APICreator).tags || [];
-  };
-  
-  // const getRating = (): number => {
-  //  if ('rating' in creator) return creator.rating;
-  //  return creator.rating || 0;
-  // };
-  
-  const getReviews = (): number => {
-    if ('reviews' in creator) return creator.reviews;
-    return (creator as APICreator).reviews_count || 0;
-  };
-
-  const getBasePrice = (): number => {
-    if ('base_price' in creator) {
-      const price = (creator as any).base_price;
-      if (typeof price === 'number') return price;
-      if (typeof price === 'string') return parseFloat(price) || 0;
-    }
-    return 0;
-  };
-
-  const getSocialLinks = (): Record<string, string> | undefined => {
-    if ('socialLinks' in creator) return creator.socialLinks;
-    return (creator as APICreator).social_links;
+  const getBio = (): string | undefined => {
+    if ('bio' in creator) return creator.bio;
+    const user = getNestedUser();
+    return user?.bio;
   };
   
   const getCategories = (): string[] => {
-    if ('categories' in creator && Array.isArray(creator.categories)) {
-      if (typeof creator.categories[0] === 'string') {
-        return creator.categories as string[];
-      } else {
-        return (creator.categories as {name: string}[]).map(cat => cat.name);
+    if ('categories' in creator) {
+      if (Array.isArray(creator.categories)) {
+        // Для API формата
+        return creator.categories.map(cat => cat.name || cat.slug || '');
       }
     }
+    
+    if ('category' in creator) return [creator.category];
     return [];
   };
-
+  
+  const getTags = (): string[] => {
+    if ('tags' in creator && Array.isArray(creator.tags)) return creator.tags;
+    return [];
+  };
+  
   const getServicesCount = (): number => {
+    if ('services' in creator && Array.isArray(creator.services)) return creator.services.length;
     if ('services_count' in creator) {
-      const count = (creator as any).services_count;
-      if (typeof count === 'string') return Number(count) || 0;
-      return count || 0;
+      const count = creator.services_count;
+      return typeof count === 'number' ? count : parseInt(count as string) || 0;
     }
     return 0;
   };
-
-  // Функция для отображения названия платформы
-  const getPlatformName = (platform: string) => {
-    switch (platform.toLowerCase()) {
-      case 'tiktok':
-        return 'TikTok';
-      case 'instagram':
-        return 'Instagram';
-      case 'youtube':
-        return 'YouTube';
-      default:
-        return platform;
+  
+  const getBasePrice = (): string | number => {
+    if ('base_price' in creator) {
+      const price = creator.base_price;
+      return price || 0;
     }
+    if ('price' in creator) return creator.price;
+    return 0;
+  };
+  
+  const getRating = (): number | undefined => {
+    if ('rating' in creator) return typeof creator.rating === 'number' ? creator.rating : undefined;
+    return undefined;
+  };
+  
+  const getReviews = (): number | undefined => {
+    if ('reviews_count' in creator) return typeof creator.reviews_count === 'number' ? creator.reviews_count : undefined;
+    if ('reviewsCount' in creator) return creator.reviewsCount;
+    return undefined;
+  };
+  
+  const getId = (): string | number => {
+    return creator.id;
+  };
+  
+  const getSpecialization = (): string | undefined => {
+    return ('specialization' in creator) ? creator.specialization : undefined;
+  };
+  
+  const getExperience = (): string | undefined => {
+    return ('experience' in creator) ? creator.experience : undefined;
+  };
+  
+  const getAvailableForHire = (): boolean => {
+    return ('available_for_hire' in creator) ? !!creator.available_for_hire : true;
+  };
+
+  const getSocialLinks = (): Array<{platform: string, url: string}> | undefined => {
+    if ('social_links' in creator && Array.isArray(creator.social_links)) {
+      return creator.social_links as Array<{platform: string, url: string}>;
+    }
+    return undefined;
+  };
+
+  const getPhone = (): string | undefined => {
+    const user = getNestedUser();
+    return user?.phone || ('phone' in creator ? creator.phone as string : undefined);
+  };
+  
+  // Эти методы будут работать только в профиле креатора, где есть полные данные пользователя
+  // В каталоге эти данные не доступны, так как бэкенд возвращает только user_id
+  const getEmail = (): string | undefined => {
+    const user = getNestedUser();
+    return user?.email;
+  };
+  
+  const getDateJoined = (): string | undefined => {
+    const user = getNestedUser();
+    return user?.date_joined;
   };
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 dark:border-gray-700 hover:border-purple-200 dark:hover:border-purple-800 group">
-      {/* Header with avatar and online status */}
-      <div className="relative p-6 pb-4">
-        <div className="flex items-start justify-between">
-          <Link to={`/creators/${creator.id}`} className="flex items-center space-x-3 flex-1">
-            <div className="relative">
+      <div className="relative p-6">
+        {/* Верхняя часть карточки с аватаркой, именем и статусами */}
+        <div className="flex items-center mb-4">
+          <div className="relative mr-4">
+            <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-700">
               {getAvatar() ? (
-              <img 
-                src={getAvatar() || ''} 
-                alt={getName()}
-                  className="w-14 h-14 rounded-full object-cover border-2 border-gray-100 dark:border-gray-700"
-                  onError={(e) => {
-                    // Заменяем изображение на заглушку при ошибке загрузки
-                    e.currentTarget.style.display = 'none';
-                    const parentElement = e.currentTarget.parentElement;
-                    if (parentElement) {
-                      parentElement.classList.add('avatar-placeholder');
-                    }
-                  }} 
+                <img
+                  src={getAvatar() as string}
+                  alt={`${getName()} avatar`}
+                  className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-14 h-14 rounded-full border-2 border-gray-100 dark:border-gray-700 bg-gray-200 dark:bg-gray-700 flex items-center justify-center avatar-placeholder">
-                  <span className="text-xl font-semibold text-gray-500 dark:text-gray-400">
-                    {getName().charAt(0).toUpperCase()}
+                <div className="w-full h-full flex items-center justify-center text-lg font-bold bg-gray-100 dark:bg-gray-800 text-gray-500">
+                  {getName().charAt(0)}
+                </div>
+              )}
+            </div>
+            {getIsOnline() && (
+              <div className="absolute bottom-0 right-0 h-4 w-4 rounded-full bg-green-400 border-2 border-white dark:border-gray-700" />
+            )}
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <div className="flex items-center">
+              <h3 className="font-semibold text-lg truncate group-hover:text-primary">
+                {getName()}
+              </h3>
+              {getIsVerified() && (
+                <Check className="h-4 w-4 ml-1 text-primary" />
+              )}
+            </div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              @{getUsername()}
+            </div>
+            <div className="flex flex-wrap items-center gap-3 mt-1 text-xs">
+              {typeof getRating() === 'number' && (
+                <div className="flex items-center">
+                  <Star className="w-3 h-3 text-yellow-400 mr-1" />
+                  <span className="font-medium">
+                    {typeof getRating() === 'number' ? getRating()!.toFixed(1) : 'Н/Д'}
                   </span>
                 </div>
               )}
-              {getIsOnline() && (
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-gray-800"></div>
+              {getLocation() && (
+                <div className="flex items-center">
+                  <MapPin className="w-3 h-3 text-gray-500 mr-1" />
+                  <span>{getLocation()}</span>
+                </div>
               )}
-              {getIsVerified() && (
-                <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center">
-                  <Check className="w-3 h-3" />
+              {/* Номер телефона отображается только на странице профиля, но не в каталоге */}
+              {showDetailedProfile && getPhone() && (
+                <div className="flex items-center">
+                  <Phone className="w-3 h-3 text-gray-500 mr-1" />
+                  <span>{getPhone()}</span>
+                </div>
+              )}
+              {/* Контактная информация будет отображаться только в профиле креатора */}
+              {showDetailedProfile && getEmail() && (
+                <div className="flex items-center">
+                  <Mail className="w-3 h-3 text-gray-500 mr-1" />
+                  <span className="text-xs truncate max-w-[120px]">{getEmail()}</span>
+                </div>
+              )}
+              {showDetailedProfile && getDateJoined() && (
+                <div className="flex items-center">
+                  <Calendar className="w-3 h-3 text-gray-500 mr-1" />
+                  <span className="text-xs">{new Date(getDateJoined() || '').toLocaleDateString()}</span>
                 </div>
               )}
             </div>
-            <div className="overflow-hidden">
-              <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors truncate">
-                {getName()}
-              </h3>
-              <p className="text-gray-500 dark:text-gray-400 text-sm truncate">@{getUsername()}</p>
-            </div>
-          </Link>
-          <button 
-            className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0 ml-2"
-            aria-label="Добавить в избранное"
-          >
-            <Heart className="w-5 h-5" />
-          </button>
+          </div>
         </div>
 
-        {/* Platform and categories */}
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-          {getLocation() && (
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              {getLocation()?.split(',')[0]}
-            </span>
+        {/* Статус доступности для найма */}
+        <div className="mb-3">
+          {getAvailableForHire() ? (
+            <div className="flex items-center text-green-600">
+              <Unlock className="w-4 h-4 text-green-500 mr-1" />
+              <span className="text-sm">Доступен для найма</span>
+            </div>
+          ) : (
+            <div className="flex items-center text-gray-600">
+              <Lock className="w-4 h-4 text-gray-500 mr-1" />
+              <span className="text-sm">Недоступен для найма</span>
+            </div>
           )}
         </div>
-      </div>
 
-      {/* Description */}
-      {getDescription() && (
-        <div className="px-6 pb-4">
-          <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
-            {getDescription()}
+        {/* Специализация и опыт */}
+        <div className="flex flex-col gap-2 mb-4">
+          {/* Всегда показываем поле Специализация */}
+          <div className="flex items-center gap-2">
+            <Briefcase className="h-4 w-4 text-primary" />
+            <div>
+              <h3 className="font-medium text-xs text-gray-500">Специализация</h3>
+              <p className="text-sm">{getSpecialization() || 'Не указана'}</p>
+            </div>
+          </div>
+          
+          {/* Всегда показываем поле Опыт работы */}
+          <div className="flex items-center gap-2">
+            <GraduationCap className="h-4 w-4 text-primary" />
+            <div>
+              <h3 className="font-medium text-xs text-gray-500">Опыт работы</h3>
+              <p className="text-sm">{getExperience() || 'Не указан'}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Описание (всегда отображаем) */}
+        <div className="mb-4">
+          <h3 className="font-medium text-xs text-gray-500 mb-1">О себе</h3>
+          <p className="text-gray-600 dark:text-gray-300 text-sm line-clamp-3">
+            {getBio() || 'Нет информации'}
           </p>
         </div>
-      )}
 
-      {/* Категории */}
-      {getCategories().length > 0 && (
-        <div className="px-6 pb-4">
-          <div className="flex flex-wrap gap-2">
-            {getCategories().map((cat, idx) => (
-              <Badge key={idx} variant="secondary" className="text-xs">{cat}</Badge>
+        {/* Теги с горизонтальной прокруткой */}
+        {getTags().length > 0 && (
+          <div className="mb-4 overflow-hidden">
+            <div className="overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              <div className="flex gap-2 pb-1" style={{ minWidth: 'max-content' }}>
+                {getTags().map((tag, idx) => (
+                  <Badge key={idx} variant="outline" className="whitespace-nowrap">
+                    #{tag}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Социальные сети */}
+        {getSocialLinks() && getSocialLinks()!.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {getSocialLinks()!.slice(0, 3).map((link, idx) => (
+              <a 
+                key={idx} 
+                href={link.url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-primary text-xs hover:underline"
+              >
+                <ExternalLink className="h-3 w-3" />
+                {link.platform}
+              </a>
             ))}
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Теги */}
-      {getTags().length > 0 && (
-        <div className="px-6 pb-4">
-          <div className="overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-            <div className="flex gap-2 pb-1" style={{ minWidth: 'max-content' }}>
-              {getTags().map((tag, idx) => (
-                <Badge key={idx} variant="outline" className="text-xs whitespace-nowrap">{`#${tag}`}</Badge>
-              ))}
-            </div>
+        {/* Информация о цене и услугах */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-sm">
+            <span className="font-semibold">{getServicesCount() || 0}</span>
+            <span className="text-gray-500"> услуг</span>
           </div>
-        </div>
-      )}
-
-      {/* Rating and price */}
-      <div className="px-6 pb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-1 bg-gray-50 dark:bg-gray-700/50 px-2 py-1 rounded-full">
-              <Star className="w-4 h-4 text-yellow-500 fill-current" />
-              {/* <span className="font-semibold text-gray-900 dark:text-white">{getRating().toFixed(1)}</span> */}
-              <span className="text-gray-500 dark:text-gray-400 text-xs">
-                ({getReviews()})
-              </span>
-            </div>
-            <div className="flex items-center space-x-1 bg-gray-50 dark:bg-gray-700/50 px-2 py-1 rounded-full">
-              <Briefcase className="w-4 h-4 text-blue-500" />
-              <span className="text-gray-500 dark:text-gray-400 text-xs">
-                {getServicesCount()} услуг
-              </span>
-            </div>
-          </div>
-
-          {/* Price */}
           <div className="text-right">
-            <p className="text-sm text-gray-500 dark:text-gray-400">от</p>
-            <p className="text-lg font-bold text-purple-600 dark:text-purple-400">{getBasePrice()}₽</p>
+            <span className="text-gray-500 text-sm">от </span>
+            <span className="font-semibold text-primary">{getBasePrice() || 0}₽</span>
+          </div>
+        </div>
+
+        {/* Кнопки действий */}
+        <div className="flex justify-between items-center pt-2 border-t border-gray-100 dark:border-gray-700">
+          <Button variant="ghost" size="sm" className="text-gray-500 hover:text-primary" asChild>
+            <Link to={`/creators/${getId()}`}>
+              <ExternalLink className="h-4 w-4 mr-1" />
+              Профиль
+            </Link>
+          </Button>
+          <div className="flex space-x-2">
+            <Button variant="ghost" size="sm" className="text-gray-500 hover:text-primary">
+              <MessageSquare className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" className="text-gray-500 hover:text-red-500">
+              <Heart className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </div>
-
-      {/* Action buttons */}
-      <div className="px-6 pb-6 pt-2 flex space-x-2">
-        <Link to={`/creators/${creator.id}`} className="flex-1">
-          <Button 
-            variant="outline"
-            size="sm" 
-            className="w-full rounded-full border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-          >
-            <MessageSquare className="w-4 h-4 mr-2" />
-            Написать
-          </Button>
-        </Link>
-        <Link to={`/creators/${creator.id}`} className="flex-1">
-          <Button 
-            size="sm" 
-            className="w-full rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white transition-all"
-          >
-            Подробнее
-            <ExternalLink className="w-4 h-4 ml-2" />
-          </Button>
-        </Link>
-      </div>
-      
-      {/* Social links */}
-      {getSocialLinks() && (
-        <div className="px-6 pb-4 pt-2 flex items-center justify-center space-x-4">
-          {getSocialLinks()?.instagram && (
-            <a 
-              href={getSocialLinks()?.instagram} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-gray-400 hover:text-pink-600 dark:hover:text-pink-400 transition-colors"
-              aria-label="Instagram"
-            >
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path fillRule="evenodd" d="M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.247.636.416 1.363.465 2.427.048 1.067.06 1.407.06 4.123v.08c0 2.643-.012 2.987-.06 4.043-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.247-1.363.415-2.427.465-1.067.048-1.407.06-4.123.06h-.08c-2.643 0-2.987-.012-4.043-.06-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 01-1.772-1.153 4.902 4.902 0 01-1.153-1.772c-.248-.636-.416-1.363-.465-2.427-.047-1.024-.06-1.379-.06-3.808v-.63c0-1.893.014-2.363.086-3.14.07-.7.204-1.22.392-1.67.205-.497.43-.854.74-1.165.31-.31.668-.534 1.165-.74.45-.188.97-.322 1.67-.393.777-.072 1.247-.085 3.14-.085h.63zM12 6.938a5.063 5.063 0 100 10.125 5.063 5.063 0 000-10.125zm0 8.35a3.288 3.288 0 110-6.575 3.288 3.288 0 010 6.575zm7.312-10.15a1.183 1.183 0 100-2.365 1.183 1.183 0 000 2.366z" clipRule="evenodd" />
-              </svg>
-            </a>
-          )}
-          {getSocialLinks()?.tiktok && (
-            <a 
-              href={getSocialLinks()?.tiktok} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-gray-400 hover:text-black dark:hover:text-white transition-colors"
-              aria-label="TikTok"
-            >
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z" />
-              </svg>
-            </a>
-          )}
-          {getSocialLinks()?.youtube && (
-            <a 
-              href={getSocialLinks()?.youtube} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-gray-400 hover:text-red-600 transition-colors"
-              aria-label="YouTube"
-            >
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path fillRule="evenodd" d="M19.812 5.418c.861.23 1.538.907 1.768 1.768C21.998 8.746 22 12 22 12s0 3.255-.418 4.814a2.504 2.504 0 0 1-1.768 1.768c-1.56.419-7.814.419-7.814.419s-6.255 0-7.814-.419a2.505 2.505 0 0 1-1.768-1.768C2 15.255 2 12 2 12s0-3.255.417-4.814a2.507 2.507 0 0 1 1.768-1.768C5.744 5 11.998 5 11.998 5s6.255 0 7.814.418ZM15.194 12 10 15V9l5.194 3Z" clipRule="evenodd" />
-              </svg>
-            </a>
-          )}
-          {getSocialLinks()?.twitter && (
-            <a 
-              href={getSocialLinks()?.twitter} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-gray-400 hover:text-blue-500 transition-colors"
-              aria-label="Twitter"
-            >
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" />
-              </svg>
-            </a>
-          )}
-          {getSocialLinks()?.twitch && (
-            <a 
-              href={getSocialLinks()?.twitch} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-gray-400 hover:text-purple-600 transition-colors"
-              aria-label="Twitch"
-            >
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z" />
-              </svg>
-            </a>
-          )}
-        </div>
-      )}
     </div>
   );
 };

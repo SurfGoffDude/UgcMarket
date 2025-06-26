@@ -124,22 +124,61 @@ class TagSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+# Специализированный сериализатор пользователя для каталога
+class UserCatalogSerializer(serializers.ModelSerializer):
+    """UserSerializer без поля телефона для использования в каталоге."""
+    
+    full_name = serializers.CharField(read_only=True)
+    user_type = serializers.CharField(read_only=True)
+    has_creator_profile = serializers.BooleanField(read_only=True)
+    has_client_profile = serializers.BooleanField(read_only=True)
+    creator_profile_id = serializers.IntegerField(source="creator_profile.id", read_only=True)
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "full_name",
+            "avatar",
+            "bio",
+            "location",
+            "is_verified",
+            "user_type",
+            "date_joined",
+            "has_creator_profile",
+            "has_client_profile",
+            "creator_profile_id",
+        ]
+        read_only_fields = ["id", "email", "is_verified", "date_joined"]
+
 # ─────────────────────── CREATOR PROFILES (список) ───────────────────────
 class CreatorProfileListSerializer(serializers.ModelSerializer):
-    """Список профилей креаторов для каталога."""
+    """Список профилей креаторов для каталога.
+    
+    Включает полный объект пользователя с контактной информацией
+    для отображения в карточке креатора в каталоге.
+    Важно: номер телефона не передается в ответе API по требованиям безопасности.
+    """
+    # Используем сериализатор без поля телефона
+    user = UserCatalogSerializer(read_only=True)
+    services_count = serializers.IntegerField(read_only=True)
+    base_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    tags = TagSerializer(many=True, read_only=True)
+    # Дополнительно оставляем отдельные поля для обратной совместимости фронтенда
     username = serializers.CharField(source="user.username", read_only=True)
     first_name = serializers.CharField(source="user.first_name", read_only=True)
     last_name = serializers.CharField(source="user.last_name", read_only=True)
     avatar = serializers.ImageField(source="user.avatar", read_only=True)
-    services_count = serializers.IntegerField(read_only=True)
-    base_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
-    tags = TagSerializer(many=True, read_only=True)
 
     class Meta:
         model = CreatorProfile
         fields = [
             "id",
-            "user",
+            "user",  # Полный объект пользователя (включая email, телефон и дату регистрации)
             "username",
             "first_name",
             "last_name",
@@ -149,6 +188,9 @@ class CreatorProfileListSerializer(serializers.ModelSerializer):
             "services_count",
             "base_price",
             "rating",
+            "specialization",
+            "experience",
+            "available_for_hire",
         ]
         read_only_fields = fields
         
@@ -201,9 +243,6 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
     """Полный профиль креатора (базовый).
 
     Всегда приводит список тегов к списку их имён для удобства фронтенда.
-    """
-    """
-    Полный профиль креатора.
     """
     user = UserSerializer(required=False)
     social_links = SocialLinkSerializer(many=True, required=False)
