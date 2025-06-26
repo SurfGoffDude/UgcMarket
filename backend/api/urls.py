@@ -13,7 +13,8 @@ from rest_framework_simplejwt.views import (
 from users.views import UserRegistrationView, EmailVerificationView, CurrentUserView
 from .views import TagsView
 
-urlpatterns = [
+# Маршруты для API без версионирования (для обратной совместимости)
+nonversion_urlpatterns = [
     # Маршруты для аутентификации
     path('auth/', include([
         path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
@@ -37,4 +38,12 @@ urlpatterns = [
     
     # Маршруты для чатов
     path('', include('chats.urls')),
+]
+
+urlpatterns = [
+    # Добавляем версионирование API v1
+    path('', include(nonversion_urlpatterns)),
+    
+    # Добавляем маршруты без версионирования для обратной совместимости
+    *nonversion_urlpatterns
 ]

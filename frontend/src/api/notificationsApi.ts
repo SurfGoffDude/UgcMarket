@@ -15,7 +15,7 @@ import { BaseQueryFn, FetchArgs, FetchBaseQueryError } from '@reduxjs/toolkit/qu
 /**
  * Базовый URL для API запросов
  */
-const API_BASE_URL = '/api/v1/notifications';
+const API_BASE_URL = '/api/notifications';
 
 /**
  * RTK Query API для работы с уведомлениями

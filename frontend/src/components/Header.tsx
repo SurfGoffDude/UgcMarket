@@ -106,6 +106,18 @@ const Header = () => {
 
           {/* Right side actions */}
           <div className="flex items-center space-x-3">
+            {/* Кнопка создания заказа (только для клиентов) */}
+            {isAuthenticated && user && !user.has_creator_profile && (
+              <div className="hidden md:block">
+                <Link to="/create-order">
+                  <Button className="rounded-full bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Создать заказ
+                  </Button>
+                </Link>
+              </div>
+            )}
+            
             {/* Индикатор уведомлений */}
             {isAuthenticated && (
               <div className="mx-1">
@@ -134,17 +146,7 @@ const Header = () => {
               )}
             </button>
             
-            {/* Показываем кнопку "Создать заказ" только для авторизованных пользователей с ролью клиента */}
-            {isAuthenticated && user && user.user_type === 'client' && (
-              <div className="hidden md:block">
-                <Link to="/create-order">
-                  <Button className="rounded-full bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Создать заказ
-                  </Button>
-                </Link>
-              </div>
-            )}
+            {/* Старая кнопка "Создать заказ" удалена, перенесена в верхний блок */}
             
             {/* Показываем кнопки входа и регистрации только для неавторизованных пользователей */}
             {!isAuthenticated ? (

@@ -7,7 +7,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 // Базовый URL для API запросов к хранилищу
-const API_BASE_URL = '/api/v1/storage';
+const API_BASE_URL = '/api/storage';
 
 /**
  * Интерфейсы для типизации данных файлов
