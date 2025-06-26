@@ -111,6 +111,7 @@ const App = () => {
                 
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="/profile/edit" element={<ProfileEditPage />} />
+                <Route path="/creator/:id/edit" element={<CreatorProfileEditPage />} />
                 <Route path="/tags/add" element={<TagAddPage />} />
                 <Route path="/services/add" element={<ServiceAddPage />} />
                 <Route path="/portfolio/add" element={<PortfolioAddPage />} />
