@@ -157,9 +157,81 @@ export interface SelectedTags {
 /**
  * Хук для получения списка всех креаторов с поддержкой фильтрации и поиска
  */
+// Импортируем мок-данные креаторов для использования при недоступности API
+import { creators as mockCreators } from '@/data/creators';
+
 export function useCreatorsList(filters?: { tags: SelectedTags; query: string }) {
   const [url, setUrl] = useState(`${API_URL}/creator-profiles/`);
-  const { data, loading, error, execute: refetch } = useApiRequest<any>(url, true);
+  const { data: apiData, loading, error, execute: refetch } = useApiRequest<any>(url, true);
+  
+  // Используем мок-данные, если API недоступен
+  const rawData = apiData || mockCreators;
+  
+  // Применяем локальную фильтрацию к мок-данным, если нет данных из API
+  const [filteredData, setFilteredData] = useState(rawData);
+  
+  // Применяем локальную фильтрацию, если используем мок-данные
+  useEffect(() => {
+    // Извлекаем массив креаторов из API данных, если они приходят в формате { results: [...] }
+    const apiCreators = apiData 
+      ? (apiData.results && Array.isArray(apiData.results) 
+          ? apiData.results 
+          : (Array.isArray(apiData) ? apiData : []))
+      : null;
+
+    // Если фильтры отсутствуют или пустые, показываем всех креаторов
+    if (!filters || 
+        (!filters.query && (!filters.tags || Object.keys(filters.tags).length === 0))) {
+      setFilteredData(apiCreators || mockCreators);
+      return;
+    }
+    
+    if (!apiData) {
+      // Фильтрация мок-данных на клиенте
+      let result = [...mockCreators];
+      
+      // Фильтрация по поисковому запросу
+      if (filters.query) {
+        const query = filters.query.toLowerCase();
+        result = result.filter(creator => 
+          creator.name.toLowerCase().includes(query) || 
+          creator.username.toLowerCase().includes(query) ||
+          (creator.description && creator.description.toLowerCase().includes(query))
+        );
+      }
+      
+      // Фильтрация по тегам
+      if (filters.tags && Object.keys(filters.tags).length > 0) {
+        const tagValues: string[] = [];
+        Object.entries(filters.tags).forEach(([categoryId, tagIds]) => {
+          tagIds.forEach(tagId => {
+            const tagValue = tagId.startsWith('#') ? tagId.substring(1) : tagId;
+            tagValues.push(tagValue);
+          });
+        });
+        
+        if (tagValues.length > 0) {
+          // Если есть выбранные теги, фильтруем креаторов по наличию этих тегов
+          result = result.filter(creator => {
+            if (!creator.tags || !Array.isArray(creator.tags)) return false;
+            
+            // Проверяем, есть ли хотя бы один тег у креатора, совпадающий с выбранными
+            return tagValues.some(tagValue => 
+              creator.tags?.some(creatorTag => 
+                creatorTag.toLowerCase() === tagValue.toLowerCase()
+              )
+            );
+          });
+        }
+      }
+      
+      // Устанавливаем отфильтрованные данные
+      setFilteredData(result);
+    } else {
+      // Если есть данные из API, извлекаем из них массив креаторов
+      setFilteredData(apiCreators || []);
+    }
+  }, [apiData, filters, mockCreators]);
 
   // Обновление URL при изменении фильтров
   useEffect(() => {
@@ -176,13 +248,20 @@ export function useCreatorsList(filters?: { tags: SelectedTags; query: string })
     }
     
     // Добавление тегов
-    const allTags: string[] = [];
-    Object.values(filters.tags).forEach(tags => {
-      allTags.push(...tags);
+    // Преобразуем ID тегов в их текстовые значения для поиска
+    const tagValues: string[] = [];
+    
+    Object.entries(filters.tags).forEach(([categoryId, tagIds]) => {
+      // Преобразуем ID тегов в формат, который соответствует тегам креаторов
+      tagIds.forEach(tagId => {
+        // Теги креаторов хранятся в формате "делает-под-родителей" (без # в начале)
+        const tagValue = tagId.startsWith('#') ? tagId.substring(1) : tagId;
+        tagValues.push(tagValue);
+      });
     });
     
-    if (allTags.length > 0) {
-      queryParams.append('tags', allTags.join(','));
+    if (tagValues.length > 0) {
+      queryParams.append('tags', tagValues.join(','));
     }
     
     const queryString = queryParams.toString();
@@ -192,9 +271,79 @@ export function useCreatorsList(filters?: { tags: SelectedTags; query: string })
   // Django REST Framework часто возвращает пагинированные данные в объекте { results: [...] }.
   // Этот код проверяет, есть ли поле results, и возвращает его.
   // В противном случае, он возвращает сами данные (если ответ не пагинирован).
-  const creatorsList = data && data.results && Array.isArray(data.results) ? data.results : data;
-
-  return { creators: creatorsList || [], loading, error, refetch };
+  
+  // Дополнительная проверка фильтрации для несуществующих тегов
+  let finalData = filteredData;
+  
+  // Если есть выбранные теги, проверяем наличие этих тегов у креаторов
+  if (filters?.tags && Object.keys(filters.tags).length > 0) {
+    const tagValues: string[] = [];
+    Object.entries(filters.tags).forEach(([categoryId, tagIds]) => {
+      tagIds.forEach(tagId => {
+        const tagValue = tagId.startsWith('#') ? tagId.substring(1) : tagId;
+        tagValues.push(tagValue.toLowerCase());
+      });
+    });
+    
+    if (tagValues.length > 0 && Array.isArray(finalData)) {
+      // Дебаг-информация для проверки тегов
+      console.log('%c[DEBUG] Проверка тегов:', 'color: #FF5722; font-weight: bold', {
+        tagValues,
+        creatorsTags: finalData.map(creator => creator.tags || [])
+      });
+      
+      // Фильтруем креаторов по наличию выбранных тегов
+      finalData = finalData.filter(creator => {
+        if (!creator.tags || !Array.isArray(creator.tags)) return false;
+        
+        // Преобразуем теги креатора в нижний регистр
+        const lowerCaseCreatorTags = creator.tags.map(tag => tag.toLowerCase());
+        
+        // Проверяем разные варианты совпадения
+        const hasMatchingTag = tagValues.some(tagValue => {
+          // Точное совпадение
+          const exactMatch = lowerCaseCreatorTags.includes(tagValue);
+          
+          // Проверка на содержание
+          const containsMatch = lowerCaseCreatorTags.some(creatorTag => 
+            creatorTag.includes(tagValue) || tagValue.includes(creatorTag)
+          );
+          
+          // Проверка с удалением спецсимволов
+          const tagValueWithoutDashes = tagValue.replace(/-/g, ' ');
+          const containsMatchWithoutDashes = lowerCaseCreatorTags.some(creatorTag => {
+            const creatorTagWithoutDashes = creatorTag.replace(/-/g, ' ');
+            return creatorTagWithoutDashes.includes(tagValueWithoutDashes) || 
+                  tagValueWithoutDashes.includes(creatorTagWithoutDashes);
+          });
+          
+          return exactMatch || containsMatch || containsMatchWithoutDashes;
+        });
+        
+        return hasMatchingTag;
+      });
+    }
+  }
+  
+  // Логируем данные для диагностики проблем с фильтрацией
+  console.log('%c[DEBUG] useCreatorsList:', 'color: #2196F3; font-weight: bold', {
+    url,
+    apiData,
+    filters,
+    filteredData: finalData,
+    mockUsed: !apiData,
+    tagFiltersActive: filters && Object.keys(filters.tags || {}).length > 0,
+    tagCount: filters ? Object.values(filters.tags || {}).flat().length : 0,
+    hasQuery: !!filters?.query
+  });
+  
+  // Возвращаем отфильтрованные данные или пустой массив, если данных нет
+  return { 
+    creators: Array.isArray(finalData) ? finalData : [], 
+    loading, 
+    error, 
+    refetch 
+  };
 }
 
 export function useFilterOptions(initialFetch = true) {
