@@ -35,10 +35,14 @@ import PortfolioAddPage from "@/pages/PortfolioAddPage";
 import TagAddPage from "@/pages/TagAddPage";
 import PortfolioDetailPage from "@/pages/PortfolioDetailPage";
 import ServiceDetailPage from "@/pages/ServiceDetailPage";
+import CatalogOrdersPage from "@/pages/CatalogOrdersPage";
+import OrderResponsePage from "@/pages/OrderResponsePage";
 
-// Новые страницы для уведомлений
+// Новые страницы для уведомлений и чатов
 import NotificationsPage from "@/pages/NotificationsPage";
 import NotificationSettingsPage from "@/pages/NotificationSettingsPage";
+import ChatsListPage from "@/pages/ChatsListPage";
+import ChatPage from "@/pages/ChatPage";
 
 // Система уведомлений
 import { NotificationsProvider } from "@/contexts/NotificationsContext";
@@ -84,7 +88,7 @@ const App = () => {
           <Layout>
             <Routes>
                 <Route path="/" element={<Index />} />
-                <Route path="/catalog" element={<CatalogPage />} />
+                <Route path="/catalog-creators" element={<CatalogPage />} />
                 <Route path="/creator-profile" element={<CreatorProfilePage />} />
                 <Route path="/creators/:id" element={<CreatorProfilePage />} />
                 <Route path="/creators/:id/edit" element={<CreatorProfileEditPage />} />
@@ -98,12 +102,18 @@ const App = () => {
                 <Route path="/client-profile" element={<ClientProfilePage />} />
                 
                 {/* Страницы заказов */}
+                <Route path="/catalog-orders" element={<CatalogOrdersPage />} />
                 <Route path="/orders" element={<OrdersPage />} />
                 <Route path="/orders/:id" element={<OrderDetailPage />} />
                 <Route path="/orders/:id/delivery" element={<OrderDeliveryPage />} />
+                <Route path="/orders/:id/respond" element={<OrderResponsePage />} />
                 
                 {/* Страницы сообщений */}
                 <Route path="/messages" element={<MessagesPage />} />
+                
+                {/* Страницы чатов */}
+                <Route path="/chats" element={<ChatsListPage />} />
+                <Route path="/chats/:id" element={<ChatPage />} />
                 
                 {/* Страницы уведомлений */}
                 <Route path="/notifications" element={<NotificationsPage />} />

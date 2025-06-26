@@ -23,6 +23,7 @@ class OrderFilter(django_filters.FilterSet):
     client = django_filters.NumberFilter(field_name='client')
     creator = django_filters.NumberFilter(field_name='creator')
     status = django_filters.CharFilter(field_name='status')
+    is_private = django_filters.BooleanFilter(field_name='is_private')
     created_after = django_filters.DateTimeFilter(field_name='created_at', lookup_expr='gte')
     created_before = django_filters.DateTimeFilter(field_name='created_at', lookup_expr='lte')
     
@@ -32,7 +33,7 @@ class OrderFilter(django_filters.FilterSet):
             'min_budget', 'max_budget', 
             'deadline_before', 'deadline_after',
             'category', 'tags', 'status',
-            'client', 'creator',
+            'client', 'creator', 'is_private',
             'created_after', 'created_before'
         ]
     

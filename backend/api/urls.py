@@ -34,4 +34,7 @@ urlpatterns = [
     
     # Маршруты для заказов
     path('', include('orders.urls')),
+    
+    # Маршруты для чатов
+    path('', include('chats.urls')),
 ]

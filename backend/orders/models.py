@@ -100,6 +100,7 @@ class Order(models.Model):
     STATUS_CHOICES = [
         ('draft', _('Черновик')),
         ('published', _('Опубликован')),
+        ('awaiting_response', _('Ожидает отклика')),
         ('in_progress', _('В работе')),
         ('on_review', _('На проверке')),
         ('completed', _('Выполнен')),

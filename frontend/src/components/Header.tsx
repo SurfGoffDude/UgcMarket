@@ -18,8 +18,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 const navLinks = [
-  { name: 'Главная', path: '/' },
-  { name: 'Каталог', path: '/catalog' },
+  { name: 'Каталог креаторов', path: '/catalog-creators' },
+  { name: 'Каталог заявок', path: '/catalog-orders' },
   { name: 'Как это работает', path: '#how-it-works' },
   { name: 'Блог', path: '/blog' },
 ];

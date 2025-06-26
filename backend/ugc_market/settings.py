@@ -43,6 +43,7 @@ USER_APPS = [
     'users',
     'orders',
     'api',
+    'chats',
 ]
 
 SERVICE_APPS = [
