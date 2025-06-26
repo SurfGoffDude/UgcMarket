@@ -17,6 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
+import { LockIcon, UnlockIcon } from "lucide-react";
 
 const profileFormSchema = z.object({
   // Общие поля
@@ -485,14 +486,30 @@ const CreatorProfileEditPage: React.FC = () => {
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center space-x-3 space-y-0">
                       <FormControl>
-                        <input
-                          type="checkbox"
-                          checked={field.value}
-                          onChange={field.onChange}
-                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                        />
+                        <div className="flex items-center gap-3">
+                          <Button
+                            type="button"
+                            variant={field.value ? "outline" : "default"}
+                            size="icon"
+                            className={`h-9 w-9 rounded-full ${!field.value ? 'bg-primary text-white' : 'text-muted-foreground'}`}
+                            onClick={() => field.onChange(false)}
+                          >
+                            <LockIcon className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={!field.value ? "outline" : "default"}
+                            size="icon"
+                            className={`h-9 w-9 rounded-full ${field.value ? 'bg-primary text-white' : 'text-muted-foreground'}`}
+                            onClick={() => field.onChange(true)}
+                          >
+                            <UnlockIcon className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </FormControl>
-                      <FormLabel className="font-normal cursor-pointer">Доступен для найма</FormLabel>
+                      <FormLabel className="font-normal cursor-pointer">
+                        {field.value ? "Доступен для найма" : "Недоступен для найма"}
+                      </FormLabel>
                       <FormMessage />
                     </FormItem>
                   )}

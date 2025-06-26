@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useCreatorProfile } from '@/hooks/useCreatorProfile';
-import { Star, MapPin, Users, Plus, Pencil } from 'lucide-react';
+import { Star, MapPin, Pencil, Plus, Calendar, Briefcase, GraduationCap, Lock, Unlock, ExternalLink, Phone } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 import PortfolioItem from '@/components/PortfolioItem';
@@ -73,9 +73,26 @@ const CreatorProfilePage: React.FC = () => {
                 </span>
                 <span className="flex items-center gap-1">
                   <MapPin className="h-4 w-4" />
-                  {creator.user?.location}
+                  {creator.user?.location || 'Не указано'}
                 </span>
+                {creator.user?.phone && (
+                  <span className="flex items-center gap-1">
+                    <Phone className="h-4 w-4" />
+                    {creator.user?.phone}
+                  </span>
+                )}
                 <span className="flex items-center gap-1">
+                  {creator.available_for_hire ? (
+                    <>
+                      <Unlock className="h-4 w-4 text-green-500" />
+                      <span className="text-green-600">Доступен для найма</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="h-4 w-4 text-gray-500" />
+                      <span className="text-gray-600">Недоступен для найма</span>
+                    </>
+                  )}
                 </span>
               </div>
             </div>
@@ -91,9 +108,53 @@ const CreatorProfilePage: React.FC = () => {
           </div>
         </div>
 
+        {/* Специализация и опыт */}
+        <div className="flex flex-col md:flex-row gap-4 pt-2">
+          {creator.specialization && (
+            <div className="flex items-center gap-2">
+              <Briefcase className="h-5 w-5 text-primary" />
+              <div>
+                <h3 className="font-medium text-sm text-gray-500">Специализация</h3>
+                <p>{creator.specialization}</p>
+              </div>
+            </div>
+          )}
+          
+          {creator.experience && (
+            <div className="flex items-center gap-2">
+              <GraduationCap className="h-5 w-5 text-primary" />
+              <div>
+                <h3 className="font-medium text-sm text-gray-500">Опыт работы</h3>
+                <p>{creator.experience}</p>
+              </div>
+            </div>
+          )}
+        </div>
+        
         {/* Описание/био */}
         {creator.user?.bio && (
-          <p className="text-gray-700 whitespace-pre-line">{creator.user?.bio}</p>
+          <div className="pt-2">
+            <h3 className="font-medium text-sm text-gray-500">О себе</h3>
+            <p className="text-gray-700 whitespace-pre-line">{creator.user?.bio}</p>
+          </div>
+        )}
+        
+        {/* Социальные сети */}
+        {creator.social_links && creator.social_links.length > 0 && (
+          <div className="flex flex-wrap gap-3 pt-2">
+            {creator.social_links.map((link: any, idx: number) => (
+              <a 
+                key={idx} 
+                href={link.url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-primary hover:underline"
+              >
+                <ExternalLink className="h-4 w-4" />
+                {link.platform}
+              </a>
+            ))}
+          </div>
         )}
 
         {/* Теги */}

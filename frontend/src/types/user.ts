@@ -46,15 +46,11 @@ export interface CreatorProfile {
   cover_image?: string;
   is_online?: boolean;
   available_for_hire?: boolean;
-  social_links?: {
-    instagram?: string;
-    behance?: string;
-    dribbble?: string;
-    github?: string;
-    twitter?: string;
-    linkedin?: string;
-    [key: string]: string | undefined;
-  };
+  tags?: string[];
+  social_links?: Array<{
+    platform: string;
+    url: string;
+  }>;
   rating: number;
   review_count?: number;
   completed_orders: number;
