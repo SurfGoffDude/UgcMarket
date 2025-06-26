@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { CreatorProfile } from '@/types/user';
 import {
   Avatar,
   AvatarFallback,
@@ -75,12 +76,6 @@ const CreatorProfilePage: React.FC = () => {
                   <MapPin className="h-4 w-4" />
                   {creator.user?.location || 'Не указано'}
                 </span>
-                {creator.user?.phone && (
-                  <span className="flex items-center gap-1">
-                    <Phone className="h-4 w-4" />
-                    {creator.user?.phone}
-                  </span>
-                )}
                 <span className="flex items-center gap-1">
                   {creator.available_for_hire ? (
                     <>
