@@ -91,11 +91,12 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
     return user?.username || ('username' in creator ? creator.username : '');
   };
   
-  const getAvatar = (): string => {
+  // Функция для получения URL аватара или null если аватара нет
+  const getAvatar = (): string | null => {
     const user = getNestedUser();
-    if (user && user.avatar) return user.avatar;
-    if ('avatar' in creator && typeof creator.avatar === 'string') return creator.avatar;
-    return 'https://via.placeholder.com/150';
+    if (user && user.avatar && user.avatar.trim().length > 0) return user.avatar;
+    if ('avatar' in creator && typeof creator.avatar === 'string' && creator.avatar.trim().length > 0) return creator.avatar;
+    return null; // Возвращаем null вместо placeholder
   };
 
   const getIsVerified = (): boolean => {
@@ -190,11 +191,27 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
         <div className="flex items-start justify-between">
           <Link to={`/creators/${creator.id}`} className="flex items-center space-x-3 flex-1">
             <div className="relative">
+              {getAvatar() ? (
               <img 
-                src={getAvatar()} 
+                src={getAvatar() || ''} 
                 alt={getName()}
-                className="w-14 h-14 rounded-full object-cover border-2 border-gray-100 dark:border-gray-700"
-              />
+                  className="w-14 h-14 rounded-full object-cover border-2 border-gray-100 dark:border-gray-700"
+                  onError={(e) => {
+                    // Заменяем изображение на заглушку при ошибке загрузки
+                    e.currentTarget.style.display = 'none';
+                    const parentElement = e.currentTarget.parentElement;
+                    if (parentElement) {
+                      parentElement.classList.add('avatar-placeholder');
+                    }
+                  }} 
+                />
+              ) : (
+                <div className="w-14 h-14 rounded-full border-2 border-gray-100 dark:border-gray-700 bg-gray-200 dark:bg-gray-700 flex items-center justify-center avatar-placeholder">
+                  <span className="text-xl font-semibold text-gray-500 dark:text-gray-400">
+                    {getName().charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              )}
               {getIsOnline() && (
                 <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-gray-800"></div>
               )}
