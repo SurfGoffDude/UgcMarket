@@ -63,9 +63,11 @@ const parseTagsFromMarkdown = (markdown: string): TagCategory[] => {
       };
     } 
     // Проверяем, является ли строка тегом
-    else if (line.match(/^\d+\. [а-яА-Яa-zA-Z0-9-]+/)) {
+    else if (line.match(/^\d+\. [а-яА-ЯёЁa-zA-Z0-9-]+/)) {
       if (currentCategory) {
-        const tagMatch = line.match(/^(\d+)\. ([а-яА-Яa-zA-Z0-9-]+)/);
+        // Улучшенное регулярное выражение, которое обрабатывает все символы до конца строки
+        // Включает поддержку буквы ё/Ё и смешанных тегов (русские + латинские)
+        const tagMatch = line.match(/^(\d+)\. (.+)$/);
         if (tagMatch && tagMatch[1] && tagMatch[2]) {
           const tagNumber = tagMatch[1];
           const tagName = tagMatch[2];
