@@ -91,6 +91,7 @@ const parseTagsFromMarkdown = (markdown: string): TagCategory[] => {
 
 const CreatorFilters: React.FC<CreatorFiltersProps> = ({ onFilterChange, initialFilters = { tags: {}, query: '' } }) => {
   const [searchQuery, setSearchQuery] = useState(initialFilters.query);
+  const [inputValue, setInputValue] = useState(initialFilters.query);
   const [selectedTags, setSelectedTags] = useState<SelectedTags>(initialFilters.tags);
   const [tagCategories, setTagCategories] = useState<TagCategory[]>([]);
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
@@ -114,9 +115,23 @@ const CreatorFilters: React.FC<CreatorFiltersProps> = ({ onFilterChange, initial
     fetchTags();
   }, []);
 
-  // Обработчик изменения поискового запроса
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
+  // Обработчик изменения текста в поле поиска
+  const handleSearchInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+  };
+
+  // Обработчик подтверждения поиска
+  const handleSearchSubmit = () => {
+    console.log('Нажата кнопка Найти, текущий ввод:', inputValue);
+    setSearchQuery(inputValue); // Применяем поисковый запрос только при подтверждении
+    
+    // Явно вызываем функцию фильтрации
+    onFilterChange({
+      tags: selectedTags,
+      query: inputValue
+    });
+    
+    console.log('Фильтрация применена с поисковым запросом:', inputValue);
   };
 
   // Обработчик изменения выбранных тегов
@@ -198,15 +213,25 @@ const CreatorFilters: React.FC<CreatorFiltersProps> = ({ onFilterChange, initial
   return (
     <div className="mb-8 bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
       <div className="mb-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-          <Input
-            type="text"
-            placeholder="Поиск по имени, почте или полному имени"
-            value={searchQuery}
-            onChange={handleSearchChange}
-            className="pl-10"
-          />
+        <div className="relative flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Поиск по имени, почте или полному имени"
+              value={inputValue}
+              onChange={handleSearchInput}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit()}
+              className="pl-10 w-full"
+            />
+          </div>
+          <Button 
+            onClick={handleSearchSubmit}
+            size="sm"
+            className="whitespace-nowrap"
+          >
+            Найти
+          </Button>
         </div>
       </div>
 

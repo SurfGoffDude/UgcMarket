@@ -164,6 +164,14 @@ export function useCreatorsList(filters?: { tags: SelectedTags; query: string })
   const [url, setUrl] = useState(`${API_URL}/creator-profiles/`);
   const { data: apiData, loading, error, execute: refetch } = useApiRequest<any>(url, true);
   
+  // Добавляем перезагрузку данных при изменении URL
+  useEffect(() => {
+    if (url) {
+      console.log('%c[DEBUG] URL изменился, перезагружаем данные:', 'color: #4CAF50; font-weight: bold', url);
+      refetch();
+    }
+  }, [url, refetch]);
+  
   // Используем мок-данные, если API недоступен
   const rawData = apiData || mockCreators;
   

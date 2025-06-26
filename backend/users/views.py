@@ -231,6 +231,36 @@ class CreatorProfileViewSet(viewsets.ModelViewSet):
         if user_id:
             qs = qs.filter(user__id=user_id)
             
+        # Добавляем поиск по имени, email или полному имени
+        search_query = self.request.query_params.get("search")
+        if search_query:
+            # Логируем поисковый запрос для отладки
+            logger.debug(f"Поисковый запрос: {search_query}")
+            
+            # Разделяем поисковый запрос на слова для поиска по отдельным частям имени и фамилии
+            search_words = search_query.split()
+            
+            # Создаем начальный пустой Q-объект
+            query_filter = Q()
+            
+            # Добавляем фильтр для полного поискового запроса
+            query_filter |= Q(user__username__icontains=search_query)
+            query_filter |= Q(user__email__icontains=search_query)
+            query_filter |= Q(nickname__icontains=search_query)
+            query_filter |= Q(specialization__icontains=search_query)
+            
+            # Если запрос состоит из нескольких слов, проверяем каждое слово отдельно
+            # для полей first_name и last_name
+            for word in search_words:
+                query_filter |= Q(user__first_name__icontains=word)
+                query_filter |= Q(user__last_name__icontains=word)
+            
+            # Применяем фильтры к запросу
+            qs = qs.filter(query_filter)
+            
+            # Логируем количество найденных результатов
+            logger.debug(f"Найдено креаторов по запросу '{search_query}': {qs.count()}")
+            
         # Получаем параметры запроса для фильтрации по тегам
         tag_ids_param = self.request.query_params.get('tag_ids')
         tag_match_type = self.request.query_params.get('tag_match_type', 'any').lower()
