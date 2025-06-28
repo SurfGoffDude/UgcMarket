@@ -15,7 +15,7 @@ import {
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { CalendarIcon, TagIcon } from 'lucide-react';
-import api from '@/lib/api';
+import apiClient from '@/api/client';
 import { Order, PaginatedResponse } from '@/types';
 
 interface OrdersListProps {
@@ -64,10 +64,10 @@ const OrdersList: React.FC<OrdersListProps> = ({
                               sortOrder === 'price_high' ? '-budget' : 
                               sortOrder === 'price_low' ? 'budget' : '-created_at';
 
-      const response = await api.get<PaginatedResponse<Order>>('/orders/', requestParams);
+      const response = await apiClient.get<PaginatedResponse<Order>>('/orders/', { params: requestParams });
       
       // Обработка результата
-      const data = response as PaginatedResponse<Order>;
+      const data = response.data as PaginatedResponse<Order>;
       const newOrders = data.results || [];
       const nextPage = data.next !== null;
       if (resetPage || currentPage === 1) {

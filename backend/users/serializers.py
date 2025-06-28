@@ -247,7 +247,8 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(required=False)
     social_links = SocialLinkSerializer(many=True, required=False)
     skills = serializers.ListField(child=serializers.DictField(), required=False, write_only=True)
-    tags = serializers.ListField(child=serializers.IntegerField(), required=False, write_only=True)
+    # Поддержка как ID, так и строк для тегов
+    tags = serializers.ListField(required=False, write_only=True)
 
     full_name = serializers.SerializerMethodField()
     username = serializers.SerializerMethodField()
@@ -348,9 +349,51 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
 
         # --- tags
         if tags_data is not None:
+            from django.utils.text import slugify
+            tags_to_set = []
             
-
-            instance.tags.set(tags_data)
+            for tag_item in tags_data:
+                # Если передан ID (целое число) - используем его
+                if isinstance(tag_item, int):
+                    try:
+                        tag = Tag.objects.get(id=tag_item)
+                        tags_to_set.append(tag)
+                    except Tag.DoesNotExist:
+                        # Пропускаем несуществующие ID тегов
+                        continue
+                # Если передано название или словарь с названием
+                elif isinstance(tag_item, str):
+                    tag_name = tag_item
+                    tag, created = Tag.objects.get_or_create(
+                        name=tag_name,
+                        defaults={'slug': slugify(tag_name)}
+                    )
+                    tags_to_set.append(tag)
+                # Если передан словарь (например, с id или name)
+                elif isinstance(tag_item, dict):
+                    if 'id' in tag_item and tag_item['id']:
+                        try:
+                            tag = Tag.objects.get(id=tag_item['id'])
+                            tags_to_set.append(tag)
+                        except Tag.DoesNotExist:
+                            # Если ID не существует, но есть name - создаем новый тег
+                            if 'name' in tag_item and tag_item['name']:
+                                tag_name = tag_item['name']
+                                tag, created = Tag.objects.get_or_create(
+                                    name=tag_name,
+                                    defaults={'slug': slugify(tag_name)}
+                                )
+                                tags_to_set.append(tag)
+                    elif 'name' in tag_item and tag_item['name']:
+                        tag_name = tag_item['name']
+                        tag, created = Tag.objects.get_or_create(
+                            name=tag_name,
+                            defaults={'slug': slugify(tag_name)}
+                        )
+                        tags_to_set.append(tag)
+            
+            # Установка тегов
+            instance.tags.set(tags_to_set)
 
         # --- social links
         if social_links is not None:

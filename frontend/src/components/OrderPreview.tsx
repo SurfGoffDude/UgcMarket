@@ -19,11 +19,11 @@ interface OrderPreviewProps {
   title: string;
   description: string;
   contentType: string;
-  platform: string;
   deadline: string;
   budget: string;
   privacy: string;
   references: string[];
+  tags?: { id: string; name: string }[];
   onEdit: () => void;
   onPublish: () => void;
 }
@@ -38,11 +38,11 @@ const OrderPreview: React.FC<OrderPreviewProps> = ({
   title, 
   description,
   contentType,
-  platform,
   deadline,
   budget,
   privacy,
   references,
+  tags = [],
   onEdit,
   onPublish
 }) => {
@@ -101,11 +101,7 @@ const OrderPreview: React.FC<OrderPreviewProps> = ({
               </Badge>
             )}
             
-            {platform && (
-              <Badge variant="outline" className="text-white border-white/40 bg-white/10">
-                {platform}
-              </Badge>
-            )}
+
           </div>
         </CardHeader>
         
@@ -160,6 +156,20 @@ const OrderPreview: React.FC<OrderPreviewProps> = ({
               )}
             </div>
           </div>
+          
+          {tags && tags.length > 0 && (
+            <div className="mb-8">
+              <h2 className="text-lg font-semibold mb-4">Теги</h2>
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag) => (
+                  <Badge key={tag.id} variant="secondary" className="py-1.5">
+                    <Tag className="h-3.5 w-3.5 mr-1.5" />
+                    {tag.name}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
           
           {references && references.length > 0 && (
             <div className="mb-8">

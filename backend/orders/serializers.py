@@ -161,69 +161,98 @@ class OrderListSerializer(serializers.ModelSerializer):
     """
     client = UserSerializer(read_only=True)
     category = CategorySerializer(read_only=True)
-    tags = TagSerializer(read_only=True, many=True)
-    service = ServiceSerializer(read_only=True)
-    service_name = serializers.SerializerMethodField(read_only=True)
+    tags = TagSerializer(many=True, read_only=True)
     responses_count = serializers.SerializerMethodField()
     days_left = serializers.IntegerField(read_only=True)
+    is_overdue = serializers.BooleanField(read_only=True)
+    target_creator = UserSerializer(read_only=True)
+    creator = UserSerializer(read_only=True)
+    can_view = serializers.SerializerMethodField()
+    can_respond = serializers.SerializerMethodField()
     
     class Meta:
         model = Order
         fields = [
-            'id', 'title', 'client', 'category', 'tags',
-            'service', 'service_name', 'budget', 'deadline', 'status', 'days_left',
-            'responses_count', 'views_count', 'created_at', 'with_modifications'
+            'id', 'title', 'description', 'client', 'category', 'tags',
+            'budget', 'deadline', 'status', 'days_left', 'is_overdue',
+            'responses_count', 'views_count', 'created_at', 'updated_at', 
+            'is_private', 'target_creator', 'creator', 'references',
+            'can_view', 'can_respond'
         ]
     
     def get_responses_count(self, obj):
         """Возвращает количество откликов на заказ."""
         return obj.responses.count()
     
-    def get_service_name(self, obj):
-        """Возвращает название услуги, если заказ основан на услуге."""
-        if obj.service:
-            return obj.service.title
-        return None
+    def get_can_view(self, obj):
+        """Проверяет, может ли текущий пользователь просматривать заказ."""
+        request = self.context.get('request')
+        if request and hasattr(request, 'user'):
+            return obj.can_be_viewed_by(request.user)
+        return obj.is_private is False
+    
+    def get_can_respond(self, obj):
+        """Проверяет, может ли текущий пользователь откликнуться на заказ."""
+        request = self.context.get('request')
+        if request and hasattr(request, 'user'):
+            return obj.can_respond(request.user)
+        return False
 
 
 class OrderDetailSerializer(serializers.ModelSerializer):
     """
-    Сериализатор для детальной информации о заказе.
+    Сериализатор для деталей заказа.
     """
     client = UserSerializer(read_only=True)
-    creator = UserSerializer(read_only=True)
-    category = CategorySerializer(read_only=True)
+    target_creator = UserSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     service = ServiceSerializer(read_only=True)
-    attachments = OrderAttachmentSerializer(many=True, read_only=True)
+    attachments = serializers.SerializerMethodField()
     responses = serializers.SerializerMethodField()
-    days_left = serializers.IntegerField(read_only=True)
     deliveries = serializers.SerializerMethodField()
     reviews = serializers.SerializerMethodField()
+    days_left = serializers.IntegerField(read_only=True)
+    is_overdue = serializers.BooleanField(read_only=True)
+    references = serializers.JSONField(read_only=True)
+    can_view = serializers.SerializerMethodField()
+    can_respond = serializers.SerializerMethodField()
     
     class Meta:
         model = Order
         fields = [
-            'id', 'title', 'description', 'client', 'creator',
-            'category', 'tags', 'service', 'budget', 'deadline', 'status',
-            'is_private', 'days_left', 'attachments', 'responses',
-            'deliveries', 'reviews', 'views_count', 'created_at',
-            'updated_at', 'with_modifications', 'modifications_description'
+            'id', 'title', 'description', 'client', 'target_creator', 'tags', 'service', 'budget', 'deadline', 
+            'status', 'days_left', 'is_overdue', 'views_count', 'created_at', 'updated_at',
+            'attachments', 'responses', 'deliveries', 'reviews', 'is_private', 'references', 'can_view', 'can_respond'
         ]
-        read_only_fields = [
-            'client', 'creator', 'days_left', 'views_count',
-            'created_at', 'updated_at'
-        ]
+    
+    def get_attachments(self, obj):
+        """Возвращает вложения к заказу."""
+        attachments = obj.attachments.all()
+        return OrderAttachmentSerializer(attachments, many=True).data
     
     def get_responses(self, obj):
         """Возвращает отклики на заказ."""
-        # Проверка прав доступа: клиент заказа или исполнитель должны видеть отклики
         user = self.context['request'].user
-        if user == obj.client or user == obj.creator:
+        
+        # Проверяем, может ли пользователь просматривать этот заказ
+        if not obj.can_be_viewed_by(user):
+            return []
+        
+        # Если пользователь является клиентом заказа - показываем все отклики
+        if user == obj.client or user.is_staff:
             return OrderResponseSerializer(obj.responses.all(), many=True).data
         
-        # Для других пользователей возвращаем только количество откликов
-        return {'count': obj.responses.count()}
+        # Если приватный заказ и пользователь является целевым креатором
+        if obj.is_private and obj.target_creator and obj.target_creator == user:
+            # Показываем только отклики этого пользователя
+            return OrderResponseSerializer(obj.responses.filter(creator=user), many=True).data
+        
+        # Если пользователь оставил отклик, показываем только его отклик
+        user_response = obj.responses.filter(creator=user).first()
+        if user_response:
+            return OrderResponseSerializer([user_response], many=True).data
+        
+        return []
     
     def get_deliveries(self, obj):
         """Возвращает сдачи работы по заказу."""
@@ -253,10 +282,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
     """
     Сериализатор для создания заказа.
     """
-    category_id = serializers.PrimaryKeyRelatedField(
-        queryset=Category.objects.all(),
-        source='category'
-    )
+    # Поле category_id удалено для соответствия новому дизайну без выбора категории
     tags_ids = serializers.PrimaryKeyRelatedField(
         queryset=Tag.objects.all(),
         source='tags',
@@ -273,18 +299,63 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         child=serializers.FileField(max_length=100000, allow_empty_file=False),
         required=False
     )
+
+
+class CustomOrderCreateSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для создания произвольного заказа с обязательными полями.
+    Отличается от OrderCreateSerializer тем, что требует заполнения всех полей,
+    необходимых для создания заказа, а не использует данные из услуги.
+    Поддерживает создание приватных заказов с целевым креатором.
+    """
+    # Поле category_id удалено для соответствия новому дизайну без выбора категории
+    tags_ids = serializers.PrimaryKeyRelatedField(
+        queryset=Tag.objects.all(),
+        source='tags',
+        many=True,
+        required=False
+    )
+    target_creator_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        source='target_creator',
+        required=False,
+        allow_null=True,
+        write_only=True
+    )
+    references = serializers.JSONField(required=False)
+    attachments = serializers.ListField(
+        child=serializers.FileField(max_length=100000, allow_empty_file=False),
+        required=False
+    )
     
     class Meta:
         model = Order
         fields = [
-            'title', 'description', 'category_id', 'tags_ids', 
+            'title', 'description', 'tags_ids', 
             'budget', 'deadline', 'is_private', 'attachments',
-            'service_id', 'with_modifications', 'modifications_description'
+            'target_creator_id', 'references'
         ]
+
+    
+    def validate(self, data):
+        """
+        Проверяем, что для приватного заказа указан целевой креатор.
+        """
+        is_private = data.get('is_private', False)
+        target_creator = data.get('target_creator', None)
+        
+        if is_private and not target_creator:
+            raise serializers.ValidationError("Для приватного заказа необходимо указать целевого креатора")
+        
+        # Если указан целевой креатор, но заказ не приватный, устанавливаем флаг приватности
+        if target_creator and not is_private:
+            data['is_private'] = True
+            
+        return data
     
     def create(self, validated_data):
         """
-        Создает заказ с приложенными файлами.
+        Создает произвольный заказ с прикрепленными файлами.
         """
         attachments = validated_data.pop('attachments', [])
         tags_data = validated_data.pop('tags', [])
@@ -292,27 +363,11 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         # Получаем текущего пользователя из контекста запроса
         client = self.context['request'].user
         
-        # Если заказ основан на услуге, получаем информацию о креаторе и бюджете
-        service = validated_data.get('service')
-        if service:
-            # Устанавливаем креатора заказа на основе услуги
-            validated_data['creator'] = service.creator_profile.user
-            
-            # Если заказ с правками, используем цену с правками
-            if validated_data.get('with_modifications') and service.modifications_price:
-                validated_data['budget'] = service.modifications_price
-            else:
-                # Иначе используем стандартную цену
-                validated_data['budget'] = service.price
-                # Сбрасываем признак правок, если заказ без правок
-                validated_data['with_modifications'] = False
-                validated_data['modifications_description'] = None
-            
-            # Устанавливаем статус заказа как 'в работе'
-            validated_data['status'] = 'in_progress'
+        # Определяем начальный статус заказа (приватные заказы начинаются в статусе 'awaiting_response')
+        initial_status = 'awaiting_response' if validated_data.get('is_private', False) else 'published'
         
         # Создаем заказ
-        order = Order.objects.create(client=client, **validated_data)
+        order = Order.objects.create(client=client, status=initial_status, **validated_data)
         
         # Добавляем теги
         if tags_data:

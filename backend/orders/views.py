@@ -8,7 +8,7 @@ from rest_framework import viewsets, permissions, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import F
+from django.db.models import F, Q
 from django.utils import timezone
 
 from .models import (
@@ -19,7 +19,7 @@ from .serializers import (
     CategorySerializer, TagSerializer,
     OrderListSerializer, OrderDetailSerializer, OrderCreateSerializer,
     OrderAttachmentSerializer, OrderResponseSerializer,
-    DeliverySerializer, ReviewSerializer
+    DeliverySerializer, ReviewSerializer, CustomOrderCreateSerializer
 )
 from .permissions import (
     IsClientOrReadOnly, IsOrderClient, IsOrderCreator,
@@ -88,18 +88,23 @@ class OrderViewSet(viewsets.ModelViewSet):
             # Возвращаем только заказы, где пользователь является исполнителем
             return queryset.filter(creator=self.request.user)
         
-        # Для списка скрываем приватные заказы, кроме случаев, когда пользователь 
-        # является клиентом или исполнителем заказа
+        # Для списка показываем только доступные заказы
         if self.action == 'list':
+            user = self.request.user
+            
+            # Для стаффа показываем все заказы
+            if user.is_staff:
+                return queryset
+                
+            # Для обычных пользователей показываем публичные и их заказы
             return queryset.filter(
-                status='published',
-                is_private=False
-            ) | queryset.filter(
-                client=self.request.user
-            ) | queryset.filter(
-                creator=self.request.user
+                Q(is_private=False) | 
+                Q(client=user) | 
+                Q(creator=user) |
+                Q(is_private=True, target_creator=user)
             )
         
+        # Для детального просмотра проверка прав осуществляется в retrieve
         return queryset
     
     def get_serializer_class(self):
@@ -114,18 +119,25 @@ class OrderViewSet(viewsets.ModelViewSet):
     
     def retrieve(self, request, *args, **kwargs):
         """
-        Переопределяем метод для увеличения счетчика просмотров.
+        Переопределяем метод для увеличения счетчика просмотров и проверки прав доступа к приватному заказу.
         """
-        instance = self.get_object()
+        # Получаем объект заказа
+        order = self.get_object()
         
-        # Увеличиваем счетчик просмотров только если пользователь не является клиентом
-        if request.user != instance.client:
-            instance.views_count = F('views_count') + 1
-            instance.save(update_fields=['views_count'])
-            instance.refresh_from_db()
+        # Проверяем права на просмотр приватного заказа
+        user = request.user
+        if not order.can_be_viewed_by(user):
+            return Response(
+                {'error': 'У вас нет прав на просмотр этого заказа'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
         
-        serializer = self.get_serializer(instance)
-        return Response(serializer.data)
+        # Увеличиваем счетчик просмотров, если пользователь не является клиентом или исполнителем
+        if user.is_authenticated and user != order.client and user != order.creator:
+            Order.objects.filter(id=order.id).update(views_count=F('views_count') + 1)
+        
+        # Возвращаем ответ с деталями заказа
+        return super().retrieve(request, *args, **kwargs)
     
     def perform_create(self, serializer):
         """
@@ -167,6 +179,31 @@ class OrderViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+        
+    @action(detail=False, methods=['post'], url_path='custom')
+    def create_custom(self, request):
+        """
+        Создает произвольный заказ с указанными полями.
+        
+        В отличие от обычного создания заказа, этот метод использует CustomOrderCreateSerializer
+        для создания заказа со свободными полями, включая платформу.
+        """
+        try:
+            serializer = CustomOrderCreateSerializer(
+                data=request.data,
+                context={'request': request}
+            )
+            serializer.is_valid(raise_exception=True)
+            instance = serializer.save()
+            return Response(
+                OrderDetailSerializer(instance, context={'request': request}).data,
+                status=status.HTTP_201_CREATED
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
     
     @action(detail=True, methods=['post'], permission_classes=[IsOrderClient])
     def select_creator(self, request, pk=None):
@@ -491,23 +528,32 @@ class OrderResponseViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """
         Устанавливает текущего пользователя как создателя отклика и создает чат между клиентом и креатором.
+        Использует бизнес-логику модели Order для проверки возможности отклика и изменения статуса.
         """
-        # Проверяем, существует ли уже отклик от этого пользователя на этот заказ
+        # Получаем заказ
         order_id = serializer.validated_data.get('order').id
-        if OrderResponse.objects.filter(order_id=order_id, creator=self.request.user).exists():
+        order = Order.objects.get(id=order_id)
+        user = self.request.user
+        
+        # Проверяем, может ли пользователь откликнуться на заказ
+        if not order.can_respond(user):
+            raise serializers.ValidationError('Вы не можете откликнуться на этот заказ')
+        
+        # Проверяем, существует ли уже отклик от этого пользователя на этот заказ
+        if OrderResponse.objects.filter(order_id=order_id, creator=user).exists():
             raise serializers.ValidationError('Вы уже откликнулись на этот заказ')
         
-        # Проверяем, что заказ в статусе "опубликован"
-        order = Order.objects.get(id=order_id)
-        if order.status != 'published':
-            raise serializers.ValidationError('Можно откликаться только на опубликованные заказы')
-        
         # Сохраняем отклик
-        response = serializer.save(creator=self.request.user, status='pending')
+        response = serializer.save(creator=user, status='pending')
         
         # Получаем связанный заказ и клиента
         client = order.client
-        creator = self.request.user
+        creator = user
+        
+        # Если это первый отклик на заказ и заказ в статусе 'published', меняем статус
+        if order.responses.count() == 1 and order.status == 'published':
+            order.change_status('awaiting_response')
+            order.save()
         
         # Создаём чат между клиентом и креатором для обсуждения заказа
         from chats.models import Chat, Message, SystemMessageTemplate
@@ -546,9 +592,10 @@ class OrderResponseViewSet(viewsets.ModelViewSet):
             )
         
         # Для приватных заказов, автоматически назначаем креатора и меняем статус заказа
-        if order.is_private and not order.creator and order.status == 'awaiting_response':
+        if order.is_private and order.target_creator == creator and not order.creator:
+            # Устанавливаем креатора и меняем статус заказа на 'in_progress'
             order.creator = creator
-            order.status = 'in_progress'
+            order.change_status('in_progress')
             order.save()
             
             # Отправляем сообщение о назначении креатора

@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 // Базовая конфигурация для axios
 const apiConfig: AxiosRequestConfig = {
-  baseURL: 'http://localhost:8000/api/',
+  baseURL: 'http://localhost:8000/api', // Убрали слеш в конце для предотвращения двойных слешей
   timeout: 30000, // 30 секунд таймаут
   headers: {
     'Content-Type': 'application/json',
@@ -28,8 +28,23 @@ apiClient.interceptors.request.use(
     }
     
     // Детальный лог запроса API
+    // Корректное формирование URL для логирования
+    let fullUrl = '';
+    if (config.baseURL && config.url) {
+      // Убедимся, что между baseURL и url есть только один слеш
+      if (config.baseURL.endsWith('/') && config.url.startsWith('/')) {
+        fullUrl = `${config.baseURL}${config.url.substring(1)}`;
+      } else if (!config.baseURL.endsWith('/') && !config.url.startsWith('/')) {
+        fullUrl = `${config.baseURL}/${config.url}`;
+      } else {
+        fullUrl = `${config.baseURL}${config.url}`;
+      }
+    } else {
+      fullUrl = `${config.baseURL || ''}${config.url || ''}`;
+    }
+    
     logApiDiagnostics('Отправка запроса', { 
-      url: `${config.baseURL || ''}${config.url || ''}`,
+      url: fullUrl,
       method: config.method,
       hasToken: !!token,
       tokenType: token ? (token.length < 50 ? 'Короткий токен' : 'JWT/Длинный токен') : 'Нет токена'
