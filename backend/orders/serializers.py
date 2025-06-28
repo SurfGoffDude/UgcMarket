@@ -224,6 +224,20 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             'status', 'days_left', 'is_overdue', 'views_count', 'created_at', 'updated_at',
             'attachments', 'responses', 'deliveries', 'reviews', 'is_private', 'references', 'can_view', 'can_respond'
         ]
+        
+    def get_can_view(self, obj):
+        """Проверяет, может ли текущий пользователь просматривать заказ."""
+        request = self.context.get('request')
+        if request and hasattr(request, 'user'):
+            return obj.can_be_viewed_by(request.user)
+        return obj.is_private is False
+        
+    def get_can_respond(self, obj):
+        """Проверяет, может ли текущий пользователь откликнуться на заказ."""
+        request = self.context.get('request')
+        if request and hasattr(request, 'user'):
+            return obj.can_respond(request.user)
+        return False
     
     def get_attachments(self, obj):
         """Возвращает вложения к заказу."""
