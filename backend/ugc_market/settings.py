@@ -18,8 +18,6 @@ import dotenv
 # Загрузка переменных окружения из .env файла
 dotenv.load_dotenv()
 
-# Проверка загрузки SECRET_KEY
-print(f"SECRET_KEY loaded: {'SECRET_KEY' in os.environ}")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent

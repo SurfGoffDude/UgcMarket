@@ -81,7 +81,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
       
       return result.id.toString();
     } catch (error: any) {
-      console.error('Ошибка при загрузке файла:', error);
+
       setErrors(prev => [...prev, `Ошибка при загрузке файла ${file.name}: ${error.message || 'Неизвестная ошибка'}`]);
       
       // Вызываем коллбэк onError, если он есть

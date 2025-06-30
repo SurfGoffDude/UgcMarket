@@ -60,7 +60,7 @@ const useAuth = (): AuthHook => {
           });
         }
       } catch (error) {
-        console.error('Ошибка при загрузке пользователя:', error);
+
         setAuthState(prev => ({ ...prev, loading: false }));
       }
     };
@@ -90,7 +90,7 @@ const useAuth = (): AuthHook => {
         // Сохраняем токен по двум ключам для совместимости
         localStorage.setItem('authToken', data.access);
         localStorage.setItem('access_token', data.access);
-        console.log('Токен сохранен в localStorage');
+
         
         // Загружаем данные пользователя
         const userResponse = await fetch('/api/auth/user/', {
@@ -113,7 +113,7 @@ const useAuth = (): AuthHook => {
       
       return false;
     } catch (error) {
-      console.error('Ошибка при входе:', error);
+
       return false;
     }
   };
@@ -151,7 +151,7 @@ const useAuth = (): AuthHook => {
       
       return false;
     } catch (error) {
-      console.error('Ошибка при регистрации:', error);
+
       return false;
     }
   };

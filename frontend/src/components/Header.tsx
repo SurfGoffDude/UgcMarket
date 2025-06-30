@@ -179,7 +179,7 @@ const Header = () => {
                   <DropdownMenuItem 
                     onClick={() => {
                       // Отладочный вывод для проверки данных пользователя
-                      console.log('Данные пользователя в выпадающем меню:', user, (user as any)?.creator_profile_id);
+
                       // Навигация в зависимости от наличия профиля креатора
                       navigate((user as any)?.creator_profile_id ? '/creator-profile' : '/client-profile');
                     }} 
@@ -275,17 +275,11 @@ const Header = () => {
                   </>
                 ) : (
                   <>
-                    {/* Добавляем консольный вывод для отладки значений */}
-                    {console.log('Данные пользователя в Header:', user)}
-                    {console.log('Профиль креатора:', {
-                      has_creator_profile: (user as any)?.has_creator_profile,
-                      creator_profile_id: (user as any)?.creator_profile_id
-                    })}
                     <Link 
                       to={(user as any)?.creator_profile_id ? "/creator-profile" : "/client-profile"} 
                       className="block" 
-                      onClick={toggleMenu}>
-                    
+                      onClick={toggleMenu}
+                    >
                       <Button className="w-full justify-center">
                         <User className="w-4 h-4 mr-2" />
                         Мой профиль

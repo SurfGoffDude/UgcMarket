@@ -10,7 +10,7 @@ export const fetchServices = async (): Promise<Service[]> => {
     const response = await apiClient.get<Service[]>('services/');
     return response.data;
   } catch (error) {
-    console.error('Ошибка при получении списка услуг:', error);
+
     throw error;
   }
 };
@@ -20,7 +20,7 @@ export const getServiceById = async (id: string): Promise<Service> => {
     const response = await apiClient.get<Service>(`/services/${id}/`);
     return response.data;
   } catch (error) {
-    console.error('Failed to fetch service:', error);
+
     throw error;
   }
 };

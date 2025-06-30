@@ -13,10 +13,7 @@ const apiConfig: AxiosRequestConfig = {
 // Создание экземпляра axios с базовой конфигурацией
 const apiClient: AxiosInstance = axios.create(apiConfig);
 
-// Диагностическая функция для отладки
-const logApiDiagnostics = (message: string, data?: any) => {
-  console.log(`%c[API DIAGNOSTICS] ${message}`, 'color: #9c27b0; font-weight: bold', data || '');
-};
+
 
 // Перехватчик для добавления токена авторизации ко всем запросам
 apiClient.interceptors.request.use(
@@ -43,12 +40,7 @@ apiClient.interceptors.request.use(
       fullUrl = `${config.baseURL || ''}${config.url || ''}`;
     }
     
-    logApiDiagnostics('Отправка запроса', { 
-      url: fullUrl,
-      method: config.method,
-      hasToken: !!token,
-      tokenType: token ? (token.length < 50 ? 'Короткий токен' : 'JWT/Длинный токен') : 'Нет токена'
-    });
+
     
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -56,7 +48,7 @@ apiClient.interceptors.request.use(
     return config;
   },
   (error) => {
-    logApiDiagnostics('Ошибка при отправке запроса', error);
+
     return Promise.reject(error);
   }
 );
@@ -65,31 +57,17 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
     // Логируем успешные ответы, особенно для профиля креатора
-    if (response.config.url?.includes('creator-profile') || response.config.url?.includes('creator-profiles')) {
-      logApiDiagnostics('Получен ответ профиля креатора', {
-        url: response.config.url,
-        status: response.status,
-        statusText: response.statusText,
-        data: response.data
-      });
-    }
+
     return response;
   },
   async (error) => {
-    // Логируем ошибки API
-    logApiDiagnostics('Ошибка API', {
-      url: error.config?.url,
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
-      message: error.message
-    });
+    // Обработка ошибок API
 
     const originalRequest = error.config;
     
     // Если ошибка 401 (не авторизован) и не было попытки обновления токена
     if (error.response?.status === 401 && !originalRequest._retry) {
-      logApiDiagnostics('Попытка обновления токена');
+
       originalRequest._retry = true;
       
       try {

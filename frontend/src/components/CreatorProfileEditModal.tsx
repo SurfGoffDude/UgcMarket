@@ -90,7 +90,7 @@ const CreatorProfileEditModal: React.FC<CreatorProfileEditModalProps> = ({ isOpe
         onProfileUpdate();
         onClose();
     } catch (error) {
-        console.error("Failed to update profile:", error);
+
     }
   };
 

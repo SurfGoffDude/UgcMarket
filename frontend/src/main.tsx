@@ -11,13 +11,13 @@ import { checkReactDevTools } from './utils/devtools'
 // Проверяем наличие React DevTools и выводим подсказки
 checkReactDevTools();
 
-console.log('Mounting app...');
+
 const rootElement = document.getElementById('root');
 
 if (!rootElement) {
-  console.error('Failed to find the root element');
+
 } else {
-  console.log('Root element found, mounting app...');
+
   const root = createRoot(rootElement);
   root.render(
     <Provider store={store}>

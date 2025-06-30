@@ -64,10 +64,7 @@ interface PortfolioItemProps {
  * @returns {React.ReactElement}
  */
 const PortfolioItem: React.FC<PortfolioItemProps> = ({ item }) => {
-  // Отладочный код - выводим в консоль структуру объекта
-  useEffect(() => {
-    console.log('[DEBUG] PortfolioItem - получены данные:', item);
-  }, [item]);
+
   /**
    * Получает заголовок элемента портфолио
    * @returns {string} Заголовок
@@ -88,33 +85,27 @@ const PortfolioItem: React.FC<PortfolioItemProps> = ({ item }) => {
     
     // Проверяем поле cover_image_url (фактически используемое API)
     if (apiItem.cover_image_url) {
-      console.log('[DEBUG] Используем cover_image_url:', apiItem.cover_image_url);
       return apiItem.cover_image_url;
     }
     
     // Другие возможные поля с URL изображений
     if (apiItem.thumbnail_url) {
-      console.log('[DEBUG] Используем thumbnail_url:', apiItem.thumbnail_url);
       return apiItem.thumbnail_url;
     }
     
     if (apiItem.cover_image) {
-      console.log('[DEBUG] Используем cover_image:', apiItem.cover_image);
       return apiItem.cover_image;
     }
     
     if (apiItem.image) {
-      console.log('[DEBUG] Используем image:', apiItem.image);
       return apiItem.image;
     }
     
     // Проверяем наличие изображений в массиве
     if (apiItem.images && apiItem.images.length > 0 && apiItem.images[0]?.image) {
-      console.log('[DEBUG] Используем изображение из массива:', apiItem.images[0].image);
       return apiItem.images[0].image;
     }
     
-    console.log('[DEBUG] Изображения не найдены, используем placeholder');
     return 'https://via.placeholder.com/300';
   };
   

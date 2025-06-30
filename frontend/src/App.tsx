@@ -52,7 +52,7 @@ import * as serviceWorkerRegistration from "./serviceWorkerRegistration";
 
 const queryClient = new QueryClient();
 
-console.log('Rendering App component');
+
 
 /**
  * Главный компонент приложения
@@ -64,10 +64,10 @@ const App = () => {
     // Регистрируем Service Worker для получения push-уведомлений
     serviceWorkerRegistration.register({
       onSuccess: (registration) => {
-        console.log('Service Worker успешно зарегистрирован:', registration);
+
       },
       onUpdate: (registration) => {
-        console.log('Обнаружена новая версия Service Worker:', registration);
+
       },
     });
     

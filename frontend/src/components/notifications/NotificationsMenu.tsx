@@ -81,7 +81,7 @@ const NotificationsMenu: React.FC<NotificationsMenuProps> = ({
     try {
       await markAllAsRead(undefined).unwrap();
     } catch (error) {
-      console.error('Ошибка при отметке уведомлений как прочитанных:', error);
+
     }
   };
 
@@ -90,7 +90,7 @@ const NotificationsMenu: React.FC<NotificationsMenuProps> = ({
     try {
       await clearAllNotifications(undefined).unwrap();
     } catch (error) {
-      console.error('Ошибка при удалении всех уведомлений:', error);
+
     }
   };
 

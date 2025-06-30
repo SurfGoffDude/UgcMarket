@@ -93,7 +93,7 @@ export function useCreator(id?: string, immediate = true) {
       
       return creatorProfile;
     } catch (error) {
-      console.error('Ошибка при получении профиля креатора:', error);
+
       throw error;
     }
   }, [id]);
@@ -115,7 +115,7 @@ export function useCreatorProfile(id?: string) {
   const { data: creator, loading: loadingMain, error, execute } = useFetch(
     async () => {
       try {
-        console.log('[DEBUG] useCreatorProfile - начало загрузки профиля и дополнительных данных');
+
         
         // Получаем основные данные профиля
         let profileData;
@@ -124,24 +124,24 @@ export function useCreatorProfile(id?: string) {
         if (!id) {
           try {
             // Используем прямой эндпоинт creator-profile/
-            console.log('[DEBUG] useCreatorProfile - отправка запроса к creator-profile/');
+
             const response = await apiClient.get('creator-profile/');
-            console.log('[INFO] useCreatorProfile - получен профиль креатора:', response.data);
+
             profileData = response.data;
           } catch (error) {
             // Если получили 404, значит профиля нет
             if (error.response && error.response.status === 404) {
-              console.log('[INFO] useCreatorProfile - у пользователя нет профиля креатора (404 от API)');
+
               return null;
             }
-            console.error('[ERROR] useCreatorProfile - ошибка при получении профиля креатора:', error);
+
             throw error;
           }
         } else {
           // Получаем данные по конкретному ID (например, для просмотра чужого профиля)
-          console.log('[DEBUG] useCreatorProfile - загрузка профиля по конкретному ID:', id);
+
           const response = await apiClient.get(`creator-profiles/${id}/`);
-          console.log('[INFO] useCreatorProfile - данные профиля креатора по ID:', response?.data);
+
           profileData = response?.data;
         }
         
@@ -157,18 +157,18 @@ export function useCreatorProfile(id?: string) {
           setLoadingAdditional(true);
           
           // Получаем навыки креатора
-          console.log('[DEBUG] useCreatorProfile - загрузка навыков для профиля:', profileData.id);
+
           const skillsResponse = await apiClient.get(`/creator-skills/?creator_profile=${profileData.id}`);
           enrichedData.skills = skillsResponse.data.results || [];
           
           // Получаем портфолио креатора
-          console.log('[DEBUG] useCreatorProfile - загрузка портфолио для профиля:', profileData.id);
+
           const portfolioResponse = await apiClient.get(`portfolio/?creator_profile=${profileData.id}`);
           const portfolioItems = portfolioResponse.data.results || [];
           
           // Для каждого элемента портфолио получаем изображения (параллельно)
           if (portfolioItems.length > 0) {
-            console.log('[DEBUG] useCreatorProfile - загрузка изображений для элементов портфолио');
+
             const portfolioWithImages = await Promise.all(
               portfolioItems.map(async (item) => {
                 const imagesResponse = await apiClient.get(`/portfolio-images/?portfolio_item=${item.id}`);
@@ -182,15 +182,11 @@ export function useCreatorProfile(id?: string) {
           } else {
             enrichedData.portfolio = [];
           }
-          
-          console.log('[INFO] useCreatorProfile - загружен полный профиль с дополнительными данными:', {
-            skillsCount: enrichedData.skills?.length || 0,
-            portfolioCount: enrichedData.portfolio?.length || 0
-          });
+
         } catch (error) {
           // Если произошла ошибка при загрузке дополнительных данных,
           // логируем ее, но возвращаем хотя бы основные данные профиля
-          console.error('[ERROR] useCreatorProfile - ошибка при получении дополнительных данных:', error);
+
           enrichedData.loadError = 'Не удалось загрузить все данные профиля';
         } finally {
           setLoadingAdditional(false);
@@ -198,7 +194,7 @@ export function useCreatorProfile(id?: string) {
         
         return enrichedData;
       } catch (error) {
-        console.error('[ERROR] useCreatorProfile - критическая ошибка при загрузке профиля:', error);
+
         throw error;
       }
     },
@@ -227,7 +223,7 @@ export function useServices(params?: RequestParams, immediate = true) {
       const response = await apiClient.get('/services/', { params });
       return response.data;
     } catch (error) {
-      console.error('Ошибка при получении услуг:', error);
+
       throw error;
     }
   }, [JSON.stringify(params)]);
@@ -342,34 +338,34 @@ export function useClientProfile(id?: string) {
   const { data, loading, error, execute } = useFetch(
     async () => {
       try {
-        console.log('[DEBUG] useClientProfile - начало загрузки профиля');
+
 
         // Если ID не указан, получаем данные текущего профиля через новый прямой эндпоинт
         if (!id) {
           try {
             // Используем прямой эндпоинт client-profile/
-            console.log('[DEBUG] useClientProfile - отправка запроса к client-profile/');
+
             const response = await apiClient.get('client-profile/');
-            console.log('[INFO] useClientProfile - получен профиль клиента:', response.data);
+
             return response.data || null;
           } catch (error) {
             // Если получили 404, значит профиля нет
             if (error.response && error.response.status === 404) {
-              console.log('[INFO] useClientProfile - у пользователя нет профиля клиента (404 от API)');
+
               return null;
             }
-            console.error('[ERROR] useClientProfile - ошибка при получении профиля клиента:', error);
+
             return null;
           }
         } else {
           // Получаем данные по конкретному ID (например, для просмотра чужого профиля)
-          console.log('[DEBUG] useClientProfile - загрузка профиля по конкретному ID:', id);
+
           const response = await apiClient.get(`client-profiles/${id}/`);
-          console.log('[INFO] useClientProfile - данные профиля клиента по ID:', response?.data);
+
           return response?.data || null;
         }
       } catch (error) {
-        console.error('[ERROR] useClientProfile - критическая ошибка при загрузке профиля:', error);
+
         throw error;
       }
     },

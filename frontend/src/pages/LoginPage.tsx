@@ -49,7 +49,7 @@ const LoginPage: React.FC = () => {
         setError('Не удалось войти. Пожалуйста, проверьте учетные данные и повторите попытку.');
       }
     } catch (err) {
-      console.error('Ошибка входа:', err);
+
       setError(err instanceof Error ? err.message : 'Не удалось войти. Пожалуйста, проверьте учетные данные и повторите попытку.');
     } finally {
       setLoading(false);

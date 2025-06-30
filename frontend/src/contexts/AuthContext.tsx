@@ -32,19 +32,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (authState.token) {
         try {
           const response = await authApi.getCurrentUser();
-          console.log('Данные пользователя при проверке авторизации:', response.data);
-          console.log('Поля профиля креатора:', {
-            has_creator_profile: response.data.has_creator_profile,
-            creator_profile_id: response.data.creator_profile_id
-          });
+
           setAuthState(prev => ({
             ...prev,
             isAuthenticated: true,
-            user: response.data,
+            user: {
+              ...response.data,
+              has_creator_profile: response.data.has_creator_profile,
+              creator_profile_id: response.data.creator_profile_id
+            },
             loading: false
           }));
         } catch (error) {
-          console.error('Ошибка при получении данных пользователя:', error);
           // Если токен недействителен, выходим из системы
           handleLogout();
         }
@@ -80,7 +79,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       return true;
     } catch (error) {
-      console.error('Ошибка при входе в систему:', error);
+
       return false;
     }
   };
@@ -95,7 +94,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       return true;
     } catch (error) {
-      console.error('Ошибка при регистрации:', error);
+
       return false;
     }
   };

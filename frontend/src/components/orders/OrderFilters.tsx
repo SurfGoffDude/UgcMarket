@@ -99,12 +99,12 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({ onFilterChange, initialFilt
     const fetchCategoriesAndTags = async () => {
       try {
         setIsLoading(true);
-        console.log('Начинаем загрузку категорий и тегов...');
+
 
         // Загружаем категории
         const categoriesResponse = await apiClient.get('/categories/');
         const categories = categoriesResponse.data.results || [];
-        console.log('Загружено категорий:', categories.length);
+
         
         // Загружаем теги с типом 'order'
         const tagsResponse = await apiClient.get('/tags/', {
@@ -115,11 +115,11 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({ onFilterChange, initialFilt
 
         // Проверяем структуру ответа для получения массива тегов
         const allTags = tagsResponse.data.results ? tagsResponse.data.results : [];
-        console.log('Загружено тегов с типом order:', allTags.length);
+
         
         // Выведем структуру первого тега для отладки
         if (allTags.length > 0) {
-          console.log('Пример тега:', JSON.stringify(allTags[0], null, 2));
+
         }
         
         // Создаем Map для уникальных категорий        
@@ -138,7 +138,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({ onFilterChange, initialFilt
           }
         });
         
-        console.log('Всего уникальных категорий:', categoryMap.size);
+
         
         // Счётчики для отладки
         let tagsWithCategory = 0;
@@ -166,10 +166,10 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({ onFilterChange, initialFilt
           }
         });
         
-        console.log(`Тегов с категориями: ${tagsWithCategory}, успешно сопоставлено с категориями: ${tagsMatchedToCategory}`);
+
         
         // Выведем все категории для отладки
-        console.log('Категории в Map:', Array.from(categoryMap.keys()));
+
         
         // Преобразуем Map в массив и сохраняем ВСЕ категории, даже если в них нет тегов
         const allCategories: CategoryResponse[] = [];
@@ -177,10 +177,10 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({ onFilterChange, initialFilt
           allCategories.push(categoryData);
         });
         
-        console.log('Всего категорий:', allCategories.length);
-        console.log('Категории без тегов:', allCategories.filter(cat => cat.tags.length === 0).length);
+
+        
         allCategories.forEach(cat => {
-          console.log(`Категория ${cat.name}: тегов ${cat.tags.length}`);
+
         });
         
         // Преобразуем данные в нужный формат
@@ -189,7 +189,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({ onFilterChange, initialFilt
           name: category.name,
           // Добавляем отладочный вывод для тегов
           tags: category.tags.map((tag: any) => {
-            console.log(`Тег ${tag.name}: id=${tag.id}, slug=${tag.slug || 'отсутствует'}`);
+
             return {
               id: tag.id,
               name: tag.name,
@@ -198,7 +198,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({ onFilterChange, initialFilt
           })
         }));
         
-        console.log('Преобразованных категорий:', transformedCategories.length);
+
         setTagCategories(transformedCategories);
         
         // Если есть хотя бы одна категория, раскрываем её
@@ -206,7 +206,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({ onFilterChange, initialFilt
           setExpandedCategories([transformedCategories[0].id]);
         }
       } catch (error) {
-        console.error('Ошибка при загрузке категорий и тегов:', error);
+
       } finally {
         setIsLoading(false);
       }

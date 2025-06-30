@@ -61,6 +61,8 @@ const ProfilePage: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editForm, setEditForm] = useState<Partial<UserProfile>>({});
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Функция для безопасного приведения объекта user к типу UserProfile
   const getUserProfile = (userData: any): UserProfile => {
@@ -116,7 +118,7 @@ const ProfilePage: React.FC = () => {
           navigate('/login');
         }
       } catch (err) {
-        console.error('Ошибка при загрузке профиля:', err);
+
         setError('Не удалось загрузить данные профиля.');
       } finally {
         setIsLoading(false);
@@ -143,7 +145,7 @@ const ProfilePage: React.FC = () => {
       // Для реального API здесь будет:
       // await api.updateProfile(profile?.id || 0, editForm);
       
-      console.log('Данные для обновления:', editForm);
+
       
       // Обновляем локальное состояние
       if (profile) {
@@ -160,7 +162,7 @@ const ProfilePage: React.FC = () => {
         description: "Ваши данные успешно сохранены",
       });
     } catch (err) {
-      console.error('Ошибка при обновлении профиля:', err);
+
       toast({
         variant: "destructive",
         title: "Ошибка",

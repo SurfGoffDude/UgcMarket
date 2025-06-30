@@ -209,13 +209,6 @@ const CreatorProfileEditPage: React.FC = () => {
         formData.append('user.avatar', avatar);
       }
       
-      console.log('[DEBUG] Отправка данных профиля:', {
-        formData: Array.from(formData.entries()).reduce((obj, [key, value]) => {
-          obj[key] = value;
-          return obj;
-        }, {} as Record<string, any>),
-        creatorProfileData
-      });
       
       // Отправляем обновление профиля креатора
       await apiClient.patch(`creator-profiles/${id}/`, formData, {
@@ -241,10 +234,8 @@ const CreatorProfileEditPage: React.FC = () => {
         navigate(`/creator-profile?updated=true`);
       }
     } catch (err: any) {
-      console.error('Ошибка при обновлении профиля:', err);
       
       // Обрабатываем ошибку и показываем уведомление
-      console.log('Детали ошибки:', err.response?.data);
       
       let errorMessage = 'Произошла ошибка при обновлении профиля';
       

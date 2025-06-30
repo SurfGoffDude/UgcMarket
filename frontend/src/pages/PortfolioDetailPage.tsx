@@ -62,31 +62,17 @@ const PortfolioDetailPage = () => {
       setError(null);
       try {
         // Получаем данные о работе
-        console.log(`[DEBUG] Загрузка работы с ID: ${id}`);
         const response = await apiClient.get(`portfolio/${id}/`);
-        console.log('[DEBUG] Получен ответ:', response.data);
         setPortfolioItem(response.data);
         
         // Загружаем дополнительные изображения для работы
-        console.log(`[DEBUG] Загрузка изображений для работы с ID: ${id}`);
         const imagesResponse = await apiClient.get(`portfolio-images/?portfolio_item=${id}`);
-        console.log('[DEBUG] Получены изображения:', imagesResponse.data);
         
         // Подробный вывод структуры первого изображения для отладки
         if (imagesResponse.data.results && imagesResponse.data.results.length > 0) {
           const firstImage = imagesResponse.data.results[0];
-          console.log('[DEBUG] Структура первого изображения:');
-          console.log('[DEBUG] Ключи объекта:', Object.keys(firstImage));
-          Object.entries(firstImage).forEach(([key, value]) => {
-            console.log(`[DEBUG] - ${key}: ${value}`);
-          });
         } else if (Array.isArray(imagesResponse.data) && imagesResponse.data.length > 0) {
           const firstImage = imagesResponse.data[0];
-          console.log('[DEBUG] Структура первого изображения:');
-          console.log('[DEBUG] Ключи объекта:', Object.keys(firstImage));
-          Object.entries(firstImage).forEach(([key, value]) => {
-            console.log(`[DEBUG] - ${key}: ${value}`);
-          });
         }
         
         // Обрабатываем разные форматы API ответа (массив или объект с results)
@@ -97,7 +83,6 @@ const PortfolioDetailPage = () => {
           imagesArray = imagesResponse.data.results;
         }
         
-        console.log(`[DEBUG] Найдено ${imagesArray.length} дополнительных изображений`);
         setPortfolioImages(imagesArray);
         
         // Вызываем эндпоинт для увеличения счетчика просмотров (если такой есть)
@@ -105,10 +90,8 @@ const PortfolioDetailPage = () => {
           await apiClient.post(`portfolio/${id}/view/`);
         } catch (viewError) {
           // Если эндпоинта для просмотров нет, игнорируем ошибку
-          console.log('[DEBUG] Не удалось увеличить счетчик просмотров:', viewError);
         }
       } catch (err: any) {
-        console.error('Ошибка при загрузке детальной информации о работе:', err);
         setError(err?.response?.data?.detail || 'Не удалось загрузить информацию о работе');
         toast({
           title: 'Ошибка',
@@ -143,7 +126,6 @@ const PortfolioDetailPage = () => {
     const totalImages = getTotalImagesCount();
     if (totalImages > 1) {
       setCurrentImageIndex((currentImageIndex + 1) % totalImages);
-      console.log(`[DEBUG] Переключение на следующее изображение: ${(currentImageIndex + 1) % totalImages}`);
     }
   };
   
@@ -152,7 +134,6 @@ const PortfolioDetailPage = () => {
     const totalImages = getTotalImagesCount();
     if (totalImages > 1) {
       setCurrentImageIndex((currentImageIndex - 1 + totalImages) % totalImages);
-      console.log(`[DEBUG] Переключение на предыдущее изображение: ${(currentImageIndex - 1 + totalImages) % totalImages}`);
     }
   };
   
@@ -163,41 +144,37 @@ const PortfolioDetailPage = () => {
     // Если индекс 0, показываем основное изображение, иначе изображение из галереи
     if (currentImageIndex === 0) {
       // Проверяем наличие обложки в разных полях
-      console.log('[DEBUG] Получение основного изображения для детальной страницы');
       
       // Приоритет полей: cover_image_url, cover_image
       if (portfolioItem.cover_image_url) {
-        console.log('[DEBUG] Используем cover_image_url:', portfolioItem.cover_image_url);
         return portfolioItem.cover_image_url;
       }
       
       if (portfolioItem.cover_image) {
-        console.log('[DEBUG] Используем cover_image:', portfolioItem.cover_image);
         return portfolioItem.cover_image;
       }
       
-      console.log('[DEBUG] Обложка не найдена, используем placeholder');
       return 'https://via.placeholder.com/800x600?text=Изображение+недоступно';
     } else {
       // Получаем изображение из массива дополнительных изображений
       const imageIndex = currentImageIndex - 1; // -1, т.к. индекс 0 - это основное изображение
       if (portfolioImages && portfolioImages[imageIndex]) {
         const image = portfolioImages[imageIndex];
-        console.log(`[DEBUG] Детали дополнительного изображения #${imageIndex}:`, image);
+  
         
         // Проверяем разные возможные поля для URL изображения
         if (image.image_url) {
-          console.log(`[DEBUG] Используем поле image_url:`, image.image_url);
+  
           return image.image_url;
         }
         
         if (image.url) {
-          console.log(`[DEBUG] Используем поле url:`, image.url);
+  
           return image.url;
         }
         
         if (image.image) {
-          console.log(`[DEBUG] Используем поле image:`, image.image);
+  
           return image.image;
         }
         
@@ -209,12 +186,12 @@ const PortfolioDetailPage = () => {
             key.includes('photo') || 
             key.includes('file')
           )) {
-            console.log(`[DEBUG] Найдено похожее поле ${key}:`, value);
+  
             return value;
           }
         }
         
-        console.log('[DEBUG] Не удалось найти URL изображения в данных API');
+
       }
     }
     

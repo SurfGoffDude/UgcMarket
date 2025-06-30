@@ -54,11 +54,11 @@ const OrdersList: React.FC<OrdersListProps> = ({
     
     // Собираем все выбранные slug'и тегов из всех категорий
     Object.entries(selectedTags).forEach(([categoryId, tagSlugs]) => {
-      console.log(`Категория: ${categoryId}, выбранные теги:`, tagSlugs);
+
       tagsArray.push(...tagSlugs);
     });
     
-    console.log('Итоговый массив slug тегов для API:', tagsArray);
+
     return tagsArray;
   };
 
@@ -87,7 +87,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
       if (selectedTagsArray.length > 0) {
         const tagsParam = selectedTagsArray.join(',');
         requestParams.tags = tagsParam;
-        console.log('Отправляем параметр tags в API:', tagsParam);
+
       }
       
       requestParams.ordering = sortOrder === 'newest' ? '-created_at' : 
@@ -111,7 +111,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
       setPage(resetPage ? 2 : currentPage + 1);
       setError(null);
     } catch (err) {
-      console.error('Ошибка загрузки заказов:', err);
+
       setError(`Ошибка загрузки заказов: ${err instanceof Error ? err.message : 'Произошла ошибка при выполнении запроса'}`);
     } finally {
       setLoading(false);

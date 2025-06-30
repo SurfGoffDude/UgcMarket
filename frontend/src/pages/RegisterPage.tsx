@@ -74,12 +74,11 @@ const RegisterPage: React.FC = () => {
     setError(null);
     setErrors({});
     
-    console.log('=== Начало процесса регистрации ===');
-    console.log('Форма отправлена со следующими данными:', { ...formData, password: '***', password_confirm: '***' });
+
     
     // Проверяем совпадение паролей
     if (formData.password !== formData.password_confirm) {
-      console.log('Ошибка валидации: пароли не совпадают');
+
       setErrors({
         password_confirm: ['Пароли не совпадают']
       });
@@ -88,13 +87,13 @@ const RegisterPage: React.FC = () => {
 
     // Проверка на принятие условий
     if (!acceptTerms) {
-      console.log('Ошибка валидации: не приняты условия пользовательского соглашения');
+
       setError('Необходимо принять условия пользовательского соглашения');
       return;
     }
 
     setLoading(true);
-    console.log('Индикатор загрузки активирован');
+
 
     try {
       // Подготавливаем данные для регистрации - явно указываем все обязательные поля
@@ -110,45 +109,16 @@ const RegisterPage: React.FC = () => {
         user_type: formData.user_type || 'client'
       } as RegisterRequest;
 
-      // Выводим в консоль детали отправляемых данных для отладки
-      console.log('Отправляемые данные регистрации:', {
-        username: userData.username,
-        email: userData.email,
-        password: '***',
-        password_confirm: '***',
-        first_name: userData.first_name,
-        last_name: userData.last_name,
-        phone: userData.phone,
-        user_type: userData.user_type
-      });
-      console.log('Вызов метода register из контекста AuthContext');
-      
-      // Перехватываем и логируем ошибки непосредственно при вызове функции register
+      // Вызываем метод регистрации из контекста аутентификации
       let success;
       try {
-        // Вызываем метод регистрации из контекста аутентификации
         success = await register(userData);
-        console.log('Функция register успешно выполнена, результат:', success);
       } catch (registerError: any) {
-        console.error('Ошибка внутри функции register:', registerError);
-        // Дополнительная диагностика ошибки
-        console.error('Детали ошибки register:', {
-          name: registerError.name,
-          message: registerError.message,
-          stack: registerError.stack,
-          response: registerError.response ? {
-            status: registerError.response.status,
-            statusText: registerError.response.statusText,
-            headers: registerError.response.headers,
-            data: registerError.response.data
-          } : 'Нет данных ответа'
-        });
-        
         // Обрабатываем ошибки валидации от сервера
-        if (registerError.response && registerError.response.data) {
+        if(registerError?.response?.data && typeof registerError.response.data === 'object') {
           // Если есть данные об ошибках валидации
           const serverErrors = registerError.response.data;
-          console.log('Ошибки валидации от сервера:', serverErrors);
+
           
           // Устанавливаем ошибки в состояние компонента
           setErrors(serverErrors);
@@ -163,33 +133,21 @@ const RegisterPage: React.FC = () => {
       }
       
       if (success) {
-        console.log('Регистрация успешна, перенаправление на страницу входа');
+
         // Перенаправляем на страницу входа с сообщением о подтверждении email
         navigate('/login', { 
           state: { message: 'На ваш email отправлено письмо с инструкциями по подтверждению аккаунта.' } 
         });
       } else {
-        console.log('Функция register вернула false, регистрация не удалась');
+
         setError('Не удалось зарегистрироваться. Пожалуйста, попробуйте еще раз.');
       }
     } catch (err: any) {
-      console.error('=== Перехваченная ошибка при регистрации ===');
-      console.error('Тип ошибки:', typeof err, 'Имя ошибки:', err.name);
-      console.error('Сообщение ошибки:', err.message);
-      console.error('Стек ошибки:', err.stack);
+
       
       // Улучшенная обработка ошибок валидации с бэкенда
       if (err.response) {
-        console.error('Детали ответа с ошибкой:', {
-          status: err.response.status,
-          statusText: err.response.statusText,
-          headers: err.response.headers,
-          data: err.response.data,
-          config: err.config
-        });
-        
         if (typeof err.response.data === 'object') {
-          console.log('Ошибка представляет собой объект с полями валидации:', err.response.data);
           setErrors(err.response.data);
         } else {
           const errorMessage = typeof err.response.data === 'string' ? err.response.data : 'Ошибка сервера';

@@ -46,14 +46,12 @@ export const createOrder = async (payload: CreateOrderPayload): Promise<Order> =
   try {
     // Эндпоинт со слешем на конце для совместимости с Django APPEND_SLASH
     const response = await apiClient.post<Order>('orders/', payload);
-    console.log('Заказ успешно создан:', response.data);
+
     return response.data;
   } catch (error: any) {
-    console.error('Ошибка при создании заказа:', error);
-    // Лучшая обработка ошибок с дополнительной информацией
+    // Обработка ошибок
     if (error.response) {
-      console.error('Данные ответа:', error.response.data);
-      console.error('Статус ответа:', error.response.status);
+      // Обработка ответа от сервера с ошибкой
     }
     throw error;
   }
@@ -66,15 +64,12 @@ export const createOrder = async (payload: CreateOrderPayload): Promise<Order> =
  */
 export const createCustomOrder = async (payload: CustomOrderPayload): Promise<Order> => {
   try {
-    console.log('Отправка данных для создания произвольного заказа:', payload);
     const response = await apiClient.post<Order>('orders/custom/', payload);
-    console.log('Произвольный заказ успешно создан:', response.data);
     return response.data;
   } catch (error: any) {
-    console.error('Ошибка при создании произвольного заказа:', error);
+    // Обработка ошибок
     if (error.response) {
-      console.error('Данные ответа:', error.response.data);
-      console.error('Статус ответа:', error.response.status);
+      // Обработка ответа от сервера с ошибкой
     }
     throw error;
   }
@@ -87,24 +82,13 @@ export const createCustomOrder = async (payload: CustomOrderPayload): Promise<Or
  */
 export const getOrder = async (orderId: number): Promise<Order> => {
   try {
-    // Расширенное логирование для отладки
-    console.log(`Запрос детальной информации заказа #${orderId}`, {
-      orderId,
-      typeOfOrderId: typeof orderId,
-      isNaN: isNaN(orderId)
-    });
-    
     const url = `orders/${orderId}/`;
-    console.log(`Формируемый URL: ${url}`);
-    
     const response = await apiClient.get<Order>(url);
-    console.log('Детали заказа получены:', response.data);
     return response.data;
   } catch (error: any) {
-    console.error(`Ошибка при получении информации о заказе #${orderId}:`, error);
+    // Обработка ошибок
     if (error.response) {
-      console.error('Данные ответа:', error.response.data);
-      console.error('Статус ответа:', error.response.status);
+      // Обработка ответа от сервера с ошибкой
     }
     throw error;
   }
@@ -132,10 +116,10 @@ export const getOrders = async (page?: number, filters?: Record<string, any>) =>
     const response = await apiClient.get(url, { params });
     return response.data;
   } catch (error: any) {
-    console.error('Ошибка при получении списка заказов:', error);
+
     if (error.response) {
-      console.error('Данные ответа:', error.response.data);
-      console.error('Статус ответа:', error.response.status);
+
+
     }
     throw error;
   }
@@ -149,13 +133,10 @@ export const getOrders = async (page?: number, filters?: Record<string, any>) =>
 export const acceptOrder = async (orderId: number): Promise<Order> => {
   try {
     const response = await apiClient.post<Order>(`orders/${orderId}/accept/`);
-    console.log('Заказ успешно принят в работу:', response.data);
+
     return response.data;
   } catch (error: any) {
-    console.error(`Ошибка при принятии заказа #${orderId}:`, error);
     if (error.response) {
-      console.error('Данные ответа:', error.response.data);
-      console.error('Статус ответа:', error.response.status);
     }
     throw error;
   }
@@ -174,13 +155,12 @@ export const deliverOrder = async (orderId: number, formData: FormData): Promise
         'Content-Type': 'multipart/form-data'
       }
     });
-    console.log('Заказ успешно доставлен:', response.data);
+
     return response.data;
   } catch (error: any) {
-    console.error(`Ошибка при доставке заказа #${orderId}:`, error);
+    // Обработка ошибок
     if (error.response) {
-      console.error('Данные ответа:', error.response.data);
-      console.error('Статус ответа:', error.response.status);
+      // Обработка ответа от сервера с ошибкой
     }
     throw error;
   }
@@ -195,13 +175,12 @@ export const deliverOrder = async (orderId: number, formData: FormData): Promise
 export const requestRevision = async (orderId: number, reason: string): Promise<Order> => {
   try {
     const response = await apiClient.post<Order>(`orders/${orderId}/request-revision/`, { reason });
-    console.log('Запрос на доработку успешно отправлен:', response.data);
+
     return response.data;
   } catch (error: any) {
-    console.error(`Ошибка при запросе доработки заказа #${orderId}:`, error);
+    // Обработка ошибок
     if (error.response) {
-      console.error('Данные ответа:', error.response.data);
-      console.error('Статус ответа:', error.response.status);
+      // Обработка ответа от сервера с ошибкой
     }
     throw error;
   }
@@ -216,13 +195,12 @@ export const requestRevision = async (orderId: number, reason: string): Promise<
 export const completeOrder = async (orderId: number, comment?: string): Promise<Order> => {
   try {
     const response = await apiClient.post<Order>(`orders/${orderId}/complete/`, comment ? { comment } : {});
-    console.log('Заказ успешно завершен:', response.data);
+
     return response.data;
   } catch (error: any) {
-    console.error(`Ошибка при завершении заказа #${orderId}:`, error);
+    // Обработка ошибок
     if (error.response) {
-      console.error('Данные ответа:', error.response.data);
-      console.error('Статус ответа:', error.response.status);
+      // Обработка ответа от сервера с ошибкой
     }
     throw error;
   }
@@ -237,13 +215,12 @@ export const completeOrder = async (orderId: number, comment?: string): Promise<
 export const cancelOrder = async (orderId: number, reason: string): Promise<Order> => {
   try {
     const response = await apiClient.post<Order>(`orders/${orderId}/cancel/`, { reason });
-    console.log('Заказ успешно отменен:', response.data);
+
     return response.data;
   } catch (error: any) {
-    console.error(`Ошибка при отмене заказа #${orderId}:`, error);
+    // Обработка ошибок
     if (error.response) {
-      console.error('Данные ответа:', error.response.data);
-      console.error('Статус ответа:', error.response.status);
+      // Обработка ответа от сервера с ошибкой
     }
     throw error;
   }
@@ -258,13 +235,12 @@ export const cancelOrder = async (orderId: number, reason: string): Promise<Orde
 export const openDispute = async (orderId: number, reason: string): Promise<Order> => {
   try {
     const response = await apiClient.post<Order>(`orders/${orderId}/dispute/`, { reason });
-    console.log('Спор по заказу успешно открыт:', response.data);
+
     return response.data;
   } catch (error: any) {
-    console.error(`Ошибка при открытии спора по заказу #${orderId}:`, error);
+    // Обработка ошибок
     if (error.response) {
-      console.error('Данные ответа:', error.response.data);
-      console.error('Статус ответа:', error.response.status);
+      // Обработка ответа от сервера с ошибкой
     }
     throw error;
   }
@@ -277,41 +253,27 @@ export const openDispute = async (orderId: number, reason: string): Promise<Orde
 export const getTags = async (): Promise<BackendTag[]> => {
   try {
     const response = await apiClient.get<TagsResponse | BackendTag[]>('tags/');
-    console.log('Получены теги с бэкенда:', response.data);
-    
-    // Тестовый вывод данных о первых 5 тегах для анализа их структуры
-    if (Array.isArray(response.data) && response.data.length > 0) {
-      console.log('Тестовый вывод первых 5 тегов:');
-      for (let i = 0; i < Math.min(5, response.data.length); i++) {
-        console.log(`Тег ${i}:`, JSON.stringify(response.data[i], null, 2));
-      }
-    } else if (response.data && 'results' in response.data && Array.isArray(response.data.results) && response.data.results.length > 0) {
-      console.log('Тестовый вывод первых 5 тегов (пагинированных):');
-      for (let i = 0; i < Math.min(5, response.data.results.length); i++) {
-        console.log(`Тег ${i}:`, JSON.stringify(response.data.results[i], null, 2));
-      }
-    }
+
     
     // Проверяем, в каком формате пришел ответ с тегами
     // Если это пагинированный результат (TagsResponse), то берем results
     if (response.data && 'results' in response.data && Array.isArray(response.data.results)) {
-      console.log('Получены теги с бэкенда (пагинированные):', response.data.results);
+
       return response.data.results;
     }
     // Если это просто массив, то возвращаем его
     if (Array.isArray(response.data)) {
-      console.log('Получены теги с бэкенда (массив):', response.data);
+
       return response.data;
     }
     
     // Если ничего не подходит, возвращаем пустой массив
-    console.error('Неожиданный формат данных в ответе с тегами:', response.data);
+
     return [];
   } catch (error: any) {
-    console.error('Ошибка при получении тегов:', error);
+    // Обработка ошибок
     if (error.response) {
-      console.error('Данные ответа:', error.response.data);
-      console.error('Статус ответа:', error.response.status);
+      // Обработка ответа от сервера с ошибкой
     }
     throw error;
   }

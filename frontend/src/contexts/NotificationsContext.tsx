@@ -73,7 +73,7 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({
   const log = (...args: unknown[]): void => {
     if (process.env.NODE_ENV !== 'production') {
       // eslint-disable-next-line no-console
-      console.log(...args);
+
     }
   };
 
@@ -132,13 +132,13 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({
         }
       } catch (error) {
         // eslint-disable-next-line no-console
-        console.error('Ошибка обработки сообщения WebSocket:', error);
+
       }
     };
 
     socket.onerror = (error) => {
       // eslint-disable-next-line no-console
-      console.error('WebSocket error:', error);
+
     };
 
     socket.onclose = (evt) => {
@@ -150,7 +150,7 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({
 
     return () => socket.close();
     } catch (wsError) {
-      console.error('Ошибка при инициализации WebSocket:', wsError);
+
       return undefined;
     }
   }, [dispatch, isAuthenticated, showNotificationToast, user]);
@@ -169,7 +169,7 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({
         setUnreadCount(data.unread_count ?? 0);
       })
       .catch((error) => {
-        console.error('Ошибка при получении непрочитанных уведомлений:', error);
+
       });
   }, [getUnreadCount, isAuthenticated]);
 

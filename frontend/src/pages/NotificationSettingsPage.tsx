@@ -74,7 +74,7 @@ const NotificationSettingsPage: React.FC = () => {
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
     } catch (error) {
-      console.error('Ошибка при обновлении настроек:', error);
+
       setSnackbarMessage('Ошибка при обновлении настроек');
       setSnackbarSeverity('error');
       setSnackbarOpen(true);

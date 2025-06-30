@@ -55,12 +55,6 @@ const CreateOrder: React.FC = () => {
       
       try {
         const backendTags = await getTags();
-        console.log('Теги получены с бэкенда:', backendTags);
-        
-        // Логируем структуру первого тега для анализа
-        if (backendTags && backendTags.length > 0) {
-          console.log('Структура первого тега:', JSON.stringify(backendTags[0]));
-        }
         
         // Проверяем, что бэкенд вернул массив тегов
         if (!backendTags || !Array.isArray(backendTags) || backendTags.length === 0) {
@@ -104,7 +98,6 @@ const CreateOrder: React.FC = () => {
               );
               
               if (matchingTag && matchingTag.id) {
-                console.log(`Найдено соответствие по полю ${field}: ${frontTag.id} -> ${matchingTag.id}`);
                 mapping[frontTag.id] = matchingTag.id;
                 matched = true;
                 matchedTag = matchingTag;
@@ -122,7 +115,6 @@ const CreateOrder: React.FC = () => {
             );
             
             if (nameMatchingTag && nameMatchingTag.id) {
-              console.log(`Найдено соответствие по названию: ${frontTag.id} -> ${nameMatchingTag.id}`);
               mapping[frontTag.id] = nameMatchingTag.id;
               matched = true;
               matchedTag = nameMatchingTag;
@@ -131,20 +123,18 @@ const CreateOrder: React.FC = () => {
           
           // Если все равно не нашли соответствия
           if (!matched) {
-            console.log(`Не найдено соответствия для тега: ${frontTag.id}`);
             // Если тегов мало, можно добавить искусственное соответствие
             if (backendTags.length > 0) {
               // Временное решение: используем числовой ID на основе индекса фронтового тега
               const index = allFrontendTags.findIndex(t => t.id === frontTag.id);
               if (index < backendTags.length) {
-                console.log(`Искусственное сопоставление по индексу: ${frontTag.id} -> ${backendTags[index].id}`);
                 mapping[frontTag.id] = backendTags[index].id;
               }
             }
           }
         }
         
-        console.log('Создан маппинг тегов:', mapping);
+    
         // Проверяем, что у нас есть хоть какие-то совпадения
         if (Object.keys(mapping).length === 0) {
           setTagsLoadError('Не удалось найти соответствие между тегами на фронтенде и бэкенде');
@@ -152,7 +142,7 @@ const CreateOrder: React.FC = () => {
           setTagIdMapping(mapping);
         }
       } catch (error) {
-        console.error('Ошибка при загрузке тегов:', error);
+    
         setTagsLoadError('Ошибка при загрузке тегов. Теги могут не сохраниться в заказе.');
       } finally {
         setIsLoadingTags(false);
@@ -212,13 +202,11 @@ const CreateOrder: React.FC = () => {
     try {
       // Создаем полезную нагрузку с тегами
       // Теперь мы можем отправлять теги, так как бэкенд использует единую модель тегов
-      console.log('Выбранные теги для отправки:', formData.tags);
 
       // Конвертируем строковые ID тегов в числовые через маппинг
       const tagIds = formData.tags
         .map(tagStringId => tagIdMapping[tagStringId])
         .filter(id => id !== undefined);
-      console.log('Полученные числовые ID тегов:', tagIds);
 
       // Исправление: используем правильную типизацию для payload
       const payload: {
@@ -240,20 +228,13 @@ const CreateOrder: React.FC = () => {
         payload.target_creator = formData.target_creator;
       }
 
-      console.log('Отправка заказа с тегами:', payload);
+  
       await createCustomOrder(payload);
       toast({
         description: "Заказ успешно создан",
       });
       navigate('/orders');
     } catch (error) {
-      console.error('Ошибка при создании произвольного заказа:', error);
-      if (error && typeof error === 'object' && 'response' in error) {
-        // @ts-ignore - обрабатываем axios error 
-        console.error('Данные ответа:', error.response?.data);
-        // @ts-ignore - обрабатываем axios error
-        console.error('Статус ответа:', error.response?.status);
-      }
       toast({
         title: "Ошибка",
         description: "Произошла ошибка при создании заказа",

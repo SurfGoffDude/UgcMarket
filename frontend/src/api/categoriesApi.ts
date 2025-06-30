@@ -18,7 +18,7 @@ export const fetchCategories = async (): Promise<Category[]> => {
     const response = await apiClient.get<Category[]>('categories/');
     return response.data;
   } catch (error) {
-    console.error('Ошибка при получении категорий:', error);
+
     throw error;
   }
 };
@@ -33,7 +33,7 @@ export const fetchCategoryById = async (id: number): Promise<Category> => {
     const response = await apiClient.get<Category>(`categories/${id}/`);
     return response.data;
   } catch (error) {
-    console.error(`Ошибка при получении категории с ID ${id}:`, error);
+
     throw error;
   }
 };

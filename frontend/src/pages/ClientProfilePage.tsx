@@ -86,22 +86,16 @@ const ClientProfilePage: React.FC = () => {
   useEffect(() => {
     if (user) {
       // Добавляем отладочный вывод данных пользователя
-      console.log('Данные пользователя в ClientProfilePage:', user);
-      console.log('Тип пользователя:', (user as any)?.user_type);
-      console.log('Имеет профиль креатора:', (user as any)?.has_creator_profile);
       
       // Если пользователь является креатором, перенаправляем на страницу профиля креатора
       const isCreator = user && 
         (user as any)?.has_creator_profile === true;
       
-      console.log('Пользователь креатор?', isCreator);
       
       if (isCreator) {
-        console.log('Перенаправляем на профиль креатора:', '/creator-profile');
         navigate('/creator-profile');
       }
     } else {
-      console.log('Пользователь не найден в ClientProfilePage');
     }
   }, [user, navigate]);
   
@@ -533,20 +527,6 @@ const ClientProfilePage: React.FC = () => {
               
               <CardContent>
                 <div className="space-y-4">
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-100 flex justify-between items-center">
-                    <div>
-                      <Badge>В процессе</Badge>
-                      <h3 className="font-medium mt-1">Дизайн логотипа для компании</h3>
-                      <div className="flex items-center text-sm text-gray-600 mt-1">
-                        <Clock className="h-3 w-3 mr-1" />
-                        <span>Срок до 21.06.2025</span>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      <FileText className="h-4 w-4 mr-1" />
-                      Детали
-                    </Button>
-                  </div>
                   
                   <div className="text-center py-8 text-gray-500">
                     <p>У вас пока нет других заказов</p>

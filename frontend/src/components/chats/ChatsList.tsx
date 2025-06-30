@@ -122,7 +122,7 @@ const ChatsList: React.FC<ChatsListProps> = ({
         setError(null);
       } catch (err) {
         setError('Ошибка при загрузке чатов');
-        console.error('Ошибка при загрузке чатов:', err);
+
       } finally {
         setLoading(false);
       }
