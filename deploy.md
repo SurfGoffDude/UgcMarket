@@ -17,30 +17,45 @@ sudo apt update
 sudo apt upgrade -y
 ```
 
-### Установка необходимых пакетов
+### Установка Python 3.13
 
 ```bash
-sudo apt install -y build-essential libssl-dev libffi-dev python3.13-dev postgresql postgresql-contrib nginx curl
+# Добавляем репозиторий Deadsnakes для установки Python 3.13
+sudo add-apt-repository ppa:deadsnakes/ppa -y
+sudo apt update
+
+# Устанавливаем Python 3.13 и необходимые пакеты
+sudo apt install -y python3.13 python3.13-venv python3.13-dev build-essential libssl-dev libffi-dev postgresql postgresql-contrib nginx curl
 ```
 
-### Установка uv (менеджер пакетов Python)
+### Установка необходимых пакетов
+
+### Установка uv (современный менеджер пакетов Python)
 
 ```bash
-curl -sSf https://install.python-poetry.org | python3 -
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source "$HOME/.cargo/env"
-cargo install uv
+# Прямая установка uv без зависимости от Rust
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Добавление uv в PATH
+export PATH="$HOME/.cargo/bin:$PATH"
+
+# Добавляем в файл конфигурации шелла
+if [ -n "$ZSH_VERSION" ]; then
+  echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.zshrc
+else
+  echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
+fi
 ```
 
 ### Настройка PostgreSQL
 
 ```bash
 sudo -u postgres psql -c "CREATE DATABASE ugc_market;"
-sudo -u postgres psql -c "CREATE USER ugc_user WITH PASSWORD 'secure_password';"
-sudo -u postgres psql -c "ALTER ROLE ugc_user SET client_encoding TO 'utf8';"
-sudo -u postgres psql -c "ALTER ROLE ugc_user SET default_transaction_isolation TO 'read committed';"
-sudo -u postgres psql -c "ALTER ROLE ugc_user SET timezone TO 'Europe/Moscow';"
-sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE ugc_market TO ugc_user;"
+sudo -u postgres psql -c "CREATE USER ugc_market WITH PASSWORD 'secure_password';"
+sudo -u postgres psql -c "ALTER ROLE ugc_market SET client_encoding TO 'utf8';"
+sudo -u postgres psql -c "ALTER ROLE ugc_market SET default_transaction_isolation TO 'read committed';"
+sudo -u postgres psql -c "ALTER ROLE ugc_market SET timezone TO 'Europe/Moscow';"
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE ugc_market_db TO ugc_market;"
 ```
 
 ### Установка и настройка Zsh, Oh My Zsh и Powerlevel10k
@@ -168,13 +183,16 @@ git clone <repository-url> /var/www/ugc_market
 cd /var/www/ugc_market
 ```
 
-### Настройка виртуального окружения и установка зависимостей
+### Настройка виртуального окружения и установка зависимостей через uv
 
 ```bash
 cd /var/www/ugc_market/backend
+# Создание виртуального окружения через uv
 uv venv
+# Активация виртуального окружения
 source .venv/bin/activate
-uv pip install -r requirements.txt
+# Установка зависимостей через uv (значительно быстрее pip)
+uv pip sync requirements.txt
 ```
 
 ### Настройка переменных окружения
@@ -199,14 +217,16 @@ EOL
 ```bash
 cd /var/www/ugc_market/backend
 source .venv/bin/activate
-python manage.py migrate
-python manage.py createsuperuser
+# Запуск Django команд через uv run для более быстрой работы
+uv run python manage.py migrate
+uv run python manage.py createsuperuser
 ```
 
 ### Настройка статических файлов
 
 ```bash
-python manage.py collectstatic
+# Сбор статических файлов через uv для ускорения запуска
+uv run python manage.py collectstatic
 ```
 
 ## Настройка Frontend
@@ -301,7 +321,7 @@ After=network.target
 User=www-data
 Group=www-data
 WorkingDirectory=/var/www/ugc_market/backend
-ExecStart=/var/www/ugc_market/backend/.venv/bin/gunicorn --workers 3 --bind 127.0.0.1:8000 ugc_market.wsgi:application
+ExecStart=/var/www/ugc_market/backend/.venv/bin/uv run gunicorn --workers 3 --bind 127.0.0.1:8000 ugc_market.wsgi:application
 EnvironmentFile=/var/www/ugc_market/backend/.env
 Restart=on-failure
 
@@ -335,7 +355,7 @@ After=network.target
 User=www-data
 Group=www-data
 WorkingDirectory=/var/www/ugc_market/backend
-ExecStart=/var/www/ugc_market/backend/.venv/bin/daphne -b 127.0.0.1 -p 8001 ugc_market.asgi:application
+ExecStart=/var/www/ugc_market/backend/.venv/bin/uv run daphne -b 127.0.0.1 -p 8001 ugc_market.asgi:application
 EnvironmentFile=/var/www/ugc_market/backend/.env
 Restart=on-failure
 
@@ -389,9 +409,11 @@ cd /var/www/ugc_market
 git pull
 cd backend
 source .venv/bin/activate
-uv pip install -r requirements.txt
-python manage.py migrate
-python manage.py collectstatic --noinput
+# Синхронизация зависимостей через uv
+uv pip sync requirements.txt
+# Запуск команд Django через uv
+uv run python manage.py migrate
+uv run python manage.py collectstatic --noinput
 sudo systemctl restart gunicorn
 sudo systemctl restart daphne
 ```
