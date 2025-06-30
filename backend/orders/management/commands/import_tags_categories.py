@@ -20,7 +20,8 @@ from django.core.management.base import BaseCommand, CommandError
 from django.utils.text import slugify
 from django.db import transaction
 
-from orders.models import Tag, Category
+from orders.models import Category
+from core.models import Tag  # Теперь используем модель Tag из приложения core
 
 
 class Command(BaseCommand):
@@ -141,20 +142,20 @@ class Command(BaseCommand):
                 
                 # Создаём теги для этой категории
                 for tag_data in category_data["tags"]:
-                    # Преобразуем строковый id в числовой
-                    # Используем hash для генерации целочисленного ID из строки
-                    # Это обеспечит одинаковые ID при повторных запусках
-                    numeric_id = abs(hash(tag_data["id"])) % (10 ** 8)  # Ограничиваем до 8 цифр
+                    # Используем оригинальный ID как часть slug для стабильности
+                    # Не используем хеш-функцию, так как она может давать разные результаты между запусками
+                    original_id = tag_data["id"]
                     
-                    # Создаём slug для тега
-                    tag_slug = self._generate_unique_slug(tag_data["name"], tag_data["id"], Tag)
+                    # Создаём стабильный slug для тега, основанный на оригинальном ID
+                    tag_slug = self._generate_unique_slug(tag_data["name"], original_id, Tag)
                     
-                    # Создаём или обновляем тег
+                    # Создаём или обновляем тег, используя slug как стабильный идентификатор
+                    # Позволяем Django самому генерировать автоинкрементное ID
                     tag, is_created = Tag.objects.update_or_create(
-                        id=numeric_id,
+                        slug=tag_slug,  # Используем slug как стабильный идентификатор
                         defaults={
                             "name": tag_data["name"],
-                            "slug": tag_slug,
+                            "type": Tag.TAG_TYPE_ORDER,  # Явно указываем, что это тег для заказов
                         }
                     )
                     

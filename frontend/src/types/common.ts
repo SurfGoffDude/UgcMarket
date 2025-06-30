@@ -12,6 +12,7 @@ export interface UploadedFile {
   id: number;
   name: string;
   file: string; // URL к файлу
+  url?: string; // Алиас для поля file для совместимости с интерфейсом
   size: number;
   file_type: string;
   content_type: string;

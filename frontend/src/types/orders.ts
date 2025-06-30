@@ -8,6 +8,7 @@
 import { User } from './user';
 import { Service, ServiceOption } from './services';
 import { UploadedFile } from './common';
+import { Review } from './review';
 
 /**
  * Возможные статусы заказа
@@ -17,6 +18,7 @@ export type OrderStatus =
   | 'paid'       // Оплачен
   | 'in_progress' // В работе
   | 'delivered'  // Выполнен (доставлен)
+  | 'revision'   // На доработке
   | 'completed'  // Завершен (принят клиентом)
   | 'cancelled'  // Отменен
   | 'disputed';  // Спор
@@ -41,6 +43,9 @@ export interface Order {
   deliveries?: OrderDelivery[];
   payments?: Payment[];
   timeline_events?: TimelineEvent[];
+  review?: Review; // Отзыв на заказ, если есть
+  target_creator?: User; // Целевой креатор, которому назначен заказ
+  executor?: User; // Исполнитель заказа (креатор, который принял заказ)
 }
 
 /**
@@ -118,4 +123,38 @@ export interface AddDeliveryInput {
   order_id: number;
   message: string;
   file_ids: number[];
+}
+
+/**
+ * Расширенная модель заказа для страницы деталей
+ * Включает дополнительные поля, используемые в интерфейсе
+ */
+export interface Creator {
+  id: number;
+  user?: {
+    full_name: string;
+    username?: string;
+    email?: string;
+    first_name?: string;
+    last_name?: string;
+  };
+  specialization?: string;
+}
+
+// Определение структуры тега
+export interface Tag {
+  id?: number;
+  name: string;
+}
+
+export interface OrderWithDetails extends Omit<Order, 'target_creator'> {
+  description?: string;
+  references?: string[];
+  tags?: Tag[];
+  timeline?: TimelineEvent[];
+  budget?: string | number;
+  deadline?: string;
+  is_private?: boolean;
+  title?: string;
+  target_creator?: Creator;
 }

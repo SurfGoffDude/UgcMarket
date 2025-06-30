@@ -8,12 +8,13 @@ from django.db import models  # для Max и Aggregate
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
+from core import models as core_models  # Импортируем модели из приложения core
 
 from .models import (
     ClientProfile,
     CreatorProfile,
     SocialLink,
-    Tag,
+    # Tag,  # Удалено, так как теперь используется core_models.Tag
     PortfolioItem,
     PortfolioImage,
     Service,
@@ -107,7 +108,7 @@ class TagSerializer(serializers.ModelSerializer):
     slug = serializers.CharField(required=False)
 
     class Meta:
-        model = Tag
+        model = core_models.Tag  # Используем модель из приложения core
         fields = ["id", "name", "slug"]
 
     def create(self, validated_data):
@@ -117,7 +118,7 @@ class TagSerializer(serializers.ModelSerializer):
             base_slug = slugify(validated_data["name"])
             slug = base_slug
             counter = 1
-            while Tag.objects.filter(slug=slug).exists():
+            while core_models.Tag.objects.filter(slug=slug).exists():  # Используем core_models.Tag вместо Tag
                 slug = f"{base_slug}-{counter}"
                 counter += 1
             validated_data["slug"] = slug

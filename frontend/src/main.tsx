@@ -3,6 +3,7 @@ import { Provider } from 'react-redux'
 import App from './App.tsx'
 import './index.css'
 import { AuthProvider } from './contexts/AuthContext'
+import { ApiProvider } from './contexts/ApiContext'
 import { store } from './store'
 import { BrowserRouter } from 'react-router-dom'
 import { checkReactDevTools } from './utils/devtools'
@@ -22,7 +23,9 @@ if (!rootElement) {
     <Provider store={store}>
       <BrowserRouter>
         <AuthProvider>
-          <App />
+          <ApiProvider>
+            <App />
+          </ApiProvider>
         </AuthProvider>
       </BrowserRouter>
     </Provider>

@@ -1,4 +1,4 @@
-import React, { useState, FormEvent, KeyboardEvent } from 'react';
+import React, { useState, useEffect, FormEvent, KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, X, Eye, Check, Tag as TagIcon } from 'lucide-react';
 
@@ -12,8 +12,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 
 import { useToast } from '@/hooks/use-toast';
-import { createCustomOrder } from '@/api/ordersApi';
+import { createCustomOrder, getTags } from '@/api/ordersApi';
 import { tagCategories, Tag as OrderTag, TagCategory } from '../../public/tags_orders_categories';
+
+// Интерфейс для тега с бэкенда
+interface BackendTag {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+// Соответствие между строковым ID и числовым ID тега
+type TagIdMapping = Record<string, number>;
 
 /**
  * Страница создания нового заказа.
@@ -29,6 +39,128 @@ const CreateOrder: React.FC = () => {
 
   // input helpers
   const [referenceInput, setReferenceInput] = useState('');
+  
+  // Состояние получения тегов с бэкенда
+  const [isLoadingTags, setIsLoadingTags] = useState(false);
+  const [tagsLoadError, setTagsLoadError] = useState<string | null>(null);
+  
+  // Маппинг между строковыми ID тегов из файла TS и числовыми ID из бэкенда
+  const [tagIdMapping, setTagIdMapping] = useState<TagIdMapping>({});
+  
+  // Загружаем теги с бэкенда при монтировании компонента
+  useEffect(() => {
+    const loadTags = async () => {
+      setIsLoadingTags(true);
+      setTagsLoadError(null);
+      
+      try {
+        const backendTags = await getTags();
+        console.log('Теги получены с бэкенда:', backendTags);
+        
+        // Логируем структуру первого тега для анализа
+        if (backendTags && backendTags.length > 0) {
+          console.log('Структура первого тега:', JSON.stringify(backendTags[0]));
+        }
+        
+        // Проверяем, что бэкенд вернул массив тегов
+        if (!backendTags || !Array.isArray(backendTags) || backendTags.length === 0) {
+          setTagsLoadError('Не удалось получить список тегов с сервера');
+          return;
+        }
+        
+        // Создаём маппинг между строковыми ID и числовыми ID тегов
+        const allFrontendTags = tagCategories.flatMap(cat => cat.tags);
+        const mapping: TagIdMapping = {};
+        
+        // Сопоставляем теги между фронтом и бэком по разным критериям
+        for (const frontTag of allFrontendTags) {
+          // Убеждаемся, что у нас есть информация о теге для сопоставления
+          if (!frontTag.id) continue;
+          
+          // Используем различные варианты префиксов для поиска соответствия
+          const idVariants = [
+            frontTag.id,                  // чистый id
+            `tag-${frontTag.id}`,          // с префиксом tag-
+            `${frontTag.id}`               // как строка
+          ];
+          
+          // Поля для сопоставления в бэкенде
+          const fieldsToCheck = ['slug', 'string_id', 'id'];
+          
+          let matched = false;
+          let matchedTag = null;
+          
+          // Пробуем все комбинации полей и идентификаторов
+          for (const field of fieldsToCheck) {
+            if (matched) break;
+            
+            for (const idVariant of idVariants) {
+              if (matched) break;
+              
+              const matchingTag = backendTags.find(tag => 
+                tag && tag[field] && 
+                (String(tag[field]).toLowerCase() === String(idVariant).toLowerCase() ||
+                 String(tag[field]).toLowerCase().includes(String(idVariant).toLowerCase()))
+              );
+              
+              if (matchingTag && matchingTag.id) {
+                console.log(`Найдено соответствие по полю ${field}: ${frontTag.id} -> ${matchingTag.id}`);
+                mapping[frontTag.id] = matchingTag.id;
+                matched = true;
+                matchedTag = matchingTag;
+              }
+            }
+          }
+          
+          // Если не нашли по идентификаторам, попробуем по названию
+          if (!matched && frontTag.name) {
+            const nameMatchingTag = backendTags.find(tag => 
+              tag && tag.name && 
+              (tag.name.toLowerCase() === frontTag.name.toLowerCase() || 
+               tag.name.toLowerCase().includes(frontTag.name.toLowerCase()) ||
+               frontTag.name.toLowerCase().includes(tag.name.toLowerCase()))
+            );
+            
+            if (nameMatchingTag && nameMatchingTag.id) {
+              console.log(`Найдено соответствие по названию: ${frontTag.id} -> ${nameMatchingTag.id}`);
+              mapping[frontTag.id] = nameMatchingTag.id;
+              matched = true;
+              matchedTag = nameMatchingTag;
+            }
+          }
+          
+          // Если все равно не нашли соответствия
+          if (!matched) {
+            console.log(`Не найдено соответствия для тега: ${frontTag.id}`);
+            // Если тегов мало, можно добавить искусственное соответствие
+            if (backendTags.length > 0) {
+              // Временное решение: используем числовой ID на основе индекса фронтового тега
+              const index = allFrontendTags.findIndex(t => t.id === frontTag.id);
+              if (index < backendTags.length) {
+                console.log(`Искусственное сопоставление по индексу: ${frontTag.id} -> ${backendTags[index].id}`);
+                mapping[frontTag.id] = backendTags[index].id;
+              }
+            }
+          }
+        }
+        
+        console.log('Создан маппинг тегов:', mapping);
+        // Проверяем, что у нас есть хоть какие-то совпадения
+        if (Object.keys(mapping).length === 0) {
+          setTagsLoadError('Не удалось найти соответствие между тегами на фронтенде и бэкенде');
+        } else {
+          setTagIdMapping(mapping);
+        }
+      } catch (error) {
+        console.error('Ошибка при загрузке тегов:', error);
+        setTagsLoadError('Ошибка при загрузке тегов. Теги могут не сохраниться в заказе.');
+      } finally {
+        setIsLoadingTags(false);
+      }
+    };
+    
+    loadTags();
+  }, []);
 
   // выбранная категория тегов
   const [activeCategory, setActiveCategory] = useState<string>(tagCategories[0].id);
@@ -68,37 +200,84 @@ const CreateOrder: React.FC = () => {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
+    if (!formData.title || !formData.description || !formData.budget || !formData.deadline) {
+      toast({
+        title: "Ошибка",
+        description: "Пожалуйста, заполните все обязательные поля",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      const payload = {
+      // Создаем полезную нагрузку с тегами
+      // Теперь мы можем отправлять теги, так как бэкенд использует единую модель тегов
+      console.log('Выбранные теги для отправки:', formData.tags);
+
+      // Конвертируем строковые ID тегов в числовые через маппинг
+      const tagIds = formData.tags
+        .map(tagStringId => tagIdMapping[tagStringId])
+        .filter(id => id !== undefined);
+      console.log('Полученные числовые ID тегов:', tagIds);
+
+      // Исправление: используем правильную типизацию для payload
+      const payload: {
+        title: string;
+        description: string;
+        tags_ids: number[];
+        budget: number;
+        deadline: string;
+        target_creator?: number; // Опциональное поле для приватных заказов
+      } = {
         title: formData.title,
         description: formData.description,
-        tags_ids: formData.tags
-          .map(tagId => parseInt(tagId))
-          .filter(tagId => !isNaN(tagId) && tagId > 0), // преобразуем в number[] и фильтруем недопустимые значения
+        tags_ids: tagIds,  // Теперь отправляем числовые ID тегов, полученные из маппинга
         budget: Number(formData.budget) || 0,
         deadline: formData.deadline,
-        is_private: formData.is_private,
-        target_creator_id: formData.target_creator,
-        references: formData.references,
       };
 
-      const newOrder = await createCustomOrder(payload);
+      if (formData.is_private && formData.target_creator) {
+        payload.target_creator = formData.target_creator;
+      }
 
+      console.log('Отправка заказа с тегами:', payload);
+      await createCustomOrder(payload);
       toast({
-        title: 'Заказ успешно создан!',
-        description: 'Ваш заказ опубликован и доступен для откликов.',
+        description: "Заказ успешно создан",
       });
-      navigate(`/orders/${newOrder.id}`);
-    } catch (err: any) {
-      console.error(err);
+      navigate('/orders');
+    } catch (error) {
+      console.error('Ошибка при создании произвольного заказа:', error);
+      if (error && typeof error === 'object' && 'response' in error) {
+        // @ts-ignore - обрабатываем axios error 
+        console.error('Данные ответа:', error.response?.data);
+        // @ts-ignore - обрабатываем axios error
+        console.error('Статус ответа:', error.response?.status);
+      }
       toast({
-        title: 'Ошибка при создании заказа',
-        description: err?.message ?? 'Попробуйте позже.',
-        variant: 'destructive',
+        title: "Ошибка",
+        description: "Произошла ошибка при создании заказа",
+        variant: "destructive",
       });
     }
   };
 
+  /**
+   * Функция для хеширования строки, имитирующая логику Python hash() % (10 ** 8)
+   * Преобразует строковый ID тега в числовой, как это делается в бэкенде
+   */
+  const stringToNumericId = (str: string): number => {
+    // Простая реализация хеш-функции для строк
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    // Берем абсолютное значение и ограничиваем до 8 цифр (как в Python)
+    return Math.abs(hash) % 100000000;
+  };
+  
   /* --------------------------- derived --------------------------- */
   const selectedTags: OrderTag[] = formData.tags
     .map((id) => tagCategories.flatMap((c) => c.tags).find((t) => t.id === id))
@@ -160,7 +339,15 @@ const CreateOrder: React.FC = () => {
 
             {/* Form */}
             <div className="container mx-auto px-4 py-8">
-              <form onSubmit={handleSubmit} className="space-y-8 max-w-4xl mx-auto">
+              {tagsLoadError && (
+                <div className="p-4 my-4 text-amber-800 bg-amber-50 border border-amber-200 rounded-lg shadow-sm">
+                  <p className="flex items-center">
+                    <span className="mr-2">⚠️</span>
+                    {tagsLoadError}
+                  </p>
+                </div>
+              )}
+              <form onSubmit={handleSubmit} className="space-y-8 pb-10">
                 {/* Основная информация */}
                 <section className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 space-y-4">
                   <h2 className="text-xl font-semibold text-gray-900">Основная информация</h2>

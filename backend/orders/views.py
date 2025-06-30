@@ -100,7 +100,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             return queryset.filter(
                 Q(is_private=False) | 
                 Q(client=user) | 
-                Q(creator=user) |
                 Q(is_private=True, target_creator=user)
             )
         

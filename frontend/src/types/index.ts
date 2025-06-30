@@ -44,6 +44,9 @@ export interface Service {
 export interface Tag {
   id: number;
   name: string;
+  type?: 'order' | 'creator';  // Тип тега: order или creator
+  slug?: string;  // slug тега для URL
+  category?: any;  // Категория тега
 }
 
 // Тип категории

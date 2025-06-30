@@ -8,8 +8,9 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from users.serializers import UserSerializer, ServiceSerializer
+from core import models as core_models  # Импортируем модели из приложения core
 from .models import (
-    Category, Tag, Order, OrderAttachment, 
+    Category, Order, OrderAttachment,  # Удален Tag, так как теперь он в core.models
     OrderResponse, Delivery, DeliveryFile, Review
 )
 from users.models import Service
@@ -19,10 +20,10 @@ User = get_user_model()
 
 class TagSerializer(serializers.ModelSerializer):
     """
-    Сериализатор для модели Tag.
+    Сериализатор для модели core.Tag.
     """
     class Meta:
-        model = Tag
+        model = core_models.Tag  # Используем модель из приложения core
         fields = ['id', 'name', 'slug']
 
 
@@ -298,7 +299,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
     """
     # Поле category_id удалено для соответствия новому дизайну без выбора категории
     tags_ids = serializers.PrimaryKeyRelatedField(
-        queryset=Tag.objects.all(),
+        queryset=core_models.Tag.objects.all(),
         source='tags',
         many=True,
         required=False
@@ -324,7 +325,7 @@ class CustomOrderCreateSerializer(serializers.ModelSerializer):
     """
     # Поле category_id удалено для соответствия новому дизайну без выбора категории
     tags_ids = serializers.PrimaryKeyRelatedField(
-        queryset=Tag.objects.all(),
+        queryset=core_models.Tag.objects.all(),
         source='tags',
         many=True,
         required=False

@@ -23,7 +23,7 @@ from typing import Iterable
 from django.core.management.base import BaseCommand, CommandError
 from django.utils.text import slugify
 
-from users.models import Tag
+from core.models import Tag  # Теперь используем модель Tag из приложения core
 
 # Regex patterns for markdown parsing
 _HEADING_RE = re.compile(r"^###\s+\*\*(.+)\*\*")
@@ -103,7 +103,11 @@ class Command(BaseCommand):
             slug = _generate_unique_slug(name, tag_id)
             tag, is_created = Tag.objects.update_or_create(
                 id=tag_id,
-                defaults={"name": name, "slug": slug},
+                defaults={
+                    "name": name, 
+                    "slug": slug,
+                    "type": Tag.TAG_TYPE_CREATOR,  # Явно указываем, что это тег для креаторов
+                },
             )
             if is_created:
                 created += 1

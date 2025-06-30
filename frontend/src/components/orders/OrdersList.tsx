@@ -17,6 +17,7 @@ import { ru } from 'date-fns/locale';
 import { CalendarIcon, TagIcon } from 'lucide-react';
 import apiClient from '@/api/client';
 import { Order, PaginatedResponse } from '@/types';
+import OrderFilters, { SelectedTags } from '@/components/orders/OrderFilters';
 
 interface OrdersListProps {
   showPublicOnly?: boolean;
@@ -43,6 +44,23 @@ const OrdersList: React.FC<OrdersListProps> = ({
   const [sortOrder, setSortOrder] = useState(defaultSortOrder);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
+  // Состояние для тегов и поискового запроса
+  const [selectedTags, setSelectedTags] = useState<SelectedTags>({});
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Функция для получения всех выбранных тегов в виде массива
+  const getSelectedTagsArray = () => {
+    const tagsArray: string[] = [];
+    
+    // Собираем все выбранные slug'и тегов из всех категорий
+    Object.entries(selectedTags).forEach(([categoryId, tagSlugs]) => {
+      console.log(`Категория: ${categoryId}, выбранные теги:`, tagSlugs);
+      tagsArray.push(...tagSlugs);
+    });
+    
+    console.log('Итоговый массив slug тегов для API:', tagsArray);
+    return tagsArray;
+  };
 
   // Загрузка заказов
   const fetchOrders = async (resetPage = false) => {
@@ -51,7 +69,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
       const currentPage = resetPage ? 1 : page;
       
       // Формирование параметров запроса
-      const requestParams: Record<string, string | number | boolean> = {
+      const requestParams: Record<string, string | number | boolean | string[]> = {
         page: currentPage
       };
       
@@ -59,6 +77,19 @@ const OrdersList: React.FC<OrdersListProps> = ({
       if (creatorId) requestParams.creator = creatorId;
       if (clientId) requestParams.client = clientId;
       if (orderStatus) requestParams.status = orderStatus;
+      
+      // Добавляем параметр поиска, если он задан
+      if (searchQuery) requestParams.search = searchQuery;
+      
+      // Если есть выбранные теги, добавляем их в параметры запроса в виде строки с разделителями
+      // Бэкенд ожидает параметр tags с разделенными запятой slug'ами тегов
+      const selectedTagsArray = getSelectedTagsArray();
+      if (selectedTagsArray.length > 0) {
+        const tagsParam = selectedTagsArray.join(',');
+        requestParams.tags = tagsParam;
+        console.log('Отправляем параметр tags в API:', tagsParam);
+      }
+      
       requestParams.ordering = sortOrder === 'newest' ? '-created_at' : 
                               sortOrder === 'oldest' ? 'created_at' : 
                               sortOrder === 'price_high' ? '-budget' : 
@@ -90,7 +121,15 @@ const OrdersList: React.FC<OrdersListProps> = ({
   // Загрузка при монтировании и изменении параметров
   useEffect(() => {
     fetchOrders(true);
-  }, [showPublicOnly, creatorId, clientId, orderStatus, sortOrder]);
+  }, [showPublicOnly, creatorId, clientId, orderStatus, sortOrder, selectedTags, searchQuery]);
+  
+  // Обработчик изменения фильтров тегов
+  const handleFilterChange = ({ tags, query }: { tags: SelectedTags; query: string }) => {
+    setSelectedTags(tags);
+    setSearchQuery(query);
+    setPage(1); // Сбрасываем страницу на первую при изменении фильтров
+    fetchOrders(true); // Обновляем заказы с новыми фильтрами
+  };
 
   // Статус заказа с соответствующим стилем
   const getStatusBadge = (status: Order['status']) => {
@@ -129,6 +168,12 @@ const OrdersList: React.FC<OrdersListProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* Компонент фильтрации по тегам */}
+      <OrderFilters 
+        onFilterChange={handleFilterChange}
+        initialFilters={{ tags: selectedTags, query: searchQuery }}
+      />
+      
       {/* Сортировка */}
       <div className="flex justify-end mb-4">
         <select 
@@ -182,11 +227,13 @@ const OrdersList: React.FC<OrdersListProps> = ({
                   {order.description}
                 </p>
                 <div className="flex flex-wrap gap-2 mb-3">
-                  {order.tags?.map(tag => (
-                    <Badge key={tag.id} variant="outline" className="flex items-center">
-                      <TagIcon className="h-3 w-3 mr-1" /> {tag.name}
-                    </Badge>
-                  ))}
+                  {order.tags
+                    ?.filter(tag => !tag.type || tag.type === 'order') // Фильтруем по типу 'order' или без типа (для совместимости)
+                    .map(tag => (
+                      <Badge key={tag.id} variant="outline" className="flex items-center">
+                        <TagIcon className="h-3 w-3 mr-1" /> {tag.name}
+                      </Badge>
+                    ))}
                 </div>
                 <div className="flex items-center text-sm text-gray-500">
                   <CalendarIcon className="h-4 w-4 mr-1" />

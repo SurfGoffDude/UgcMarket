@@ -11,6 +11,7 @@ from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
 from django.core.validators import MinValueValidator
 from users.models import Service
+from core.models import Tag  # Импортируем единую модель Tag
 
 
 class Category(models.Model):
@@ -54,27 +55,7 @@ class Category(models.Model):
         return self.children.exists()
 
 
-class Tag(models.Model):
-    """
-    Модель тега заказа.
-    
-    Используется для гибкой маркировки заказов по различным параметрам.
-    
-    Attributes:
-        name (CharField): Название тега.
-        slug (SlugField): Уникальный слаг для URL.
-    """
-    name = models.CharField(_('название'), max_length=100)
-    slug = models.SlugField(_('слаг'), max_length=100, unique=True)
-    
-    class Meta:
-        verbose_name = _('тег')
-        verbose_name_plural = _('теги')
-        ordering = ['name']
-    
-    def __str__(self):
-        """Возвращает строковое представление тега."""
-        return self.name
+# Модель Tag теперь находится в core.models.Tag
 
 
 class Order(models.Model):
@@ -118,7 +99,7 @@ class Order(models.Model):
         verbose_name=_('клиент')
     )
     tags = models.ManyToManyField(
-        Tag,
+        'core.Tag',  # Ссылаемся на модель Tag из приложения core
         related_name='orders',
         blank=True,
         verbose_name=_('теги')
