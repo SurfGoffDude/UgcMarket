@@ -11,9 +11,6 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import apiClient from '@/api/client';
 
-// Импортируем статические категории тегов
-import { tagCategories as staticTagCategories } from '../../../public/tags_orders_categories';
-
 // Интерфейсы для тегов и категорий
 export interface Tag {
   id: number;
@@ -101,19 +98,23 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({ onFilterChange, initialFilt
   useEffect(() => {
     const fetchCategoriesAndTags = async () => {
       try {
+        setIsLoading(true);
+        console.log('Начинаем загрузку категорий и тегов...');
+
         // Загружаем категории
         const categoriesResponse = await apiClient.get('/categories/');
         const categories = categoriesResponse.data.results || [];
         console.log('Загружено категорий:', categories.length);
         
-        // Загружаем все теги разом - API не поддерживает фильтрацию по category
-        // Добавляем фильтр по типу тега (только теги типа 'order')
+        // Загружаем теги с типом 'order'
         const tagsResponse = await apiClient.get('/tags/', {
           params: {
-            type: 'order' // Добавляем фильтр по типу тега
+            type: 'order'
           }
         });
-        const allTags = tagsResponse.data || [];
+
+        // Проверяем структуру ответа для получения массива тегов
+        const allTags = tagsResponse.data.results ? tagsResponse.data.results : [];
         console.log('Загружено тегов с типом order:', allTags.length);
         
         // Выведем структуру первого тега для отладки
@@ -121,36 +122,19 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({ onFilterChange, initialFilt
           console.log('Пример тега:', JSON.stringify(allTags[0], null, 2));
         }
         
-        // Создаем Map для категорий с быстрым доступом по имени
-        console.log('Статических категорий из файла:', staticTagCategories.length);
-        
-        // Создаем пустой Map для категорий        
+        // Создаем Map для уникальных категорий        
         const categoryMap = new Map<string, any>();
         
-        // Сначала добавляем все категории из статического файла
-        staticTagCategories.forEach(staticCategory => {
-          categoryMap.set(staticCategory.name, {
-            id: staticCategory.id,
-            name: staticCategory.name,
-            slug: staticCategory.id,
-            tags: []
-          });
-        });
-        
-        // Затем добавляем категории из API (если они ещё не добавлены)
+        // Добавляем уникальные категории из API
         const uniqueCategories = new Set<string>();
         categories.forEach(category => {
           // Проверяем уникальность по имени
           if (!uniqueCategories.has(category.name)) {
             uniqueCategories.add(category.name);
-            
-            // Если категория ещё не добавлена, добавляем её
-            if (!categoryMap.has(category.name)) {
-              categoryMap.set(category.name, {
-                ...category,
-                tags: []
-              });
-            }
+            categoryMap.set(category.name, {
+              ...category,
+              tags: []
+            });
           }
         });
         
