@@ -43,6 +43,122 @@ sudo -u postgres psql -c "ALTER ROLE ugc_user SET timezone TO 'Europe/Moscow';"
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE ugc_market TO ugc_user;"
 ```
 
+### Установка и настройка Zsh, Oh My Zsh и Powerlevel10k
+
+#### Установка Zsh
+
+```bash
+sudo apt install -y zsh
+chsh -s $(which zsh)  # Меняем оболочку по умолчанию на Zsh
+```
+
+#### Установка Oh My Zsh
+
+```bash
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+```
+
+#### Установка Powerlevel10k
+
+```bash
+git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
+```
+
+Откройте файл конфигурации `.zshrc`:
+
+```bash
+nano ~/.zshrc
+```
+
+Найдите строку с `ZSH_THEME` и измените ее на:
+
+```bash
+ZSH_THEME="powerlevel10k/powerlevel10k"
+```
+
+Затем перезагрузите конфигурацию:
+
+```bash
+source ~/.zshrc
+```
+
+При первом запуске будет запущен мастер настройки Powerlevel10k. Следуйте инструкциям для настройки внешнего вида.
+
+#### Установка полезных плагинов для Oh My Zsh
+
+```bash
+# Плагин автодополнения
+git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+
+# Плагин подсветки синтаксиса
+git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+```
+
+Откройте файл `.zshrc` и найдите строку с `plugins=(git)` или подобную. Измените ее на:
+
+```bash
+plugins=(git zsh-autosuggestions zsh-syntax-highlighting docker django python pip npm node)
+```
+
+#### Установка дополнительных полезных утилит для разработки
+
+```bash
+# Установка fd (улучшенный find)
+sudo apt install -y fd-find
+ln -s $(which fdfind) ~/.local/bin/fd
+
+# Установка ripgrep (улучшенный grep)
+sudo apt install -y ripgrep
+
+# Установка bat (улучшенный cat)
+sudo apt install -y bat
+ln -s $(which batcat) ~/.local/bin/bat
+
+# Установка htop (улучшенный top)
+sudo apt install -y htop
+
+# Установка tmux (терминальный мультиплексор)
+sudo apt install -y tmux
+
+# Установка jq (работа с JSON в командной строке)
+sudo apt install -y jq
+
+# Установка fzf (нечеткий поиск)
+git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+~/.fzf/install
+
+# Установка pyenv (управление версиями Python)
+curl https://pyenv.run | bash
+```
+
+Добавьте в конец файла `.zshrc` следующие строки для интеграции установленных утилит:
+
+```bash
+# Настройки для pyenv
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init --path)"
+eval "$(pyenv init -)"
+
+# Настройки для fzf
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
+# Псевдонимы для улучшенных утилит
+alias cat="bat --paging=never"
+alias grep="rg"
+alias find="fd"
+alias top="htop"
+
+# Псевдоним для быстрого создания и активации виртуального окружения Python
+alias pyenv-create="python -m venv .venv && source .venv/bin/activate"
+```
+
+Перезапустите терминал или выполните:
+
+```bash
+source ~/.zshrc
+```
+
 ## Настройка Backend
 
 ### Клонирование репозитория (если используется Git)
