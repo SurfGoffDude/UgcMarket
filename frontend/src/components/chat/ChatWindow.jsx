@@ -66,7 +66,7 @@ const ChatWindow = ({ threadId, orderInfo = null }) => {
         // Формируем WebSocket URL
         const wsUrl = process.env.NODE_ENV === 'production' 
           ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/chat/`
-          : 'ws://localhost:8000/ws/chat/';
+          : `ws://${window.location.host}/ws/chat/`;
           
         // Подключаемся к WebSocket
         await websocketService.connect(token, wsUrl);
