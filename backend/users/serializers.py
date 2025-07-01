@@ -357,9 +357,9 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
                 # Если передан ID (целое число) - используем его
                 if isinstance(tag_item, int):
                     try:
-                        tag = Tag.objects.get(id=tag_item)
+                        tag =  core_models.Tag.objects.get(id=tag_item)
                         tags_to_set.append(tag)
-                    except Tag.DoesNotExist:
+                    except core_models.Tag.DoesNotExist:
                         # Пропускаем несуществующие ID тегов
                         continue
                 # Если передано название или словарь с названием
@@ -376,7 +376,7 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
                         try:
                             tag = Tag.objects.get(id=tag_item['id'])
                             tags_to_set.append(tag)
-                        except Tag.DoesNotExist:
+                        except core_models.Tag.DoesNotExist:
                             # Если ID не существует, но есть name - создаем новый тег
                             if 'name' in tag_item and tag_item['name']:
                                 tag_name = tag_item['name']
