@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 // Базовая конфигурация для axios
 const apiConfig: AxiosRequestConfig = {
-  baseURL: 'http://localhost:8000/api', // Убрали слеш в конце для предотвращения двойных слешей
+  baseURL: '/api', // Используем относительный путь для работы как в development, так и в production
   timeout: 30000, // 30 секунд таймаут
   headers: {
     'Content-Type': 'application/json',
