@@ -397,7 +397,7 @@ sudo systemctl restart nginx
 
 ```bash
 sudo apt install certbot python3-certbot-nginx
-sudo certbot --nginx -d your_domain.com -d www.your_domain.com
+sudo certbot --nginx -d ugc-market.ru -d www.ugc-market.ru
 ```
 
 ## Обновление проекта
