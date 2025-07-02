@@ -86,7 +86,7 @@ const TopCreators = () => {
   };
 
   return (
-    <section className="py-16 bg-gradient-to-b from-white to-gray-50">
+    <section className="py-16 bg-white dark:bg-gray-900">
       <div className="container mx-auto px-4">
         <motion.div 
           className="text-center mb-12"
@@ -94,11 +94,11 @@ const TopCreators = () => {
           animate={{ opacity: inView ? 1 : 0, y: inView ? 0 : 20 }}
           transition={{ duration: 0.6 }}
         >
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">
+          <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
             Популярные креаторы
           </h2>
-          <p className="text-xl text-gray-600">
-            Топовые создатели контента с высоким рейтингом
+          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+            Талантливые создатели контента, готовые к сотрудничеству с брендами
           </p>
         </motion.div>
 
@@ -111,45 +111,50 @@ const TopCreators = () => {
         >
           {creators.map((creator) => (
             <motion.div key={creator.id} variants={item} className="h-full">
-              <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 h-full flex flex-col">
-                <div className="p-6 pb-0">
-                  <div className="flex items-start space-x-4 mb-4">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col h-full overflow-hidden border border-gray-100 dark:border-gray-700">
+                <div className="p-6 pb-4 flex-grow">
+                  <div className="flex items-center text-sm text-[var(--secondary-600)] dark:text-[var(--secondary-400)] mb-3">
                     <div className="relative">
                       <img 
                         src={creator.avatar} 
                         alt={creator.name}
-                        className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm"
+                        className="w-10 h-10 rounded-full object-cover"
                       />
-                      {creator.isOnline && (
-                        <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white"></div>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="font-bold text-lg text-gray-900">{creator.name}</h3>
-                          <p className="text-sm text-gray-500">@{creator.username}</p>
-                        </div>
-                        <div className="flex items-center bg-yellow-50 text-yellow-700 text-xs font-medium px-2 py-1 rounded-full">
-                          <Star className="w-3 h-3 mr-1 fill-current" />
-                          {creator.rating}
-                        </div>
-                      </div>
-                      <div className="mt-1">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {creator.platform}
+                      {creator.platform === 'YouTube' && (
+                        <span className="absolute bottom-0 right-0 bg-[var(--secondary-500)] rounded-full p-0.5">
+                          <CheckCircle className="w-3 h-3 text-white" />
                         </span>
-                      </div>
+                      )}
                     </div>
                   </div>
                   
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="font-bold text-lg text-gray-900 dark:text-white">{creator.name}</h3>
+                      <p className="text-gray-500 dark:text-gray-400 text-sm">@{creator.username}</p>
+                    </div>
+                    <div className="flex items-center bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-xs font-medium px-2 py-1 rounded-full">
+                      <Star className="w-3 h-3 mr-1 fill-current" />
+                      {creator.rating}
+                    </div>
+                  </div>
+                  
+                  {creator.isOnline ? (
+                    <div className="mb-3">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--success-100)] dark:bg-[var(--success-900/50)] text-[var(--success-800)] dark:text-[var(--success-300)]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--success-500)] mr-1.5"></span>
+                        Онлайн
+                      </span>
+                    </div>
+                  ) : null}
+                  
+                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-2">
                     {creator.topService}
                   </p>
                   
                   <div className="flex flex-wrap gap-1.5 mb-4">
                     {creator.tags.map((tag, i) => (
-                      <span key={i} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                      <span key={i} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
                         {tag}
                       </span>
                     ))}
@@ -157,13 +162,13 @@ const TopCreators = () => {
                 </div>
                 
                 <div className="mt-auto p-6 pt-0">
-                  <div className="border-t border-gray-100 pt-4">
+                  <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
                     <div className="flex justify-between items-center">
                       <div>
-                        <p className="text-xs text-gray-500">от</p>
-                        <p className="text-lg font-bold text-purple-600">{creator.minPrice.toLocaleString()} ₽</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">от</p>
+                        <p className="text-lg font-bold text-primary dark:text-[var(--primary-400)]">{creator.minPrice.toLocaleString()} ₽</p>
                       </div>
-                      <Button size="sm" className="rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+                      <Button size="sm" className="rounded-full bg-gradient-to-r from-[var(--primary-600)] to-[var(--accent-600)] hover:from-[var(--primary-700)] hover:to-[var(--accent-700)]">
                         Заказать <ArrowRight className="w-4 h-4 ml-1.5" />
                       </Button>
                     </div>
@@ -182,7 +187,7 @@ const TopCreators = () => {
         >
           <Button 
             variant="outline" 
-            className="rounded-full border-2 border-purple-100 text-purple-700 hover:bg-purple-50 hover:border-purple-200 px-8 py-6 text-base"
+            className="rounded-full border-2 border-[var(--primary-100)] dark:border-[var(--primary-800)] text-primary dark:text-[var(--primary-400)] hover:bg-[var(--primary-50)] dark:hover:bg-[var(--primary-900/20)] hover:border-[var(--primary-200)] dark:hover:border-[var(--primary-700)] px-8 py-6 text-base"
           >
             Показать всех креаторов
           </Button>

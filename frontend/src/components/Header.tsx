@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Search, User, Plus, LogIn, Menu, X, Moon, Sun, LogOut, Settings, Package, MessageSquare, Bell } from 'lucide-react';
+import Logo from '@/components/ui/logo/Logo';
 import NotificationIndicator from './notifications/NotificationIndicator';
 import NotificationsMenu from './notifications/NotificationsMenu';
 import { Button } from '@/components/ui/button';
@@ -78,10 +79,8 @@ const Header = () => {
               )}
             </button>
             <Link to="/" className="flex items-center space-x-2">
-              <div className="w-9 h-9 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">U</span>
-              </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              <Logo variant="small" />
+              <span className="text-xl font-bold text-primary">
                 UGC Market
               </span>
             </Link>

@@ -85,11 +85,11 @@ const TestimonialsSection = () => {
     
     for (let i = 1; i <= 5; i++) {
       if (i <= fullStars) {
-        stars.push(<Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />);
+        stars.push(<Star key={i} className="w-4 h-4 text-[var(--warning-500)]" />);
       } else if (i === fullStars + 1 && hasHalfStar) {
-        stars.push(<StarHalf key={i} className="w-5 h-5 text-yellow-400 fill-current" />);
+        stars.push(<StarHalf key={i} className="w-5 h-5 text-[var(--warning-500)] fill-current" />);
       } else {
-        stars.push(<Star key={i} className="w-5 h-5 text-gray-300 fill-current" />);
+        stars.push(<Star key={i} className="w-5 h-5 text-gray-300 dark:text-gray-600" />);
       }
     }
     
@@ -146,8 +146,8 @@ const TestimonialsSection = () => {
                   {renderStars(testimonial.rating)}
                 </div>
               </div>
-              <div className="relative pl-4 border-l-2 border-purple-200 dark:border-purple-800">
-                <Quote className="absolute -left-1 top-0 w-4 h-4 text-purple-400" />
+              <div className="relative pl-4 border-l-2 border-[var(--primary-200)] dark:border-[var(--primary-800)]">
+                <Quote className="absolute -left-1 top-0 w-4 h-4 text-[var(--primary-400)]" />
                 <p className="text-gray-600 dark:text-gray-300 italic mt-2 pl-4">
                   {testimonial.content}
                 </p>
@@ -162,7 +162,7 @@ const TestimonialsSection = () => {
           animate={inView ? "show" : "hidden"}
           variants={fadeInUp}
         >
-          <button className="px-6 py-3 bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-400 font-medium rounded-full border-2 border-purple-600 dark:border-purple-500 hover:bg-purple-50 dark:hover:bg-gray-700 transition-colors duration-300">
+          <button className="px-6 py-3 bg-white dark:bg-gray-800 text-primary dark:text-[var(--primary-400)] font-medium rounded-full border-2 border-[var(--primary-600)] dark:border-[var(--primary-500)] hover:bg-[var(--primary-50)] dark:hover:bg-gray-700 transition-colors duration-300">
             Оставить отзыв
           </button>
         </motion.div>
