@@ -97,7 +97,7 @@ const NewOrders = () => {
           animate={inView ? "visible" : "hidden"}
           variants={fadeInUp}
         >
-          <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4 bg-gradient-to-r from-[var(--primary-600)] to-[var(--accent-600)] bg-clip-text text-transparent">
+          <h2 className="text-4xl font-bold mb-4 text-[#E95C4B] dark:text-[#E95C4B]">
             Новые заказы
           </h2>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">

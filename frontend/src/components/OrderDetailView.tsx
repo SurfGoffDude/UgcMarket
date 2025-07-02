@@ -120,7 +120,7 @@ const OrderDetailView: React.FC<OrderDetailViewProps> = ({
 
       <Card className="overflow-hidden border-0 shadow-lg mb-8">
         {/* Заголовок заказа с градиентным фоном */}
-        <CardHeader className="bg-gradient-to-r from-purple-700 to-pink-600 text-white p-8">
+        <CardHeader className="bg-[#E95C4B] text-white p-8">
           <div className="flex flex-col md:flex-row justify-between gap-4">
             <div>
               <Badge className="bg-white/20 text-white mb-2 hover:bg-white/30">
@@ -169,15 +169,15 @@ const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                   <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                     {order.references.map((ref, index) => (
                       <div key={index} className="flex items-start gap-3">
-                        <div className="bg-purple-100 p-2 rounded-full">
-                          <LinkIcon className="h-4 w-4 text-purple-600" />
+                        <div className="bg-[#FCF5F4] p-2 rounded-full">
+                          <LinkIcon className="h-4 w-4 text-[#E95C4B]" />
                         </div>
                         <div>
                           <a 
                             href={ref} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline break-all"
+                            className="text-[#E95C4B] hover:underline break-all"
                           >
                             {ref}
                           </a>
@@ -227,7 +227,7 @@ const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                               <a
                                 href={file.url}
                                 download={file.name}
-                                className="text-blue-600 hover:underline"
+                                className="text-[#E95C4B] hover:underline"
                               >
                                 {file.name}
                               </a>
@@ -273,8 +273,8 @@ const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                 <CardContent className="space-y-4">
                   {/* Срок */}
                   <div className="flex items-center gap-3">
-                    <div className="bg-blue-100 p-2 rounded-full">
-                      <Calendar className="h-4 w-4 text-blue-600" />
+                    <div className="bg-[#FCF5F4] p-2 rounded-full">
+                      <Calendar className="h-4 w-4 text-[#E95C4B]" />
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Срок выполнения</p>
@@ -286,8 +286,8 @@ const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                   
                   {/* Бюджет */}
                   <div className="flex items-center gap-3">
-                    <div className="bg-green-100 p-2 rounded-full">
-                      <DollarSign className="h-4 w-4 text-green-600" />
+                    <div className="bg-[#FCF5F4] p-2 rounded-full">
+                      <DollarSign className="h-4 w-4 text-[#E95C4B]" />
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Бюджет</p>
@@ -297,11 +297,11 @@ const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                   
                   {/* Видимость */}
                   <div className="flex items-center gap-3">
-                    <div className="bg-purple-100 p-2 rounded-full">
+                    <div className="bg-[#FCF5F4] p-2 rounded-full">
                       {!order.is_private ? (
-                        <Globe className="h-4 w-4 text-purple-600" />
+                        <Globe className="h-4 w-4 text-[#E95C4B]" />
                       ) : (
-                        <Users className="h-4 w-4 text-purple-600" />
+                        <Users className="h-4 w-4 text-[#E95C4B]" />
                       )}
                     </div>
                     <div>
@@ -335,8 +335,8 @@ const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center gap-3">
-                      <div className="bg-blue-100 p-3 rounded-full">
-                        <UserCircle className="h-5 w-5 text-blue-600" />
+                      <div className="bg-[#FCF5F4] p-3 rounded-full">
+                        <UserCircle className="h-5 w-5 text-[#E95C4B]" />
                       </div>
                       <div>
                         <p className="font-medium">
@@ -361,8 +361,8 @@ const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center gap-3">
-                      <div className="bg-purple-100 p-3 rounded-full">
-                        <UserCircle className="h-5 w-5 text-purple-600" />
+                      <div className="bg-[#FCF5F4] p-3 rounded-full">
+                        <UserCircle className="h-5 w-5 text-[#E95C4B]" />
                       </div>
                       <div>
                         <p className="font-medium">
@@ -384,8 +384,8 @@ const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center gap-3">
-                      <div className="bg-green-100 p-3 rounded-full">
-                        <Globe className="h-5 w-5 text-green-600" />
+                      <div className="bg-[#FCF5F4] p-3 rounded-full">
+                        <Globe className="h-5 w-5 text-[#E95C4B]" />
                       </div>
                       <div>
                         <p className="font-medium">Доступен всем исполнителям</p>
@@ -402,7 +402,7 @@ const OrderDetailView: React.FC<OrderDetailViewProps> = ({
               {onViewMessages && (
                 <Button 
                   variant="outline" 
-                  className="w-full" 
+                  className="w-full border-[#E95C4B] text-[#E95C4B] hover:bg-[#FCF5F4]" 
                   onClick={onViewMessages}
                 >
                   <MessageSquare className="mr-2 h-4 w-4" />

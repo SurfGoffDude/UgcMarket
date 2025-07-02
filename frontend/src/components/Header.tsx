@@ -109,7 +109,7 @@ const Header = () => {
             {isAuthenticated && user && !user.has_creator_profile && (
               <div className="hidden md:block">
                 <Link to="/create-order">
-                  <Button className="rounded-full bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700">
+                  <Button className="rounded-full bg-[#E95C4B] hover:bg-[#d54538]">
                     <Plus className="w-4 h-4 mr-2" />
                     Создать заказ
                   </Button>
@@ -165,7 +165,7 @@ const Header = () => {
               // Дропдаун меню для авторизованных пользователей
               <DropdownMenu>
                 <DropdownMenuTrigger className="ml-2 outline-none">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-medium cursor-pointer hover:opacity-90 transition-opacity">
+                  <div className="w-9 h-9 rounded-full bg-[#E95C4B] hover:bg-[#d54538] flex items-center justify-center text-white font-medium cursor-pointer transition-colors">
                     {user?.first_name?.[0] || user?.username?.[0] || <User className="w-4 h-4" />}
                   </div>
                 </DropdownMenuTrigger>

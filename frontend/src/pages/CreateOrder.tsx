@@ -525,7 +525,7 @@ const CreateOrder: React.FC = () => {
                     <Eye className="mr-2 h-4 w-4" />
                     Предпросмотр
                   </Button>
-                  <Button type="submit" className="flex-1 btn-gradient">
+                  <Button type="submit" className="flex-1 bg-[#E95C4B] hover:bg-[#d54538]">
                     Опубликовать заказ
                   </Button>
                 </div>

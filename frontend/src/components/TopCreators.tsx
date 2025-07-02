@@ -168,7 +168,7 @@ const TopCreators = () => {
                         <p className="text-xs text-gray-500 dark:text-gray-400">от</p>
                         <p className="text-lg font-bold text-primary dark:text-[var(--primary-400)]">{creator.minPrice.toLocaleString()} ₽</p>
                       </div>
-                      <Button size="sm" className="rounded-full bg-gradient-to-r from-[var(--primary-600)] to-[var(--accent-600)] hover:from-[var(--primary-700)] hover:to-[var(--accent-700)]">
+                      <Button size="sm" className="rounded-full bg-[#E95C4B] hover:bg-[#d54538]">
                         Заказать <ArrowRight className="w-4 h-4 ml-1.5" />
                       </Button>
                     </div>

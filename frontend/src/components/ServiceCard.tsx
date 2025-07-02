@@ -42,12 +42,12 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service }) => {
       <div className="flex items-center justify-between">
         <div>
           <span className="text-xs text-gray-500">от</span>
-          <div className="text-lg font-bold text-purple-600">
+          <div className="text-lg font-bold text-[#E95C4B]">
             {parseFloat(service.price).toLocaleString('ru-RU')}₽
           </div>
         </div>
         <Link to={`/services/${service.id}`}>
-          <Button size="sm" className="rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+          <Button size="sm" className="rounded-full bg-[#E95C4B] hover:bg-[#d54538]">
             Подробнее
           </Button>
         </Link>
