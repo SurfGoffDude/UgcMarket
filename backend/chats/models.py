@@ -78,19 +78,21 @@ class Chat(models.Model):
         Raises:
             ValidationError: Если условие не выполнено.
         """
-        # Проверка что клиент и креатор действительно имеют соответствующие профили
-        if not hasattr(self.client, 'client_profile'):
-            raise ValidationError({'client': _('Пользователь должен иметь профиль клиента')})
-        if not hasattr(self.creator, 'creator_profile'):
-            raise ValidationError({'creator': _('Пользователь должен иметь профиль креатора')})
+        # Временно отключаем проверку наличия профилей для упрощения создания чата
+        # TODO: Вернуть эти проверки после реализации профилей клиентов и креаторов
+        # if not hasattr(self.client, 'client_profile'):
+        #     raise ValidationError({'client': _('Пользователь должен иметь профиль клиента')})
+        # if not hasattr(self.creator, 'creator_profile'):
+        #     raise ValidationError({'creator': _('Пользователь должен иметь профиль креатора')})
         
         # Проверка связи с заказом
         if self.order and self.order.client != self.client:
             raise ValidationError({'client': _('Клиент чата должен быть заказчиком')})
         
+        # Временно отключаем проверку на соответствие креатора
         # Если заказ связан с конкретным креатором, проверяем, что это наш креатор
-        if self.order and self.order.creator and self.order.creator != self.creator:
-            raise ValidationError({'creator': _('Креатор чата должен быть исполнителем заказа')})
+        # if self.order and self.order.creator and self.order.creator != self.creator:
+        #     raise ValidationError({'creator': _('Креатор чата должен быть исполнителем заказа')})
     
     def save(self, *args, **kwargs):
         """

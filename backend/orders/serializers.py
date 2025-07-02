@@ -273,7 +273,7 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         """Возвращает сдачи работы по заказу."""
         # Проверка прав доступа: клиент заказа или исполнитель должны видеть сдачи
         user = self.context['request'].user
-        if user == obj.client or user == obj.creator:
+        if user == obj.client or user == obj.target_creator:
             return DeliverySerializer(obj.deliveries.all(), many=True).data
         
         # Для других пользователей не показываем сдачи
@@ -287,7 +287,7 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         
         # Для незавершенных заказов отзывы видны только клиенту и исполнителю
         user = self.context['request'].user
-        if user == obj.client or user == obj.creator:
+        if user == obj.client or user == obj.target_creator:
             return ReviewSerializer(obj.reviews.all(), many=True).data
         
         return None

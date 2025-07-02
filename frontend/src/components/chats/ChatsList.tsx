@@ -52,7 +52,8 @@ interface Chat {
   id: number;
   client: ChatParticipant;
   creator: ChatParticipant;
-  order?: ChatOrder;
+  order?: ChatOrder | number; // Может быть объектом или ID заказа
+  order_details?: ChatOrder;   // Детали заказа из ChatDetailSerializer
   created_at: string;
   updated_at: string;
   is_active: boolean;
@@ -100,6 +101,15 @@ const ChatsList: React.FC<ChatsListProps> = ({
     const fetchChats = async () => {
       setLoading(true);
       try {
+        // Получаем токен авторизации из localStorage
+        const token = localStorage.getItem('authToken') || localStorage.getItem('access_token');
+        
+        if (!token) {
+          setError('Необходима авторизация для просмотра чатов');
+          setLoading(false);
+          return;
+        }
+
         // Формирование параметров запроса
         let queryParams = new URLSearchParams();
         
@@ -110,7 +120,12 @@ const ChatsList: React.FC<ChatsListProps> = ({
         queryParams.append('page', page.toString());
         queryParams.append('limit', limit.toString());
         
-        const response = await axios.get(`/api/chats/?${queryParams.toString()}`);
+        // Добавляем токен авторизации в заголовок запроса
+        const response = await axios.get(`/api/chats/?${queryParams.toString()}`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
         
         if (page === 1) {
           setChats(response.data.results);
@@ -120,16 +135,23 @@ const ChatsList: React.FC<ChatsListProps> = ({
         
         setHasMore(!!response.data.next);
         setError(null);
-      } catch (err) {
-        setError('Ошибка при загрузке чатов');
-
+      } catch (err: any) {
+        // Обрабатываем различные ошибки
+        if (err.response && err.response.status === 401) {
+          setError('Ошибка авторизации. Пожалуйста, войдите в систему снова.');
+          // Перенаправляем на страницу входа при 401 ошибке
+          setTimeout(() => navigate('/login'), 2000);
+        } else {
+          setError('Ошибка при загрузке чатов');
+          console.error('Ошибка при загрузке чатов:', err);
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchChats();
-  }, [orderId, page, limit]);
+  }, [orderId, page, limit, navigate]);
 
   // Обработчик нажатия на карточку чата
   const handleChatClick = (id: number) => {
@@ -181,15 +203,22 @@ const ChatsList: React.FC<ChatsListProps> = ({
                 <div className="flex justify-between items-center">
                   <CardTitle className="text-md flex items-center gap-2">
                     <MessageSquare size={16} className="text-blue-500" />
-                    {chat.order ? (
-                      <>
-                        Чат по заказу: {chat.order.title}
-                      </>
-                    ) : (
-                      <>
-                        Общий чат
-                      </>
-                    )}
+                    {(() => {
+                      // Получаем название заказа из разных возможных источников
+                      if (chat.order_details) {
+                        return (
+                          <>Чат по заказу: {chat.order_details.title}</>
+                        );
+                      } else if (chat.order && typeof chat.order === 'object' && 'title' in chat.order) {
+                        return (
+                          <>Чат по заказу: {chat.order.title}</>
+                        );
+                      } else {
+                        return (
+                          <>Общий чат</>
+                        );
+                      }
+                    })()}
                   </CardTitle>
                   <CardDescription className="text-xs">
                     {chat.last_message && formatDistanceToNow(new Date(chat.last_message.created_at), {
@@ -251,16 +280,34 @@ const ChatsList: React.FC<ChatsListProps> = ({
                     </div>
 
                     {/* Информация о заказе, если он есть */}
-                    {chat.order && (
-                      <div className="flex items-center mt-2">
-                        <Package size={14} className="text-gray-500 mr-1" />
-                        <span className="text-xs text-gray-500">
-                          {getOrderStatusText(chat.order.status)}
-                          {' • '}
-                          {chat.order.budget} ₽
-                        </span>
-                      </div>
-                    )}
+                    {(() => {
+                      // Определяем источник данных о заказе
+                      if (chat.order_details) {
+                        return (
+                          <div className="flex items-center mt-2">
+                            <Package size={14} className="text-gray-500 mr-1" />
+                            <span className="text-xs text-gray-500">
+                              {getOrderStatusText(chat.order_details.status)}
+                              {' • '}
+                              {chat.order_details.budget} ₽
+                            </span>
+                          </div>
+                        );
+                      } else if (chat.order && typeof chat.order === 'object' && 'status' in chat.order && 'budget' in chat.order) {
+                        return (
+                          <div className="flex items-center mt-2">
+                            <Package size={14} className="text-gray-500 mr-1" />
+                            <span className="text-xs text-gray-500">
+                              {getOrderStatusText(chat.order.status)}
+                              {' • '}
+                              {chat.order.budget} ₽
+                            </span>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                    
                   </div>
                 </div>
               </CardContent>

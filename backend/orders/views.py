@@ -86,7 +86,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         
         if self.action == 'my_created_orders':
             # Возвращаем только заказы, где пользователь является исполнителем
-            return queryset.filter(creator=self.request.user)
+            return queryset.filter(target_creator=self.request.user)
         
         # Для списка показываем только доступные заказы
         if self.action == 'list':
@@ -132,7 +132,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
         
         # Увеличиваем счетчик просмотров, если пользователь не является клиентом или исполнителем
-        if user.is_authenticated and user != order.client and user != order.creator:
+        if user.is_authenticated and user != order.client and user != order.target_creator:
             Order.objects.filter(id=order.id).update(views_count=F('views_count') + 1)
         
         # Возвращаем ответ с деталями заказа
@@ -146,21 +146,25 @@ class OrderViewSet(viewsets.ModelViewSet):
         if 'service' in serializer.validated_data and serializer.validated_data['service']:
             # Услуга указана, исполнитель известен, сразу ставим статус "в работе"
             service = serializer.validated_data['service']
-            serializer.save(status='in_progress', creator=service.creator_profile.user)
+            serializer.save(status='in_progress', target_creator=service.creator_profile.user)
         else:
             # Обычный заказ, устанавливаем статус "опубликован"
             serializer.save(status='published')
     
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], url_path='my-orders')
     def my_orders(self, request):
         """
         Возвращает список заказов текущего пользователя в роли клиента.
+        Доступно по URL: /api/orders/my-orders/
         """
-        queryset = self.get_queryset()
+        queryset = Order.objects.filter(client=request.user)
+        
+        # Применяем фильтрацию
+        queryset = self.filter_queryset(queryset)
+        
         page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+        serializer = OrderListSerializer(page, many=True, context={'request': request})
+        return self.get_paginated_response(serializer.data)
         
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
@@ -223,7 +227,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             # Проверяем отклик, если указан
             if response_id:
                 response = OrderResponse.objects.get(id=response_id, order=order)
-                if response.creator.id != int(creator_id):
+                if response.target_creator.id != int(creator_id):
                     return Response(
                         {'error': 'ID креатора не соответствует ID креатора в отклике'},
                         status=status.HTTP_400_BAD_REQUEST
@@ -369,12 +373,14 @@ class OrderViewSet(viewsets.ModelViewSet):
     def complete_order(self, request, pk=None):
         """
         Завершает заказ (принимает работу).
+        
+        Клиент может завершить заказ из статуса "На проверке" или "В работе"
         """
         order = self.get_object()
         
-        if order.status != 'on_review':
+        if order.status not in ['on_review', 'in_progress']:
             return Response(
-                {'error': 'Заказ должен быть в статусе "На проверке"'},
+                {'error': 'Заказ должен быть в статусе "На проверке" или "В работе"'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -423,11 +429,11 @@ class OrderViewSet(viewsets.ModelViewSet):
                 completion_text = template.template.format(
                     order_title=order.title,
                     client_name=order.client.username,
-                    creator_name=order.creator.username
+                    creator_name=order.target_creator.username
                 )
             except (SystemMessageTemplate.DoesNotExist, KeyError):
                 # Используем стандартное сообщение
-                completion_text = f"Заказ '{order.title}' успешно завершён! Клиент {order.client.username} подтвердил выполнение заказа. Приглашаем оставить отзыв о работе креатора {order.creator.username}."
+                completion_text = f"Заказ '{order.title}' успешно завершён! Клиент {order.client.username} подтвердил выполнение заказа. Приглашаем оставить отзыв о работе креатора {order.target_creator.username}."
                 
             # Отправляем завершающее сообщение во все чаты
             for chat in chats:
@@ -436,13 +442,79 @@ class OrderViewSet(viewsets.ModelViewSet):
                     content=completion_text,
                     is_system_message=True
                 )
-        if order.creator and hasattr(order.creator, 'creator_profile'):
-            creator_profile = order.creator.creator_profile
+        if order.target_creator and hasattr(order.target_creator, 'creator_profile'):
+            creator_profile = order.target_creator.creator_profile
             creator_profile.completed_orders = F('completed_orders') + 1
             creator_profile.save(update_fields=['completed_orders'])
         
         return Response(
             {'message': 'Заказ успешно завершен'},
+            status=status.HTTP_200_OK
+        )
+    
+    @action(detail=True, methods=['post'])
+    def start_order(self, request, pk=None):
+        """
+        Креатор может начать работу над заказом, изменяя его статус с "опубликованный" на "в процессе".
+        
+        Доступно только для креаторов, которые могут откликнуться на заказ.
+        """
+        order = self.get_object()
+        user = request.user
+        
+        # Проверяем, что заказ в нужном статусе
+        if order.status != 'published':
+            return Response(
+                {'error': 'Заказ должен быть в статусе "Опубликован"'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Проверяем, что пользователь может откликнуться на заказ
+        if not order.can_respond(user):
+            return Response(
+                {'error': 'У вас нет прав для начала работы над этим заказом'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Меняем статус заказа и назначаем креатора
+        order.status = 'in_progress'
+        order.target_creator = user
+        order.save()
+        
+        # Создаём чат между клиентом и креатором
+        from chats.models import Chat, Message, SystemMessageTemplate
+        
+        # Проверяем, существует ли уже чат между клиентом и креатором для этого заказа
+        chat, chat_created = Chat.objects.get_or_create(
+            client=order.client,
+            creator=user,
+            order=order
+        )
+        
+        # Добавляем системное сообщение
+        try:
+            template = SystemMessageTemplate.objects.get(
+                event_type=SystemMessageTemplate.EVENT_ORDER_STATUS_CHANGE,
+                is_active=True
+            )
+            message_text = template.template.format(
+                order_title=order.title,
+                old_status=dict(Order.STATUS_CHOICES).get('published', 'Опубликован'),
+                new_status=dict(Order.STATUS_CHOICES).get('in_progress', 'В работе')
+            )
+        except (SystemMessageTemplate.DoesNotExist, KeyError):
+            # Используем стандартное сообщение
+            message_text = f"Статус заказа '{order.title}' изменён с 'Опубликован' на 'В работе'. Креатор {user.username} приступил к работе."
+        
+        # Создаём системное сообщение
+        Message.objects.create(
+            chat=chat,
+            content=message_text,
+            is_system_message=True
+        )
+        
+        return Response(
+            {'message': 'Вы начали работу над заказом'},
             status=status.HTTP_200_OK
         )
     
@@ -515,7 +587,7 @@ class OrderResponseViewSet(viewsets.ModelViewSet):
         # показываем только его отклики или отклики на его заказы
         if not self.request.user.is_superuser:
             queryset = queryset.filter(
-                models.Q(creator=self.request.user) | 
+                models.Q(target_creator=self.request.user) | 
                 models.Q(order__client=self.request.user)
             )
         
@@ -539,11 +611,11 @@ class OrderResponseViewSet(viewsets.ModelViewSet):
             raise serializers.ValidationError('Вы не можете откликнуться на этот заказ')
         
         # Проверяем, существует ли уже отклик от этого пользователя на этот заказ
-        if OrderResponse.objects.filter(order_id=order_id, creator=user).exists():
+        if OrderResponse.objects.filter(order_id=order_id, target_creator=user).exists():
             raise serializers.ValidationError('Вы уже откликнулись на этот заказ')
         
         # Сохраняем отклик
-        response = serializer.save(creator=user, status='pending')
+        response = serializer.save(target_creator=user, status='pending')
         
         # Получаем связанный заказ и клиента
         client = order.client
@@ -593,7 +665,7 @@ class OrderResponseViewSet(viewsets.ModelViewSet):
         # Для приватных заказов, автоматически назначаем креатора и меняем статус заказа
         if order.is_private and order.target_creator == creator and not order.creator:
             # Устанавливаем креатора и меняем статус заказа на 'in_progress'
-            order.creator = creator
+            order.target_creator = creator
             order.change_status('in_progress')
             order.save()
             
@@ -639,7 +711,7 @@ class DeliveryViewSet(viewsets.ModelViewSet):
         # показываем только его результаты или результаты его заказов
         if not self.request.user.is_superuser:
             queryset = queryset.filter(
-                models.Q(creator=self.request.user) | 
+                models.Q(target_creator=self.request.user) | 
                 models.Q(order__client=self.request.user)
             )
         
@@ -656,14 +728,14 @@ class DeliveryViewSet(viewsets.ModelViewSet):
         order = Order.objects.get(id=order_id)
         
         # Проверяем, что текущий пользователь является исполнителем заказа
-        if order.creator != self.request.user:
+        if order.target_creator != self.request.user:
             raise serializers.ValidationError('Только исполнитель может добавлять результаты работы')
         
         # Проверяем, что заказ в статусе "в работе" или "на проверке"
         if order.status not in ['in_progress', 'on_review']:
             raise serializers.ValidationError('Добавлять результаты можно только для заказов в статусе "В работе" или "На проверке"')
         
-        serializer.save(creator=self.request.user)
+        serializer.save(target_creator=self.request.user)
     
     @action(detail=True, methods=['post'], permission_classes=[IsOrderClient])
     def approve(self, request, pk=None):
@@ -728,7 +800,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
             raise serializers.ValidationError('Отзыв можно оставить только для завершенного заказа')
         
         # Проверяем, что у заказа есть исполнитель
-        if not order.creator:
+        if not order.target_creator:
             raise serializers.ValidationError('У заказа должен быть исполнитель')
         
         # Проверяем, что отзыв для этого заказа еще не оставлен
@@ -737,5 +809,5 @@ class ReviewViewSet(viewsets.ModelViewSet):
         
         serializer.save(
             author=self.request.user,
-            recipient=order.creator
+            recipient=order.target_creator
         )

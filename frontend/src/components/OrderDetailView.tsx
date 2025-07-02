@@ -22,6 +22,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { OrderWithDetails, TimelineEvent } from '@/types/orders';
+import { Tag } from '@/types/index';
 
 // Вспомогательная функция для форматирования даты
 function formatDate(date: string | Date): string {
@@ -194,9 +195,8 @@ const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                   <h3 className="text-lg font-medium mb-3">Теги</h3>
                   <div className="flex flex-wrap gap-2">
                     {order.tags
-                      // Фильтруем теги по типу, если тип указан
-                      // Если тип не указан - показываем все (для обратной совместимости)
-                      .filter(tag => !tag.type || tag.type === 'order')
+                      // Показываем все теги заказа
+                      // Типизация тега в OrderWithDetails не содержит поле type
                       .map((tag, index) => (
                         <Badge key={index} className="bg-gray-100 text-gray-800 hover:bg-gray-200">
                           {tag.name}
@@ -404,6 +404,7 @@ const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                   variant="outline" 
                   className="w-full border-[#E95C4B] text-[#E95C4B] hover:bg-[#FCF5F4]" 
                   onClick={onViewMessages}
+                  disabled={!order.id}
                 >
                   <MessageSquare className="mr-2 h-4 w-4" />
                   Перейти к сообщениям

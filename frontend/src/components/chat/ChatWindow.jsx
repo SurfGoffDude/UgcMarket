@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { useSelector } from 'react-redux';
+import { toast } from 'react-toastify';
 import ChatMessageList from './ChatMessageList';
 import ChatInput from './ChatInput';
 import websocketService from '../../utils/websocketService';
 import { useApi } from '../../hooks/useApi';
+import Button from '../ui/Button';
 
 /**
  * Основной компонент чата, объединяющий список сообщений и ввод
@@ -265,19 +267,98 @@ const ChatWindow = ({ threadId, orderInfo = null }) => {
   };
   
   // Рендеринг информации о заказе (если она предоставлена)
+  /**
+   * Изменение статуса заказа креатором (с "опубликованный" на "в процессе")
+   */
+  const handleStartOrder = useCallback(async () => {
+    if (!orderInfo || !orderInfo.id) return;
+    
+    try {
+      const response = await api.post(`/api/orders/${orderInfo.id}/start_order/`);
+      
+      if (response.status === 200) {
+        toast.success('Вы начали работу над заказом');
+        // Обновляем информацию о заказе
+        if (orderInfo.onStatusChange) {
+          orderInfo.onStatusChange('in_progress');
+        }
+      }
+    } catch (err) {
+      console.error('Ошибка при изменении статуса заказа:', err);
+      toast.error(err.response?.data?.error || 'Не удалось изменить статус заказа');
+    }
+  }, [api, orderInfo]);
+
+  /**
+   * Завершение заказа клиентом (с "в процессе" на "завершен")
+   */
+  const handleCompleteOrder = useCallback(async () => {
+    if (!orderInfo || !orderInfo.id) return;
+    
+    try {
+      const response = await api.post(`/api/orders/${orderInfo.id}/complete_order/`);
+      
+      if (response.status === 200) {
+        toast.success('Заказ успешно завершен');
+        // Обновляем информацию о заказе
+        if (orderInfo.onStatusChange) {
+          orderInfo.onStatusChange('completed');
+        }
+      }
+    } catch (err) {
+      console.error('Ошибка при завершении заказа:', err);
+      toast.error(err.response?.data?.error || 'Не удалось завершить заказ');
+    }
+  }, [api, orderInfo]);
+
+  // Рендеринг информации о заказе (если она предоставлена)
   const renderOrderInfo = () => {
     if (!orderInfo) return null;
+    
+    // Определяем, является ли текущий пользователь клиентом или креатором заказа
+    const isClient = user && orderInfo.client_id === user.id;
+    const isCreator = user && orderInfo.creator_id === user.id;
+    
+    // Определяем, нужно ли показывать кнопки управления статусом
+    const showStartButton = isCreator && orderInfo.status === 'published';
+    const showCompleteButton = isClient && orderInfo.status === 'in_progress';
     
     return (
       <div className="chat-order-info">
         <div className="order-title">
           Заказ #{orderInfo.id} - {orderInfo.title}
         </div>
-        {orderInfo.status && (
-          <div className={`order-status status-${orderInfo.status.toLowerCase()}`}>
-            {orderInfo.status_display}
+        
+        <div className="order-status-controls">
+          {orderInfo.status && (
+            <div className={`order-status status-${orderInfo.status.toLowerCase()}`}>
+              {orderInfo.status_display}
+            </div>
+          )}
+          
+          {/* Кнопки управления статусом */}
+          <div className="order-status-actions">
+            {showStartButton && (
+              <Button 
+                variant="primary" 
+                onClick={handleStartOrder}
+                size="sm"
+              >
+                Начать работу
+              </Button>
+            )}
+            
+            {showCompleteButton && (
+              <Button 
+                variant="success" 
+                onClick={handleCompleteOrder}
+                size="sm"
+              >
+                Завершить заказ
+              </Button>
+            )}
           </div>
-        )}
+        </div>
       </div>
     );
   };
@@ -337,7 +418,10 @@ ChatWindow.propTypes = {
     id: PropTypes.number.isRequired,
     title: PropTypes.string.isRequired,
     status: PropTypes.string,
-    status_display: PropTypes.string
+    status_display: PropTypes.string,
+    client_id: PropTypes.number,
+    creator_id: PropTypes.number,
+    onStatusChange: PropTypes.func
   })
 };
 
