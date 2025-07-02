@@ -13,7 +13,7 @@ export const PRIMARY_COLOR = {
 
 // Акцентные цвета
 export const ACCENT_COLORS = {
-  primary: '#5E42BD', // Фиолетовый
+  primary: '#E95C4B', // Новый акцентный цвет
   secondary: '#3D8BFF', // Синий
   tertiary: '#FF6B6B', // Красный
 };
@@ -41,9 +41,9 @@ export const SEMANTIC_COLORS = {
 
 // Градиенты
 export const GRADIENTS = {
-  primary: 'linear-gradient(90deg, #5E42BD 0%, #3D8BFF 100%)',
+  primary: 'linear-gradient(90deg, #E95C4B 0%, #3D8BFF 100%)',
   secondary: 'linear-gradient(90deg, #3D8BFF 0%, #10B981 100%)',
-  tertiary: 'linear-gradient(90deg, #5E42BD 0%, #FF6B6B 100%)',
+  tertiary: 'linear-gradient(90deg, #E95C4B 0%, #FF6B6B 100%)',
 };
 
 // HSL цвета для Tailwind CSS
@@ -52,30 +52,30 @@ export const HSL_COLORS = {
   light: {
     background: '220 33% 98%',
     foreground: '222 47% 11%',
-    primary: '257 56% 50%',
+    primary: '6 75% 60%',
     'primary-foreground': '0 0% 100%',
     secondary: '214 100% 62%',
     'secondary-foreground': '0 0% 100%',
     muted: '220 14% 96%',
     'muted-foreground': '220 9% 46%',
-    accent: '220 14% 96%',
+    accent: '6 75% 60%',
     'accent-foreground': '222 47% 11%',
     border: '214.3 31.8% 91.4%',
-    ring: '257 56% 50%',
+    ring: '6 75% 60%',
   },
   // Темная тема
   dark: {
     background: '222 47% 11%',
     foreground: '210 40% 98%',
-    primary: '257 56% 50%',
+    primary: '6 75% 60%',
     'primary-foreground': '0 0% 100%',
     secondary: '214 100% 62%',
     'secondary-foreground': '0 0% 100%',
     muted: '217 33% 17%',
     'muted-foreground': '215 20.2% 65.1%',
-    accent: '217 33% 17%',
+    accent: '6 75% 60%',
     'accent-foreground': '0 0% 100%',
     border: '217 33% 17%',
-    ring: '257 56% 50%',
+    ring: '6 75% 60%',
   },
 };

@@ -24,16 +24,16 @@
     --primary: 230 29% 23%;
     --primary-foreground: 0 0% 100%;
 
-    /* Акцентный фиолетовый #5E42BD */
-    --secondary: 257 56% 50%;
+    /* Акцентный цвет #E95C4B */
+    --secondary: 6 75% 60%;
     --secondary-foreground: 0 0% 100%;
 
     /* Нейтральный серый */
     --muted: 220 14% 96%;
     --muted-foreground: 220 9% 46%;
 
-    /* Акцентный синий #3D8BFF */
-    --accent: 214 100% 62%;
+    /* Акцентный цвет #E95C4B */
+    --accent: 6 75% 60%;
     --accent-foreground: 0 0% 100%;
 
     /* Красный для предупреждений */
@@ -42,19 +42,19 @@
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 257 56% 50%;
+    --ring: 6 75% 60%;
 
     --radius: 0.5rem;
 
     /* Боковая панель */
     --sidebar-background: 230 29% 23%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 257 56% 50%;
+    --sidebar-primary: 6 75% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 214 100% 62%;
+    --sidebar-accent: 6 75% 60%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 230 29% 30%;
-    --sidebar-ring: 257 56% 50%;
+    --sidebar-ring: 6 75% 60%;
   }
 
   .dark {
@@ -72,16 +72,16 @@
     --primary: 230 29% 28%;
     --primary-foreground: 0 0% 100%;
 
-    /* Акцентный фиолетовый #5E42BD темный вариант */
-    --secondary: 257 56% 45%;
+    /* Акцентный цвет #E95C4B темный вариант */
+    --secondary: 6 65% 55%;
     --secondary-foreground: 0 0% 100%;
 
     /* Нейтральный темный */
     --muted: 217 33% 17%;
     --muted-foreground: 215 20% 65%;
 
-    /* Акцентный синий темный вариант */
-    --accent: 214 90% 52%;
+    /* Акцентный цвет темный вариант */
+    --accent: 6 65% 55%;
     --accent-foreground: 0 0% 100%;
 
     /* Красный для предупреждений */
@@ -90,17 +90,17 @@
 
     --border: 217 33% 25%;
     --input: 217 33% 25%;
-    --ring: 257 56% 45%;
+    --ring: 6 65% 55%;
     
     /* Боковая панель */
     --sidebar-background: 230 29% 18%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 257 56% 45%;
+    --sidebar-primary: 6 65% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 214 90% 52%;
+    --sidebar-accent: 6 65% 55%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 230 29% 25%;
-    --sidebar-ring: 257 56% 45%;
+    --sidebar-ring: 6 65% 55%;
   }
 }
 
@@ -151,11 +151,11 @@ html {
 
 @layer utilities {
   .text-gradient {
-    @apply bg-gradient-to-r from-secondary to-accent bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-[#E95C4B] to-[#E95C4B] bg-clip-text text-transparent;
   }
   
   .btn-gradient {
-    @apply bg-gradient-to-r from-secondary to-accent hover:from-secondary/90 hover:to-accent/90;
+    @apply bg-gradient-to-r from-[#E95C4B] to-[#E95C4B]/90 hover:from-[#E95C4B]/90 hover:to-[#E95C4B]/80;
   }
   
   .card-hover {

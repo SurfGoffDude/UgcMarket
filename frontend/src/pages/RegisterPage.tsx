@@ -187,7 +187,9 @@ const RegisterPage: React.FC = () => {
     <div className="min-h-screen py-12 px-4 flex items-center justify-center">
       <div className="max-w-md w-full space-y-8 bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg">
         <div className="text-center">
-          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100">Регистрация</h1>
+          <h2 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 text-[#E95C4B]">
+            Регистрация в UGC Market
+          </h2>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             Создайте свой аккаунт для доступа к платформе
           </p>
@@ -354,10 +356,10 @@ const RegisterPage: React.FC = () => {
             <div className="flex space-x-4 justify-center">
               <button 
                 type="button"
-                className={`flex flex-col items-center p-4 rounded-lg border transition-all ${formData.user_type === 'client' ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/20' : 'border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                className={`flex flex-col items-center p-4 rounded-lg border transition-all ${formData.user_type === 'client' ? 'border-[#E95C4B] bg-[#E95C4B]/10 dark:bg-[#E95C4B]/20' : 'border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
                 onClick={() => setState({...formData, user_type: 'client'})}
               >
-                <span className={`font-medium mb-1 ${formData.user_type === 'client' ? 'text-purple-600' : 'text-gray-600 dark:text-gray-400'}`}>
+                <span className={`font-medium mb-1 ${formData.user_type === 'client' ? 'text-[#E95C4B]' : 'text-gray-600 dark:text-gray-400'}`}>
                   Клиент
                 </span>
                 <p className="text-xs text-center text-gray-500 dark:text-gray-400 max-w-[140px] m-0">
@@ -367,10 +369,10 @@ const RegisterPage: React.FC = () => {
               
               <button 
                 type="button"
-                className={`flex flex-col items-center p-4 rounded-lg border transition-all ${formData.user_type === 'creator' ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/20' : 'border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                className={`flex flex-col items-center p-4 rounded-lg border transition-all ${formData.user_type === 'creator' ? 'border-[#E95C4B] bg-[#E95C4B]/10 dark:bg-[#E95C4B]/20' : 'border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
                 onClick={() => setState({...formData, user_type: 'creator'})}
               >
-                <span className={`font-medium mb-1 ${formData.user_type === 'creator' ? 'text-purple-600' : 'text-gray-600 dark:text-gray-400'}`}>
+                <span className={`font-medium mb-1 ${formData.user_type === 'creator' ? 'text-[#E95C4B]' : 'text-gray-600 dark:text-gray-400'}`}>
                   Креатор
                 </span>
                 <p className="text-xs text-center text-gray-500 dark:text-gray-400 max-w-[140px] m-0">
@@ -390,7 +392,7 @@ const RegisterPage: React.FC = () => {
               htmlFor="acceptTerms" 
               className="text-sm text-gray-700 dark:text-gray-300"
             >
-              Я принимаю <Link to="/terms" className="text-purple-600 hover:underline">условия пользовательского соглашения</Link> и <Link to="/privacy" className="text-purple-600 hover:underline">политику конфиденциальности</Link>*
+              Я принимаю <Link to="/terms" className="text-[#E95C4B] hover:underline">условия пользовательского соглашения</Link> и <Link to="/privacy" className="text-[#E95C4B] hover:underline">политику конфиденциальности</Link>*
             </Label>
           </div>
 
@@ -398,7 +400,7 @@ const RegisterPage: React.FC = () => {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold rounded-md px-4 py-2"
+              className="w-full bg-[#E95C4B] hover:bg-[#d54538] text-white font-bold rounded-md px-4 py-2"
             >
               {loading ? 'Создание аккаунта...' : 'Зарегистрироваться'}
             </Button>
@@ -410,7 +412,7 @@ const RegisterPage: React.FC = () => {
             Уже есть аккаунт?{' '}
             <Link 
               to="/login" 
-              className="font-medium text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300"
+              className="font-medium text-[#E95C4B] hover:text-[#d54538] dark:text-[#E95C4B] dark:hover:text-[#d54538]"
             >
               Войти
             </Link>

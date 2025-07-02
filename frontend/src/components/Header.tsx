@@ -94,7 +94,7 @@ const Header = () => {
                 to={link.path}
                 className={`px-4 py-2 text-sm font-medium rounded-full transition-colors ${
                   location.pathname === link.path
-                    ? 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30'
+                    ? 'text-[#E95C4B] dark:text-[#E95C4B] bg-[#E95C4B]/10 dark:bg-[#E95C4B]/20'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
               >
@@ -156,7 +156,7 @@ const Header = () => {
                   </Button>
                 </Link>
                 <Link to="/register">
-                  <Button className="rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+                  <Button className="rounded-full bg-[#E95C4B]">
                     Регистрация
                   </Button>
                 </Link>
@@ -251,7 +251,7 @@ const Header = () => {
                   onClick={toggleMenu}
                   className={`block px-4 py-3 text-base font-medium rounded-lg ${
                     location.pathname === link.path
-                      ? 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30'
+                      ? 'text-[#E95C4B] dark:text-[#E95C4B] bg-[#E95C4B]/10 dark:bg-[#E95C4B]/20'
                       : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                   }`}
                 >
@@ -267,7 +267,7 @@ const Header = () => {
                       </Button>
                     </Link>
                     <Link to="/register" className="block" onClick={toggleMenu}>
-                      <Button className="w-full justify-center bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+                      <Button className="w-full justify-center bg-[#E95C4B] hover:bg-[#d54538]">
                         Создать аккаунт
                       </Button>
                     </Link>

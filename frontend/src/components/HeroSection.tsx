@@ -56,7 +56,7 @@ const HeroSection = () => {
             <motion.div className="space-y-4" variants={item}>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white leading-tight">
                 Найдите идеального{' '}
-                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight bg-gradient-to-r from-[var(--primary-600)] via-[var(--accent-600)] to-[var(--secondary-500)] bg-clip-text text-transparent">
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-[#E95C4B]">
                   UGC-креатора
                 </h1>
                 {' '}для вашего бренда
@@ -71,7 +71,7 @@ const HeroSection = () => {
               <Button 
                 size="lg" 
                 onClick={handleFindCreators}
-                className="group rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-8 py-6 text-lg transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
+                className="group rounded-full bg-[#E95C4B] hover:bg-[#d54538] px-8 py-6 text-lg transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
               >
                 Найти креатора
                 <ArrowRight className="w-5 h-5 ml-2 transition-transform duration-300 group-hover:translate-x-1" />

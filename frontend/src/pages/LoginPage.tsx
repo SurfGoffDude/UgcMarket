@@ -60,7 +60,7 @@ const LoginPage: React.FC = () => {
     <div className="min-h-screen py-12 px-4 flex items-center justify-center">
       <div className="max-w-md w-full space-y-8 bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg">
         <div className="text-center">
-          <h2 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+          <h2 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 text-[#E95C4B]">
             Вход в UGC Market
           </h2>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
@@ -120,7 +120,7 @@ const LoginPage: React.FC = () => {
             <div className="text-sm">
               <Link 
                 to="/forgot-password" 
-                className="font-medium text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300"
+                className="font-medium text-[#E95C4B] hover:text-[#d54538] dark:text-[#E95C4B] dark:hover:text-[#d54538]"
               >
                 Забыли пароль?
               </Link>
@@ -131,7 +131,7 @@ const LoginPage: React.FC = () => {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold rounded-md px-4 py-2"
+              className="w-full bg-[#E95C4B] hover:bg-[#d54538] text-white font-bold rounded-md px-4 py-2"
             >
               {loading ? 'Выполняется вход...' : 'Войти'}
             </Button>
@@ -143,7 +143,7 @@ const LoginPage: React.FC = () => {
             Еще нет аккаунта?{' '}
             <Link 
               to="/register" 
-              className="font-medium text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300"
+              className="font-medium text-[#E95C4B] hover:text-[#d54538] dark:text-[#E95C4B] dark:hover:text-[#d54538]"
             >
               Зарегистрироваться
             </Link>
