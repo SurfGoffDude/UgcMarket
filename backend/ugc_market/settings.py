@@ -52,6 +52,7 @@ SERVICE_APPS = [
     'djoser',
     'django_filters',
     'channels',
+    'drf_yasg',
 ]
 
 
