@@ -9,25 +9,25 @@ const steps = [
     icon: Search,
     title: 'Найдите идеального креатора',
     description: 'Используйте фильтры для поиска креаторов по нише, платформе и бюджету',
-    color: 'from-purple-600 to-pink-600'
+    color: 'from-[var(--primary-600)] to-[var(--accent-600)]'
   },
   {
     icon: MessageSquare,
     title: 'Обсудите детали',
     description: 'Свяжитесь с креатором через встроенный чат для обсуждения деталей проекта',
-    color: 'from-blue-500 to-cyan-500'
+    color: 'from-[var(--secondary-500)] to-[var(--secondary-300)]'
   },
   {
     icon: CheckCircle,
     title: 'Оплатите безопасно',
     description: 'Внесите предоплату, которая будет заморожена до выполнения работы',
-    color: 'from-green-500 to-emerald-500'
+    color: 'from-[var(--success-500)] to-[var(--success-300)]'
   },
   {
     icon: Zap,
     title: 'Получите контент',
     description: 'Примите работу и получите готовый контент в согласованные сроки',
-    color: 'from-yellow-500 to-orange-500'
+    color: 'from-[var(--warning-500)] to-[var(--warning-300)]'
   }
 ];
 
@@ -118,7 +118,7 @@ const HowItWorks = () => {
                     <Icon className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex items-center mb-2">
-                    <span className="w-8 h-8 bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 rounded-full flex items-center justify-center font-bold mr-3 transition-colors">
+                    <span className="w-8 h-8 bg-[var(--primary-100)] dark:bg-[var(--primary-900/50)] text-primary dark:text-[var(--primary-400)] rounded-full flex items-center justify-center font-bold mr-3 transition-colors">
                       {index + 1}
                     </span>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -129,7 +129,7 @@ const HowItWorks = () => {
                     {step.description}
                   </p>
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl opacity-0 group-hover:opacity-10 transition-opacity duration-300 -z-0"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-[var(--primary-500)] to-[var(--accent-500)] rounded-2xl opacity-0 group-hover:opacity-10 transition-opacity duration-300 -z-0"></div>
               </motion.div>
             );
           })}
@@ -142,7 +142,7 @@ const HowItWorks = () => {
           transition={{ delay: 0.8, duration: 0.6 }}
         >
           <Button 
-            className="group bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-8 py-6 text-lg rounded-full hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-300"
+            className="group bg-gradient-to-r from-[var(--primary-600)] to-[var(--accent-600)] hover:from-[var(--primary-700)] hover:to-[var(--accent-700)] px-8 py-6 text-lg rounded-full hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-300"
             size="lg"
           >
             Начать поиск креаторов

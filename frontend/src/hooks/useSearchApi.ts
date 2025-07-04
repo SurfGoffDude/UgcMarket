@@ -333,18 +333,6 @@ export function useCreatorsList(filters?: { tags: SelectedTags; query: string })
     }
   }
   
-  // Логируем данные для диагностики проблем с фильтрацией
-  console.log('%c[DEBUG] useCreatorsList:', 'color: #2196F3; font-weight: bold', {
-    url,
-    apiData,
-    filters,
-    filteredData: finalData,
-    mockUsed: !apiData,
-    tagFiltersActive: filters && Object.keys(filters.tags || {}).length > 0,
-    tagCount: filters ? Object.values(filters.tags || {}).flat().length : 0,
-    hasQuery: !!filters?.query
-  });
-  
   // Возвращаем отфильтрованные данные или пустой массив, если данных нет
   return { 
     creators: Array.isArray(finalData) ? finalData : [], 

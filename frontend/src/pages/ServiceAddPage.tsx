@@ -91,7 +91,7 @@ const ServiceAddPage = () => {
           const response = await apiClient.get(`/profiles/creator/by-user/${user.id}/`);
           setCreatorId(response.data.id);
         } catch (error) {
-          console.error('Failed to fetch creator profile id', error);
+
         }
       }
     };
@@ -117,7 +117,6 @@ const ServiceAddPage = () => {
             setImagePreviews(serviceData.images.map((img: any) => img.image));
           }
         } catch (error) {
-          console.error('Failed to fetch service data', error);
           toast({
             title: 'Ошибка',
             description: 'Не удалось загрузить данные услуги.',
@@ -171,7 +170,6 @@ const ServiceAddPage = () => {
       });
       navigate(`/services/${response.data.id}`);
     } catch (error: any) {
-      console.error("Ошибка при сохранении услуги:", error);
       const errorDetail = error.response?.data;
       const description = typeof errorDetail === 'string' ? errorDetail : JSON.stringify(errorDetail) || 'Не удалось сохранить услугу';
       toast({

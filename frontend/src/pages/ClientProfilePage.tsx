@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -14,7 +14,8 @@ import {
   Loader2,
   AlertCircle,
   Clock,
-  FileText
+  FileText,
+  PlusCircle
 } from 'lucide-react';
 
 // Импортируем наш тип пользователя
@@ -34,6 +35,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { toast } from '@/components/ui/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 /**
  * Интерфейс пользовательского профиля
@@ -51,6 +53,21 @@ interface UserProfile {
   is_verified: boolean;
   user_type: string;
   location?: string;
+}
+
+/**
+ * Интерфейс заказа
+ */
+interface Order {
+  id: number;
+  title: string;
+  description: string;
+  budget: number;
+  deadline: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  tags?: Array<{id: number, name: string}>;
 }
 
 /**
@@ -81,29 +98,48 @@ const ClientProfilePage: React.FC = () => {
   
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState<boolean>(false);
+  const [orderError, setOrderError] = useState<Error | null>(null);
   
   // Проверяем тип пользователя и перенаправляем креаторов на их профиль
   useEffect(() => {
     if (user) {
       // Добавляем отладочный вывод данных пользователя
-      console.log('Данные пользователя в ClientProfilePage:', user);
-      console.log('Тип пользователя:', (user as any)?.user_type);
-      console.log('Имеет профиль креатора:', (user as any)?.has_creator_profile);
       
       // Если пользователь является креатором, перенаправляем на страницу профиля креатора
       const isCreator = user && 
         (user as any)?.has_creator_profile === true;
       
-      console.log('Пользователь креатор?', isCreator);
       
       if (isCreator) {
-        console.log('Перенаправляем на профиль креатора:', '/creator-profile');
         navigate('/creator-profile');
       }
     } else {
-      console.log('Пользователь не найден в ClientProfilePage');
     }
   }, [user, navigate]);
+  
+  // Загрузка заказов пользователя
+  useEffect(() => {
+    const fetchUserOrders = async () => {
+      if (!user) return;
+      
+      try {
+        setLoadingOrders(true);
+        setOrderError(null);
+        
+        const response = await apiClient.get('/orders/my-orders/');
+        setOrders(response.data.results || []);
+      } catch (err) {
+        console.error('Ошибка при загрузке заказов:', err);
+        setOrderError(err instanceof Error ? err : new Error('Ошибка при загрузке заказов'));
+      } finally {
+        setLoadingOrders(false);
+      }
+    };
+    
+    fetchUserOrders();
+  }, [user]);
   
   // Инициализируем форму с использованием react-hook-form и zod для валидации
   const form = useForm<ProfileFormValues>({
@@ -526,34 +562,118 @@ const ClientProfilePage: React.FC = () => {
           
           <TabsContent value="orders">
             <Card>
-              <CardHeader>
-                <CardTitle>Мои заказы</CardTitle>
-                <CardDescription>История ваших заказов и текущие проекты</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                  <CardTitle>Мои заказы</CardTitle>
+                  <CardDescription>История ваших заказов и текущие проекты</CardDescription>
+                </div>
+                <Button 
+                  variant="default" 
+                  className="bg-[#282D4E] hover:bg-[#363c68]"
+                  asChild
+                >
+                  <Link to="/orders/create">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Создать заказ
+                  </Link>
+                </Button>
               </CardHeader>
               
               <CardContent>
                 <div className="space-y-4">
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-100 flex justify-between items-center">
-                    <div>
-                      <Badge>В процессе</Badge>
-                      <h3 className="font-medium mt-1">Дизайн логотипа для компании</h3>
-                      <div className="flex items-center text-sm text-gray-600 mt-1">
-                        <Clock className="h-3 w-3 mr-1" />
-                        <span>Срок до 21.06.2025</span>
-                      </div>
+                  {loadingOrders && (
+                    <div className="space-y-4">
+                      {[1, 2].map((i) => (
+                        <div key={i} className="border rounded-lg p-4">
+                          <Skeleton className="h-6 w-1/3 mb-2" />
+                          <Skeleton className="h-4 w-1/2 mb-4" />
+                          <Skeleton className="h-10 w-full" />
+                          <div className="flex justify-between mt-4">
+                            <Skeleton className="h-4 w-1/4" />
+                            <Skeleton className="h-4 w-1/4" />
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    <Button variant="outline" size="sm">
-                      <FileText className="h-4 w-4 mr-1" />
-                      Детали
-                    </Button>
-                  </div>
+                  )}
                   
-                  <div className="text-center py-8 text-gray-500">
-                    <p>У вас пока нет других заказов</p>
-                    <Button className="mt-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
-                      Создать заказ
-                    </Button>
-                  </div>
+                  {!loadingOrders && orderError && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Ошибка</AlertTitle>
+                      <AlertDescription>
+                        Не удалось загрузить ваши заказы. Пожалуйста, попробуйте позже.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  {!loadingOrders && !orderError && orders.length > 0 ? (
+                    <div className="divide-y">
+                      {orders.map((order) => (
+                        <div key={order.id} className="py-4 first:pt-0 last:pb-0">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                              <Link 
+                                to={`/orders/${order.id}`}
+                                className="font-semibold text-lg text-[#282D4E] hover:underline"
+                              >
+                                {order.title}
+                              </Link>
+                              <div className="text-sm text-gray-500 mt-1">
+                                Создан: {new Date(order.created_at).toLocaleDateString('ru-RU')}
+                              </div>
+                            </div>
+                            <div className="flex items-center">
+                              <Badge 
+                                variant={order.status === 'completed' ? 'default' : 
+                                       order.status === 'in_progress' ? 'default' : 
+                                       order.status === 'draft' ? 'outline' : 'secondary'}
+                                className={`
+                                  ${order.status === 'published' ? 'bg-[#282D4E]' : ''} 
+                                  ${order.status === 'completed' ? 'bg-green-600 text-white' : ''}
+                                `}
+                              >
+                                {order.status === 'published' ? 'Опубликован' : 
+                                 order.status === 'draft' ? 'Черновик' : 
+                                 order.status === 'in_progress' ? 'В работе' : 
+                                 order.status === 'completed' ? 'Выполнен' : 
+                                 order.status}
+                              </Badge>
+                              {order.budget && (
+                                <span className="ml-4 text-sm font-medium">
+                                  {order.budget.toLocaleString('ru-RU')} ₽
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {order.tags && order.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {order.tags.map(tag => (
+                                <Badge key={tag.id} variant="outline" className="text-xs">
+                                  {tag.name}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    !loadingOrders && !orderError && (
+                      <div className="text-center py-8 text-gray-500">
+                        <p>У вас пока нет заказов</p>
+                        <Button 
+                          className="mt-4 bg-[#282D4E] hover:bg-[#363c68]"
+                          asChild
+                        >
+                          <Link to="/orders/create">
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Создать заказ
+                          </Link>
+                        </Button>
+                      </div>
+                    )
+                  )}
                 </div>
               </CardContent>
             </Card>

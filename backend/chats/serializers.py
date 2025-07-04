@@ -14,6 +14,17 @@ from .models import Chat, Message, SystemMessageTemplate
 User = get_user_model()
 
 
+# Импортируем сериализатор заказа
+# Создаем простой сериализатор заказа для использования в чатах
+class OrderMinSerializer(serializers.Serializer):
+    """
+    Упрощенный сериализатор заказа для использования в чатах.
+    Включает только основную информацию о заказе.
+    """
+    id = serializers.IntegerField()
+    title = serializers.CharField()
+    status = serializers.CharField()
+
 class ChatListSerializer(serializers.ModelSerializer):
     """
     Сериализатор для вывода списка чатов.
@@ -22,6 +33,7 @@ class ChatListSerializer(serializers.ModelSerializer):
     """
     client = UserSerializer(read_only=True)
     creator = UserSerializer(read_only=True)
+    order = serializers.SerializerMethodField()
     last_message = serializers.SerializerMethodField()
     unread_count = serializers.SerializerMethodField()
     
@@ -46,15 +58,26 @@ class ChatListSerializer(serializers.ModelSerializer):
             }
         return None
     
+    def get_order(self, obj):
+        """Возвращает информацию о заказе, если он связан с чатом."""
+        if obj.order:
+            # Возвращаем основную информацию о заказе
+            return {
+                'id': obj.order.id,
+                'title': obj.order.title,
+                'status': obj.order.status
+            }
+        return None
+    
     def get_unread_count(self, obj):
         """Возвращает количество непрочитанных сообщений для текущего пользователя."""
         user = self.context['request'].user
         if user == obj.client:
             # Подсчет непрочитанных сообщений для клиента (от креатора)
-            return obj.messages.filter(sender=obj.creator, read_by_client=False).count()
+            return obj.messages.filter(sender=obj.creator, is_read=False).count()
         elif user == obj.creator:
             # Подсчет непрочитанных сообщений для креатора (от клиента)
-            return obj.messages.filter(sender=obj.client, read_by_creator=False).count()
+            return obj.messages.filter(sender=obj.client, is_read=False).count()
         return 0
 
 
@@ -89,9 +112,9 @@ class MessageSerializer(serializers.ModelSerializer):
         model = Message
         fields = [
             'id', 'chat', 'sender', 'sender_details', 'content', 'attachment',
-            'is_system_message', 'created_at', 'read_by_client', 'read_by_creator'
+            'is_system_message', 'created_at', 'is_read'
         ]
-        read_only_fields = ['sender', 'created_at', 'read_by_client', 'read_by_creator']
+        read_only_fields = ['sender', 'created_at', 'is_read']
     
     def get_sender_details(self, obj):
         """Возвращает детали отправителя, если это не системное сообщение."""

@@ -105,8 +105,8 @@ const OrderResponseForm: React.FC = () => {
     resolver: zodResolver(responseFormSchema),
     defaultValues: {
       message: '',
-      priceOffer: '',
-      deliveryTimeOffer: '',
+      priceOffer: 0,
+      deliveryTimeOffer: 0,
     },
   });
 
@@ -132,7 +132,7 @@ const OrderResponseForm: React.FC = () => {
 
         setError(null);
       } catch (err) {
-        console.error('Ошибка при загрузке данных:', err);
+
         setError('Не удалось загрузить информацию о заказе');
       } finally {
         setLoading(false);
@@ -166,7 +166,7 @@ const OrderResponseForm: React.FC = () => {
         navigate(`/orders/${id}`);
       }, 2000);
     } catch (err) {
-      console.error('Ошибка при отправке отклика:', err);
+
       setError('Произошла ошибка при отправке отклика. Пожалуйста, попробуйте еще раз.');
       setSubmitting(false);
     }

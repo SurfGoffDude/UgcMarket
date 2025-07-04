@@ -98,7 +98,7 @@ const CreatorResponsesList: React.FC<CreatorResponsesListProps> = ({ orderId, ca
         setError(null);
       } catch (err) {
         setError('Ошибка при загрузке откликов креаторов');
-        console.error('Ошибка при загрузке откликов креаторов:', err);
+
       } finally {
         setLoading(false);
       }
@@ -133,7 +133,7 @@ const CreatorResponsesList: React.FC<CreatorResponsesListProps> = ({ orderId, ca
       // и родительский компонент может обновить данные своим способом
     } catch (err) {
       setError('Ошибка при назначении креатора');
-      console.error('Ошибка при назначении креатора:', err);
+
     } finally {
       setProcessingSelect(false);
     }
@@ -243,7 +243,7 @@ const CreatorResponsesList: React.FC<CreatorResponsesListProps> = ({ orderId, ca
                 </div>
                 <Badge variant={
                   response.status === 'accepted' 
-                    ? 'success' 
+                    ? 'outline' 
                     : response.status === 'rejected'
                       ? 'destructive'
                       : 'secondary'
@@ -262,7 +262,10 @@ const CreatorResponsesList: React.FC<CreatorResponsesListProps> = ({ orderId, ca
                 <div className="flex flex-wrap gap-4">
                   {response.price_offer !== null && (
                     <div className="bg-gray-100 dark:bg-gray-800 rounded-md px-3 py-1 flex items-center">
-                      <DollarSign size={16} className="text-green-600 dark:text-green-400 mr-1" />
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600 dark:text-green-400 mr-1">
+                        <line x1="12" y1="2" x2="12" y2="22"></line>
+                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                      </svg>
                       <span className="text-sm">
                         Предложенная цена: {response.price_offer} ₽
                       </span>

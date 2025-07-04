@@ -17,30 +17,161 @@ sudo apt update
 sudo apt upgrade -y
 ```
 
-### Установка необходимых пакетов
+### Установка Python 3.13
 
 ```bash
-sudo apt install -y build-essential libssl-dev libffi-dev python3.13-dev postgresql postgresql-contrib nginx curl
+# Добавляем репозиторий Deadsnakes для установки Python 3.13
+sudo add-apt-repository ppa:deadsnakes/ppa -y
+sudo apt update
+
+# Устанавливаем Python 3.13 и необходимые пакеты
+sudo apt install -y python3.13 python3.13-venv python3.13-dev build-essential libssl-dev libffi-dev postgresql postgresql-contrib nginx curl
 ```
 
-### Установка uv (менеджер пакетов Python)
+### Установка необходимых пакетов
+
+### Установка uv (современный менеджер пакетов Python)
 
 ```bash
-curl -sSf https://install.python-poetry.org | python3 -
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source "$HOME/.cargo/env"
-cargo install uv
+# Прямая установка uv без зависимости от Rust
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Добавление uv в PATH
+export PATH="$HOME/.cargo/bin:$PATH"
+
+# Добавляем в файл конфигурации шелла
+if [ -n "$ZSH_VERSION" ]; then
+  echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.zshrc
+else
+  echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
+fi
 ```
 
 ### Настройка PostgreSQL
 
 ```bash
 sudo -u postgres psql -c "CREATE DATABASE ugc_market;"
-sudo -u postgres psql -c "CREATE USER ugc_user WITH PASSWORD 'secure_password';"
-sudo -u postgres psql -c "ALTER ROLE ugc_user SET client_encoding TO 'utf8';"
-sudo -u postgres psql -c "ALTER ROLE ugc_user SET default_transaction_isolation TO 'read committed';"
-sudo -u postgres psql -c "ALTER ROLE ugc_user SET timezone TO 'Europe/Moscow';"
-sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE ugc_market TO ugc_user;"
+sudo -u postgres psql -c "CREATE USER ugc_market WITH PASSWORD 'secure_password';"
+sudo -u postgres psql -c "ALTER ROLE ugc_market SET client_encoding TO 'utf8';"
+sudo -u postgres psql -c "ALTER ROLE ugc_market SET default_transaction_isolation TO 'read committed';"
+sudo -u postgres psql -c "ALTER ROLE ugc_market SET timezone TO 'Europe/Moscow';"
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE ugc_market_db TO ugc_market;"
+```
+
+### Установка и настройка Zsh, Oh My Zsh и Powerlevel10k
+
+#### Установка Zsh
+
+```bash
+sudo apt install -y zsh
+chsh -s $(which zsh)  # Меняем оболочку по умолчанию на Zsh
+```
+
+#### Установка Oh My Zsh
+
+```bash
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+```
+
+#### Установка Powerlevel10k
+
+```bash
+git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
+```
+
+Откройте файл конфигурации `.zshrc`:
+
+```bash
+nano ~/.zshrc
+```
+
+Найдите строку с `ZSH_THEME` и измените ее на:
+
+```bash
+ZSH_THEME="powerlevel10k/powerlevel10k"
+```
+
+Затем перезагрузите конфигурацию:
+
+```bash
+source ~/.zshrc
+```
+
+При первом запуске будет запущен мастер настройки Powerlevel10k. Следуйте инструкциям для настройки внешнего вида.
+
+#### Установка полезных плагинов для Oh My Zsh
+
+```bash
+# Плагин автодополнения
+git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+
+# Плагин подсветки синтаксиса
+git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+```
+
+Откройте файл `.zshrc` и найдите строку с `plugins=(git)` или подобную. Измените ее на:
+
+```bash
+plugins=(git zsh-autosuggestions zsh-syntax-highlighting docker django python pip npm node)
+```
+
+#### Установка дополнительных полезных утилит для разработки
+
+```bash
+# Установка fd (улучшенный find)
+sudo apt install -y fd-find
+ln -s $(which fdfind) ~/.local/bin/fd
+
+# Установка ripgrep (улучшенный grep)
+sudo apt install -y ripgrep
+
+# Установка bat (улучшенный cat)
+sudo apt install -y bat
+ln -s $(which batcat) ~/.local/bin/bat
+
+# Установка htop (улучшенный top)
+sudo apt install -y htop
+
+# Установка tmux (терминальный мультиплексор)
+sudo apt install -y tmux
+
+# Установка jq (работа с JSON в командной строке)
+sudo apt install -y jq
+
+# Установка fzf (нечеткий поиск)
+git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+~/.fzf/install
+
+# Установка pyenv (управление версиями Python)
+curl https://pyenv.run | bash
+```
+
+Добавьте в конец файла `.zshrc` следующие строки для интеграции установленных утилит:
+
+```bash
+# Настройки для pyenv
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init --path)"
+eval "$(pyenv init -)"
+
+# Настройки для fzf
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
+# Псевдонимы для улучшенных утилит
+alias cat="bat --paging=never"
+alias grep="rg"
+alias find="fd"
+alias top="htop"
+
+# Псевдоним для быстрого создания и активации виртуального окружения Python
+alias pyenv-create="python -m venv .venv && source .venv/bin/activate"
+```
+
+Перезапустите терминал или выполните:
+
+```bash
+source ~/.zshrc
 ```
 
 ## Настройка Backend
@@ -52,13 +183,16 @@ git clone <repository-url> /var/www/ugc_market
 cd /var/www/ugc_market
 ```
 
-### Настройка виртуального окружения и установка зависимостей
+### Настройка виртуального окружения и установка зависимостей через uv
 
 ```bash
 cd /var/www/ugc_market/backend
+# Создание виртуального окружения через uv
 uv venv
+# Активация виртуального окружения
 source .venv/bin/activate
-uv pip install -r requirements.txt
+# Установка зависимостей через uv (значительно быстрее pip)
+uv pip sync requirements.txt
 ```
 
 ### Настройка переменных окружения
@@ -83,14 +217,16 @@ EOL
 ```bash
 cd /var/www/ugc_market/backend
 source .venv/bin/activate
-python manage.py migrate
-python manage.py createsuperuser
+# Запуск Django команд через uv run для более быстрой работы
+uv run python manage.py migrate
+uv run python manage.py createsuperuser
 ```
 
 ### Настройка статических файлов
 
 ```bash
-python manage.py collectstatic
+# Сбор статических файлов через uv для ускорения запуска
+uv run python manage.py collectstatic
 ```
 
 ## Настройка Frontend
@@ -185,7 +321,7 @@ After=network.target
 User=www-data
 Group=www-data
 WorkingDirectory=/var/www/ugc_market/backend
-ExecStart=/var/www/ugc_market/backend/.venv/bin/gunicorn --workers 3 --bind 127.0.0.1:8000 ugc_market.wsgi:application
+ExecStart=/var/www/ugc_market/backend/.venv/bin/uv run gunicorn --workers 3 --bind 127.0.0.1:8000 ugc_market.wsgi:application
 EnvironmentFile=/var/www/ugc_market/backend/.env
 Restart=on-failure
 
@@ -219,7 +355,7 @@ After=network.target
 User=www-data
 Group=www-data
 WorkingDirectory=/var/www/ugc_market/backend
-ExecStart=/var/www/ugc_market/backend/.venv/bin/daphne -b 127.0.0.1 -p 8001 ugc_market.asgi:application
+ExecStart=/var/www/ugc_market/backend/.venv/bin/uv run daphne -b 127.0.0.1 -p 8001 ugc_market.asgi:application
 EnvironmentFile=/var/www/ugc_market/backend/.env
 Restart=on-failure
 
@@ -261,7 +397,7 @@ sudo systemctl restart nginx
 
 ```bash
 sudo apt install certbot python3-certbot-nginx
-sudo certbot --nginx -d your_domain.com -d www.your_domain.com
+sudo certbot --nginx -d ugc-market.ru -d www.ugc-market.ru
 ```
 
 ## Обновление проекта
@@ -273,9 +409,11 @@ cd /var/www/ugc_market
 git pull
 cd backend
 source .venv/bin/activate
-uv pip install -r requirements.txt
-python manage.py migrate
-python manage.py collectstatic --noinput
+# Синхронизация зависимостей через uv
+uv pip sync requirements.txt
+# Запуск команд Django через uv
+uv run python manage.py migrate
+uv run python manage.py collectstatic --noinput
 sudo systemctl restart gunicorn
 sudo systemctl restart daphne
 ```

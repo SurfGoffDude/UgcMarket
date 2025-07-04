@@ -4,12 +4,16 @@
  * Обеспечивает настройку маршрутизации, провайдеров контекста и регистрацию Service Worker
  * для поддержки push-уведомлений
  */
+import React from "react";
+import { useEffect } from "react";
+import "./App.css";
+import { Routes, Route } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Routes, Route } from "react-router-dom";
-import { useEffect } from "react";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import Layout from "@/components/Layout";
 
 // Страницы
@@ -52,7 +56,7 @@ import * as serviceWorkerRegistration from "./serviceWorkerRegistration";
 
 const queryClient = new QueryClient();
 
-console.log('Rendering App component');
+
 
 /**
  * Главный компонент приложения
@@ -64,10 +68,10 @@ const App = () => {
     // Регистрируем Service Worker для получения push-уведомлений
     serviceWorkerRegistration.register({
       onSuccess: (registration) => {
-        console.log('Service Worker успешно зарегистрирован:', registration);
+
       },
       onUpdate: (registration) => {
-        console.log('Обнаружена новая версия Service Worker:', registration);
+
       },
     });
     
@@ -83,10 +87,11 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <NotificationsProvider>
+          <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} />
           <Toaster />
           <Sonner />
           <Layout>
-            <Routes>
+              <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/catalog-creators" element={<CatalogPage />} />
                 <Route path="/creator-profile" element={<CreatorProfilePage />} />

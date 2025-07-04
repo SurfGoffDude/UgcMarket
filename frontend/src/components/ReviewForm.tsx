@@ -62,7 +62,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ orderId, onSuccess }) => {
       }
     },
     onError: (error) => {
-      console.error('Error creating review:', error);
+
       toast({
         title: 'Ошибка отправки отзыва',
         description: 'Не удалось отправить отзыв. Пожалуйста, попробуйте еще раз.',

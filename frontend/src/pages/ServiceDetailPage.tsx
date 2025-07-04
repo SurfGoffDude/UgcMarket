@@ -164,7 +164,7 @@ const ServiceDetailPage = () => {
           </div>
 
           <div className="md:col-span-1 space-y-6">
-            <Card className="bg-secondary/50 sticky top-24">
+            <Card className="bg-[#FCF5F4] sticky top-24">
               <CardHeader>
                 <CardTitle>Детали заказа</CardTitle>
               </CardHeader>
@@ -179,7 +179,7 @@ const ServiceDetailPage = () => {
                 </div>
                 <Separator />
                 <Button 
-                  className="w-full"
+                  className="w-full bg-[#E95C4B] hover:bg-[#d54538]"
                   onClick={() => handleOrder(false)}
                   disabled={isOrdering || isOwner}
                 >
@@ -189,7 +189,7 @@ const ServiceDetailPage = () => {
                 {service.allows_modifications && service.modifications_price && (
                   <Button 
                     variant="outline" 
-                    className="w-full" 
+                    className="w-full border-[#E95C4B] text-[#E95C4B] hover:bg-[#FCF5F4]" 
                     onClick={() => handleOrder(true)}
                     disabled={isOrdering || isOwner}
                   >

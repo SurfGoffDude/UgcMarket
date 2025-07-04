@@ -74,12 +74,11 @@ const RegisterPage: React.FC = () => {
     setError(null);
     setErrors({});
     
-    console.log('=== Начало процесса регистрации ===');
-    console.log('Форма отправлена со следующими данными:', { ...formData, password: '***', password_confirm: '***' });
+
     
     // Проверяем совпадение паролей
     if (formData.password !== formData.password_confirm) {
-      console.log('Ошибка валидации: пароли не совпадают');
+
       setErrors({
         password_confirm: ['Пароли не совпадают']
       });
@@ -88,13 +87,13 @@ const RegisterPage: React.FC = () => {
 
     // Проверка на принятие условий
     if (!acceptTerms) {
-      console.log('Ошибка валидации: не приняты условия пользовательского соглашения');
+
       setError('Необходимо принять условия пользовательского соглашения');
       return;
     }
 
     setLoading(true);
-    console.log('Индикатор загрузки активирован');
+
 
     try {
       // Подготавливаем данные для регистрации - явно указываем все обязательные поля
@@ -110,45 +109,16 @@ const RegisterPage: React.FC = () => {
         user_type: formData.user_type || 'client'
       } as RegisterRequest;
 
-      // Выводим в консоль детали отправляемых данных для отладки
-      console.log('Отправляемые данные регистрации:', {
-        username: userData.username,
-        email: userData.email,
-        password: '***',
-        password_confirm: '***',
-        first_name: userData.first_name,
-        last_name: userData.last_name,
-        phone: userData.phone,
-        user_type: userData.user_type
-      });
-      console.log('Вызов метода register из контекста AuthContext');
-      
-      // Перехватываем и логируем ошибки непосредственно при вызове функции register
+      // Вызываем метод регистрации из контекста аутентификации
       let success;
       try {
-        // Вызываем метод регистрации из контекста аутентификации
         success = await register(userData);
-        console.log('Функция register успешно выполнена, результат:', success);
       } catch (registerError: any) {
-        console.error('Ошибка внутри функции register:', registerError);
-        // Дополнительная диагностика ошибки
-        console.error('Детали ошибки register:', {
-          name: registerError.name,
-          message: registerError.message,
-          stack: registerError.stack,
-          response: registerError.response ? {
-            status: registerError.response.status,
-            statusText: registerError.response.statusText,
-            headers: registerError.response.headers,
-            data: registerError.response.data
-          } : 'Нет данных ответа'
-        });
-        
         // Обрабатываем ошибки валидации от сервера
-        if (registerError.response && registerError.response.data) {
+        if(registerError?.response?.data && typeof registerError.response.data === 'object') {
           // Если есть данные об ошибках валидации
           const serverErrors = registerError.response.data;
-          console.log('Ошибки валидации от сервера:', serverErrors);
+
           
           // Устанавливаем ошибки в состояние компонента
           setErrors(serverErrors);
@@ -163,33 +133,21 @@ const RegisterPage: React.FC = () => {
       }
       
       if (success) {
-        console.log('Регистрация успешна, перенаправление на страницу входа');
+
         // Перенаправляем на страницу входа с сообщением о подтверждении email
         navigate('/login', { 
           state: { message: 'На ваш email отправлено письмо с инструкциями по подтверждению аккаунта.' } 
         });
       } else {
-        console.log('Функция register вернула false, регистрация не удалась');
+
         setError('Не удалось зарегистрироваться. Пожалуйста, попробуйте еще раз.');
       }
     } catch (err: any) {
-      console.error('=== Перехваченная ошибка при регистрации ===');
-      console.error('Тип ошибки:', typeof err, 'Имя ошибки:', err.name);
-      console.error('Сообщение ошибки:', err.message);
-      console.error('Стек ошибки:', err.stack);
+
       
       // Улучшенная обработка ошибок валидации с бэкенда
       if (err.response) {
-        console.error('Детали ответа с ошибкой:', {
-          status: err.response.status,
-          statusText: err.response.statusText,
-          headers: err.response.headers,
-          data: err.response.data,
-          config: err.config
-        });
-        
         if (typeof err.response.data === 'object') {
-          console.log('Ошибка представляет собой объект с полями валидации:', err.response.data);
           setErrors(err.response.data);
         } else {
           const errorMessage = typeof err.response.data === 'string' ? err.response.data : 'Ошибка сервера';
@@ -229,7 +187,9 @@ const RegisterPage: React.FC = () => {
     <div className="min-h-screen py-12 px-4 flex items-center justify-center">
       <div className="max-w-md w-full space-y-8 bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg">
         <div className="text-center">
-          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100">Регистрация</h1>
+          <h2 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 text-[#E95C4B]">
+            Регистрация в UGC Market
+          </h2>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             Создайте свой аккаунт для доступа к платформе
           </p>
@@ -396,10 +356,10 @@ const RegisterPage: React.FC = () => {
             <div className="flex space-x-4 justify-center">
               <button 
                 type="button"
-                className={`flex flex-col items-center p-4 rounded-lg border transition-all ${formData.user_type === 'client' ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/20' : 'border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                className={`flex flex-col items-center p-4 rounded-lg border transition-all ${formData.user_type === 'client' ? 'border-[#E95C4B] bg-[#E95C4B]/10 dark:bg-[#E95C4B]/20' : 'border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
                 onClick={() => setState({...formData, user_type: 'client'})}
               >
-                <span className={`font-medium mb-1 ${formData.user_type === 'client' ? 'text-purple-600' : 'text-gray-600 dark:text-gray-400'}`}>
+                <span className={`font-medium mb-1 ${formData.user_type === 'client' ? 'text-[#E95C4B]' : 'text-gray-600 dark:text-gray-400'}`}>
                   Клиент
                 </span>
                 <p className="text-xs text-center text-gray-500 dark:text-gray-400 max-w-[140px] m-0">
@@ -409,10 +369,10 @@ const RegisterPage: React.FC = () => {
               
               <button 
                 type="button"
-                className={`flex flex-col items-center p-4 rounded-lg border transition-all ${formData.user_type === 'creator' ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/20' : 'border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                className={`flex flex-col items-center p-4 rounded-lg border transition-all ${formData.user_type === 'creator' ? 'border-[#E95C4B] bg-[#E95C4B]/10 dark:bg-[#E95C4B]/20' : 'border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
                 onClick={() => setState({...formData, user_type: 'creator'})}
               >
-                <span className={`font-medium mb-1 ${formData.user_type === 'creator' ? 'text-purple-600' : 'text-gray-600 dark:text-gray-400'}`}>
+                <span className={`font-medium mb-1 ${formData.user_type === 'creator' ? 'text-[#E95C4B]' : 'text-gray-600 dark:text-gray-400'}`}>
                   Креатор
                 </span>
                 <p className="text-xs text-center text-gray-500 dark:text-gray-400 max-w-[140px] m-0">
@@ -432,7 +392,7 @@ const RegisterPage: React.FC = () => {
               htmlFor="acceptTerms" 
               className="text-sm text-gray-700 dark:text-gray-300"
             >
-              Я принимаю <Link to="/terms" className="text-purple-600 hover:underline">условия пользовательского соглашения</Link> и <Link to="/privacy" className="text-purple-600 hover:underline">политику конфиденциальности</Link>*
+              Я принимаю <Link to="/terms" className="text-[#E95C4B] hover:underline">условия пользовательского соглашения</Link> и <Link to="/privacy" className="text-[#E95C4B] hover:underline">политику конфиденциальности</Link>*
             </Label>
           </div>
 
@@ -440,7 +400,7 @@ const RegisterPage: React.FC = () => {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold rounded-md px-4 py-2"
+              className="w-full bg-[#E95C4B] hover:bg-[#d54538] text-white font-bold rounded-md px-4 py-2"
             >
               {loading ? 'Создание аккаунта...' : 'Зарегистрироваться'}
             </Button>
@@ -452,7 +412,7 @@ const RegisterPage: React.FC = () => {
             Уже есть аккаунт?{' '}
             <Link 
               to="/login" 
-              className="font-medium text-purple-600 hover:text-purple-500 dark:text-purple-400 dark:hover:text-purple-300"
+              className="font-medium text-[#E95C4B] hover:text-[#d54538] dark:text-[#E95C4B] dark:hover:text-[#d54538]"
             >
               Войти
             </Link>

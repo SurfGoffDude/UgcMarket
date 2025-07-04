@@ -1,19 +1,3 @@
-"""Management command to import tags from a markdown file.
-
-The markdown file is expected to have the following simplified format (as in
-`frontend/public/tags.md`):
-
-### **Category Name**
-1. Tag name one
-2. Tag name two
-
-Every list item line begins with an integer id followed by a dot and a space.
-The integer will be used as primary key (id). If a tag with such id already
-exists its name and slug will be updated.
-
-If you need another file path you can pass it via ``--file`` argument.
-"""
-
 from __future__ import annotations
 
 import pathlib
@@ -23,10 +7,12 @@ from typing import Iterable
 from django.core.management.base import BaseCommand, CommandError
 from django.utils.text import slugify
 
-from users.models import Tag
+from core.models import Tag
+from orders.models import Category   # Импортируем модель Category
 
-# Regex patterns for markdown parsing
-_HEADING_RE = re.compile(r"^###\s+\*\*(.+)\*\*")
+# Обновленное регулярное выражение для заголовков с эмодзи
+# Теперь сохраняем и эмодзи, и текст категории
+_HEADING_RE = re.compile(r"^###\s+(.*?)\s+\*\*(.+)\*\*")
 _ITEM_RE = re.compile(r"^(\d+)\.\s+(.+)")
 
 
@@ -48,9 +34,8 @@ class Command(BaseCommand):
     # ---------------------------------------------------------------------
     # utils
     # ---------------------------------------------------------------------
-    @staticmethod
-    def _parse_markdown(md_path: pathlib.Path) -> Iterable[tuple[int, str]]:
-        """Yield tuples ``(id, name)`` from markdown file."""
+    def _parse_markdown(self, md_path: pathlib.Path) -> Iterable[tuple[str, str]]:
+        """Yield tuples (tag_name, category_name) from markdown file."""
         if not md_path.exists():
             raise CommandError(f"Markdown file not found: {md_path}")
 
@@ -60,16 +45,17 @@ class Command(BaseCommand):
                 line = line.rstrip("\n")
                 heading = _HEADING_RE.match(line)
                 if heading:
-                    current_category = heading.group(1).strip()
+                    emoji = heading.group(1).strip()
+                    category_text = heading.group(2).strip()
+                    current_category = f"{emoji} {category_text}"
+                    self.stdout.write(f"Found category: {current_category}")
                     continue
 
                 item = _ITEM_RE.match(line)
                 if item:
-                    tag_id = int(item.group(1))
                     name = item.group(2).strip()
-                    if current_category:
-                        name = f"{name}"
-                    yield tag_id, name
+                    self.stdout.write(f"Found tag: {name} in category: {current_category or 'Без категории'}")
+                    yield name, current_category or "Без категории"
 
     # ------------------------------------------------------------------
     # main handle
@@ -82,7 +68,6 @@ class Command(BaseCommand):
         if not md_path.is_absolute():
             if not md_path.exists():
                 from django.conf import settings
-
                 project_root = pathlib.Path(settings.BASE_DIR).parent
                 md_path = project_root / md_path
         md_path = md_path.resolve()
@@ -90,25 +75,66 @@ class Command(BaseCommand):
 
         created = 0
         updated = 0
-        def _generate_unique_slug(name: str, tag_id: int) -> str:
-            base = slugify(name) or f"tag-{tag_id}"
+        categories_stats = {}
+
+        def _generate_unique_slug(name: str, model_class) -> str:
+            """Генерирует уникальный slug для указанной модели."""
+            base = slugify(name) or "item"
             slug = base
             counter = 1
-            while Tag.objects.filter(slug=slug).exclude(id=tag_id).exists():
+            while model_class.objects.filter(slug=slug).exists():
                 slug = f"{base}-{counter}"
                 counter += 1
             return slug
 
-        for tag_id, name in self._parse_markdown(md_path):
-            slug = _generate_unique_slug(name, tag_id)
+        for tag_name, category_name in self._parse_markdown(md_path):
+            # Пытаемся найти категорию или создать новую с уникальным slug
+            try:
+                category_obj = Category.objects.get(name=category_name)
+                cat_created = False
+            except Category.DoesNotExist:
+                # Генерируем уникальный slug для категории
+                category_slug = _generate_unique_slug(category_name, Category)
+                category_obj = Category.objects.create(
+                    name=category_name,
+                    slug=category_slug
+                )
+                cat_created = True
+            except Category.MultipleObjectsReturned:
+                # Если найдено несколько категорий с таким именем, берем первую
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"Found multiple categories with name '{category_name}', using the first one"
+                    )
+                )
+                category_obj = Category.objects.filter(name=category_name).first()
+                cat_created = False
+            
+            # Ведем статистику по категориям
+            if category_name not in categories_stats:
+                categories_stats[category_name] = 0
+            categories_stats[category_name] += 1
+
+            # Генерируем уникальный slug для тега
+            tag_slug = _generate_unique_slug(tag_name, Tag)
+
             tag, is_created = Tag.objects.update_or_create(
-                id=tag_id,
-                defaults={"name": name, "slug": slug},
+                slug=tag_slug,
+                defaults={
+                    "name": tag_name,
+                    "category": category_obj,
+                    "type": Tag.TAG_TYPE_CREATOR,
+                },
             )
             if is_created:
                 created += 1
             else:
                 updated += 1
+
+        # Выводим статистику по категориям
+        self.stdout.write("\nTags by category:")
+        for category, count in categories_stats.items():
+            self.stdout.write(f"  - {category}: {count} tags")
 
         self.stdout.write(
             self.style.SUCCESS(

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Search, User, Plus, LogIn, Menu, X, Moon, Sun, LogOut, Settings, Package, MessageSquare, Bell } from 'lucide-react';
+import Logo from '@/components/ui/logo/Logo';
 import NotificationIndicator from './notifications/NotificationIndicator';
 import NotificationsMenu from './notifications/NotificationsMenu';
 import { Button } from '@/components/ui/button';
@@ -78,10 +79,8 @@ const Header = () => {
               )}
             </button>
             <Link to="/" className="flex items-center space-x-2">
-              <div className="w-9 h-9 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">U</span>
-              </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              <Logo variant="small" />
+              <span className="text-xl font-bold text-primary">
                 UGC Market
               </span>
             </Link>
@@ -95,7 +94,7 @@ const Header = () => {
                 to={link.path}
                 className={`px-4 py-2 text-sm font-medium rounded-full transition-colors ${
                   location.pathname === link.path
-                    ? 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30'
+                    ? 'text-[#E95C4B] dark:text-[#E95C4B] bg-[#E95C4B]/10 dark:bg-[#E95C4B]/20'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
               >
@@ -110,7 +109,7 @@ const Header = () => {
             {isAuthenticated && user && !user.has_creator_profile && (
               <div className="hidden md:block">
                 <Link to="/create-order">
-                  <Button className="rounded-full bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700">
+                  <Button className="rounded-full bg-[#E95C4B] hover:bg-[#d54538]">
                     <Plus className="w-4 h-4 mr-2" />
                     Создать заказ
                   </Button>
@@ -157,7 +156,7 @@ const Header = () => {
                   </Button>
                 </Link>
                 <Link to="/register">
-                  <Button className="rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+                  <Button className="rounded-full bg-[#E95C4B]">
                     Регистрация
                   </Button>
                 </Link>
@@ -166,7 +165,7 @@ const Header = () => {
               // Дропдаун меню для авторизованных пользователей
               <DropdownMenu>
                 <DropdownMenuTrigger className="ml-2 outline-none">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-medium cursor-pointer hover:opacity-90 transition-opacity">
+                  <div className="w-9 h-9 rounded-full bg-[#E95C4B] hover:bg-[#d54538] flex items-center justify-center text-white font-medium cursor-pointer transition-colors">
                     {user?.first_name?.[0] || user?.username?.[0] || <User className="w-4 h-4" />}
                   </div>
                 </DropdownMenuTrigger>
@@ -179,7 +178,7 @@ const Header = () => {
                   <DropdownMenuItem 
                     onClick={() => {
                       // Отладочный вывод для проверки данных пользователя
-                      console.log('Данные пользователя в выпадающем меню:', user, (user as any)?.creator_profile_id);
+
                       // Навигация в зависимости от наличия профиля креатора
                       navigate((user as any)?.creator_profile_id ? '/creator-profile' : '/client-profile');
                     }} 
@@ -252,7 +251,7 @@ const Header = () => {
                   onClick={toggleMenu}
                   className={`block px-4 py-3 text-base font-medium rounded-lg ${
                     location.pathname === link.path
-                      ? 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30'
+                      ? 'text-[#E95C4B] dark:text-[#E95C4B] bg-[#E95C4B]/10 dark:bg-[#E95C4B]/20'
                       : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                   }`}
                 >
@@ -268,24 +267,18 @@ const Header = () => {
                       </Button>
                     </Link>
                     <Link to="/register" className="block" onClick={toggleMenu}>
-                      <Button className="w-full justify-center bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+                      <Button className="w-full justify-center bg-[#E95C4B] hover:bg-[#d54538]">
                         Создать аккаунт
                       </Button>
                     </Link>
                   </>
                 ) : (
                   <>
-                    {/* Добавляем консольный вывод для отладки значений */}
-                    {console.log('Данные пользователя в Header:', user)}
-                    {console.log('Профиль креатора:', {
-                      has_creator_profile: (user as any)?.has_creator_profile,
-                      creator_profile_id: (user as any)?.creator_profile_id
-                    })}
                     <Link 
                       to={(user as any)?.creator_profile_id ? "/creator-profile" : "/client-profile"} 
                       className="block" 
-                      onClick={toggleMenu}>
-                    
+                      onClick={toggleMenu}
+                    >
                       <Button className="w-full justify-center">
                         <User className="w-4 h-4 mr-2" />
                         Мой профиль

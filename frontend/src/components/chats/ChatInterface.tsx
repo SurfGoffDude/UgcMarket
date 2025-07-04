@@ -1,31 +1,27 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Separator } from '@/components/ui/separator';
+import axios from 'axios';
+import { toast } from 'react-toastify';
+import { useAuth } from '@/contexts/AuthContext';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { formatDistanceToNow, format } from 'date-fns';
+import { ru } from 'date-fns/locale';
 import {
   User,
   Send,
   ArrowLeft,
   Package,
-  Paperclip,
+  RefreshCcw,
   AlertCircle,
+  MessageSquare,
+  Paperclip,
   Loader2,
-  Info,
+  Info
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
-import axios from 'axios';
-import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * Интерфейсы для типов данных чата
@@ -87,6 +83,7 @@ const ChatInterface: React.FC = () => {
   const [hasMoreMessages, setHasMoreMessages] = useState<boolean>(true);
   const [loadingMoreMessages, setLoadingMoreMessages] = useState<boolean>(false);
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [processingStatus, setProcessingStatus] = useState<boolean>(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -240,6 +237,52 @@ const ChatInterface: React.FC = () => {
       navigate(`/orders/${chat.order.id}`);
     }
   };
+  
+  // Обработчик изменения статуса заказа
+  const handleOrderStatusChange = async (newStatus: string) => {
+    if (!chat?.order?.id) return;
+    
+    setProcessingStatus(true);
+    try {
+      let endpoint = '';
+      let successMessage = '';
+      
+      if (newStatus === 'in_progress') {
+        endpoint = `/api/orders/${chat.order.id}/start_order/`;
+        successMessage = 'Заказ переведён в статус "В работе"';
+      } else if (newStatus === 'completed') {
+        endpoint = `/api/orders/${chat.order.id}/complete_order/`;
+        successMessage = 'Заказ успешно завершён';
+      } else {
+        throw new Error('Неподдерживаемый статус заказа');
+      }
+      
+      const response = await axios.post(endpoint);
+      
+      if (response.status === 200) {
+        // Обновляем локальное состояние заказа
+        setChat(prev => {
+          if (!prev || !prev.order) return prev;
+          
+          return {
+            ...prev,
+            order: {
+              ...prev.order,
+              status: newStatus,
+              status_display: getOrderStatusText(newStatus)
+            }
+          };
+        });
+        
+        toast.success(successMessage);
+      }
+    } catch (error: any) {
+      console.error('Ошибка при изменении статуса заказа:', error);
+      toast.error(error.response?.data?.error || 'Не удалось изменить статус заказа');
+    } finally {
+      setProcessingStatus(false);
+    }
+  };
 
   // Отображение скелетона при загрузке
   if (loading) {
@@ -334,14 +377,43 @@ const ChatInterface: React.FC = () => {
               </div>
             </div>
             {chat.order && (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={goToOrder}
-              >
-                <Package size={14} className="mr-2" />
-                {getOrderStatusText(chat.order.status)}
-              </Button>
+              <div className="flex items-center space-x-2">
+                {/* Кнопка просмотра заказа */}
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={goToOrder}
+                >
+                  <Package size={14} className="mr-2" />
+                  {getOrderStatusText(chat.order.status)}
+                </Button>
+                
+                {/* Кнопка для креатора: изменить статус на "В работе" */}
+                {user && chat.creator.id === user.id && chat.order.status === 'published' && (
+                  <Button 
+                    variant="default" 
+                    size="sm"
+                    className="bg-blue-600 text-white hover:bg-blue-700"
+                    disabled={processingStatus}
+                    onClick={() => handleOrderStatusChange('in_progress')}
+                  >
+                    Начать работу
+                  </Button>
+                )}
+                
+                {/* Кнопка для клиента: изменить статус на "Завершен" */}
+                {user && chat.client.id === user.id && chat.order.status === 'in_progress' && (
+                  <Button 
+                    variant="default" 
+                    size="sm"
+                    className="bg-green-600 text-white hover:bg-green-700"
+                    disabled={processingStatus}
+                    onClick={() => handleOrderStatusChange('completed')}
+                  >
+                    Завершить заказ
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         </CardHeader>

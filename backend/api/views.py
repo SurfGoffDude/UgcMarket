@@ -6,50 +6,54 @@ import os
 import re
 
 class TagsView(APIView):
-    """Возвращает список тегов из markdown-файла в формате JSON
+    """Возвращает список тегов из базы данных (модель core.Tag) в формате JSON
 
     Формат элемента:
     {
         "id": int,
         "name": str,
-        "category": str
+        "slug": str,
+        "category": str | None,
+        "type": str  # 'order' или 'creator'
     }
+    
+    Параметры запроса:
+    - type: фильтрация по типу тега ('order' или 'creator')
     """
-    FILE_NAME = "tags.md"
 
     def get(self, request, *args, **kwargs):
-        file_path = self._find_file()
-        if not file_path:
-            return Response({"detail": "tags.md not found"}, status=status.HTTP_404_NOT_FOUND)
-        with open(file_path, "r", encoding="utf-8") as f:
-            md = f.read()
-        return Response(self._parse(md))
-
-    def _find_file(self) -> str | None:
-        # Ищем файл сначала в корне проекта, затем в папке frontend/public
-        candidates = [
-            os.path.join(settings.BASE_DIR, "tags.md"),
-            os.path.join(settings.BASE_DIR, "..", "frontend", "public", "tags.md"),
-        ]
-        for path in candidates:
-            if os.path.exists(path):
-                return path
-        return None
-
-    def _parse(self, md: str):
-        lines = md.splitlines()
-        current_category = ""
-        result = []
-        for line in lines:
-            heading = re.match(r"^### .*?\*\*(.+)\*\*", line)
-            if heading:
-                current_category = heading.group(1).strip()
-                continue
-            item = re.match(r"^(\d+)\.\s+(.+)", line)
-            if item:
-                result.append({
-                    "id": int(item.group(1)),
-                    "name": item.group(2).strip(),
-                    "category": current_category,
-                })
-        return result
+        # Получаем все теги из базы данных (core.models.Tag)
+        from core.models import Tag
+        
+        # Получаем параметр type из запроса для фильтрации
+        tag_type = request.query_params.get('type')
+        
+        # Фильтруем теги по типу, если указан параметр
+        tags_query = Tag.objects.all()
+        if tag_type in [Tag.TAG_TYPE_ORDER, Tag.TAG_TYPE_CREATOR]:
+            tags_query = tags_query.filter(type=tag_type)
+        
+        # Добавляем связанные объекты для оптимизации запросов
+        tags_query = tags_query.prefetch_related('category')
+        
+        tags_list = []
+        for tag in tags_query:
+            category_info = None
+            
+            # Обрабатываем категорию, возвращаем более детальную информацию
+            if tag.category:
+                category_info = {
+                    'id': tag.category.id,
+                    'name': tag.category.name
+                }
+            
+            # Добавляем теги с расширенной информацией, включая type и slug
+            tags_list.append({
+                'id': tag.id,
+                'name': tag.name,
+                'slug': tag.slug,
+                'category': category_info,
+                'type': tag.type  # Добавляем тип тега
+            })
+            
+        return Response(tags_list)

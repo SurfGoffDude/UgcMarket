@@ -70,13 +70,13 @@ const ProfileEditPage: React.FC = () => {
         },
         location_write: values.location, // Используем location_write вместо location для совместимости с обновленным сериализатором
       };
-      console.log('Отправляем данные:', JSON.stringify(payload));
+
       const response = await apiClient.patch(`/creator-profiles/${creatorIdRef.current}/`, payload);
-      console.log('Получен ответ:', response.data);
+
       toast({ title: 'Успешно', description: 'Профиль обновлён' });
       navigate(-1);
     } catch (e: any) {
-      console.error('Ошибка при сохранении профиля:', e?.response?.data);
+
       toast({ title: 'Ошибка', description: e?.response?.data?.detail || 'Не удалось сохранить', variant: 'destructive' });
     }
   };

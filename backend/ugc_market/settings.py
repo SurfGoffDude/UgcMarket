@@ -18,8 +18,6 @@ import dotenv
 # Загрузка переменных окружения из .env файла
 dotenv.load_dotenv()
 
-# Проверка загрузки SECRET_KEY
-print(f"SECRET_KEY loaded: {'SECRET_KEY' in os.environ}")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -34,7 +32,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True')
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
 
 
 # Application definition
@@ -152,6 +150,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # Директория для сбора всех статических файлов
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -166,8 +165,14 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = True  # В продакшене заменить на список разрешенных доменов
+CORS_ALLOW_ALL_ORIGINS = False  # Отключаем все домены, будем использовать явный список
+
+
+CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',')
 CORS_ALLOW_CREDENTIALS = True
+
+# CSRF settings
+CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
 
 # REST Framework settings
 REST_FRAMEWORK = {
@@ -197,13 +202,11 @@ SIMPLE_JWT = {
 }
 
 # Email settings
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # Для разработки (вывод в консоль)
-DEFAULT_FROM_EMAIL = 'noreply@ugcmarket.com'
-# В продакшене заменить на настоящий SMTP-сервер:
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_HOST = 'smtp.example.com'
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = 'your_username'
-# EMAIL_HOST_PASSWORD = 'your_password'
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@ugcmarket.com')
+EMAIL_HOST = os.environ.get('EMAIL_HOST', '')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 

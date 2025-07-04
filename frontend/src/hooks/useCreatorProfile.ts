@@ -29,23 +29,23 @@ export function useCreatorProfile(id?: string) {
     setError(null);
     
     try {
-      console.log('[DEBUG] useCreatorProfile - начало загрузки профиля');
+
       
       // Шаг 1: Получаем основной профиль
       let profileResponse;
       try {
         if (!id) {
           // Получаем текущий профиль пользователя
-          console.log('[DEBUG] useCreatorProfile - запрос к creator-profile/');
+
           profileResponse = await apiClient.get('creator-profiles/me/?detail=true');
         } else {
           // Получаем профиль по ID
-          console.log('[DEBUG] useCreatorProfile - запрос к creator-profiles/' + id);
+
           profileResponse = await apiClient.get(`creator-profiles/${id}/retrieve_detail/`);
         }
       } catch (error: any) {
         if (error.response && error.response.status === 404) {
-          console.log('[INFO] useCreatorProfile - профиль не найден (404)');
+
           setCreator(null);
           setLoading(false);
           return;
@@ -54,13 +54,13 @@ export function useCreatorProfile(id?: string) {
       }
       
       if (!profileResponse || !profileResponse.data) {
-        console.log('[INFO] useCreatorProfile - нет данных профиля');
+
         setCreator(null);
         setLoading(false);
         return;
       }
       
-      console.log('[INFO] useCreatorProfile - получен базовый профиль:', profileResponse.data);
+
       const profileData = profileResponse.data;
       
       // Если поле user пришло как ID, загружаем объект пользователя
@@ -70,7 +70,7 @@ export function useCreatorProfile(id?: string) {
           const userRes = await apiClient.get(`users/${userObj}/`);
           userObj = userRes.data;
         } catch (uErr) {
-          console.error('[ERROR] useCreatorProfile - не удалось загрузить данные пользователя', uErr);
+
         }
       }
 
@@ -113,7 +113,7 @@ export function useCreatorProfile(id?: string) {
         
         completeProfile.portfolio = portfolioWithImages;
       } catch (portfolioError) {
-        console.error('Ошибка при загрузке портфолио:', portfolioError);
+
       }
       
       // Загружаем услуги
@@ -121,13 +121,13 @@ export function useCreatorProfile(id?: string) {
         const servicesResponse = await apiClient.get(`services/?creator_profile=${profileData.id}`);
         completeProfile.services = servicesResponse.data.results || [];
       } catch (servicesError) {
-        console.error('[ERROR] useCreatorProfile - ошибка загрузки услуг:', servicesError);
+
       }
       
       // Устанавливаем профиль в состояние
       setCreator(completeProfile);
     } catch (error: any) {
-      console.error('[ERROR] useCreatorProfile - критическая ошибка:', error);
+
       setError(new Error(error.message || 'Ошибка при загрузке профиля креатора'));
     } finally {
       setLoading(false);
@@ -144,7 +144,25 @@ export function useCreatorProfile(id?: string) {
     loadProfile();
   }, [loadProfile]);
   
-  return { creator, loading, error, reload };
+  // Функция для обновления профиля креатора
+  const updateProfile = useCallback(async (profileData: Partial<CreatorProfile>) => {
+    if (!id) return false;
+    
+    try {
+      setLoading(true);
+      await apiClient.patch(`creator-profiles/${id}/`, profileData);
+      // После успешного обновления перезагружаем профиль
+      await loadProfile();
+      return true;
+    } catch (error: any) {
+      setError(new Error(error.message || 'Ошибка при обновлении профиля креатора'));
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [id, loadProfile]);
+  
+  return { creator, loading, error, reload, updateProfile };
 }
 
 export default useCreatorProfile;

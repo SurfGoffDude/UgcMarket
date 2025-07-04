@@ -116,7 +116,7 @@ const OrderDetails: React.FC = () => {
         setError(null);
       } catch (err) {
         setError('Ошибка при загрузке информации о заказе');
-        console.error('Ошибка при загрузке информации о заказе:', err);
+
       } finally {
         setLoading(false);
       }
@@ -161,7 +161,7 @@ const OrderDetails: React.FC = () => {
       
     } catch (err) {
       alert('Произошла ошибка при обновлении статуса заказа');
-      console.error('Ошибка при обновлении статуса заказа:', err);
+
     } finally {
       setStatusUpdateLoading(false);
     }
@@ -185,7 +185,7 @@ const OrderDetails: React.FC = () => {
         alert('Чат с креатором не найден');
       }
     } catch (err) {
-      console.error('Ошибка при поиске чата:', err);
+
       alert('Ошибка при поиске чата с креатором');
     }
   };

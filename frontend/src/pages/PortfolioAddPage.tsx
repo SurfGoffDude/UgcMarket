@@ -99,7 +99,7 @@ const PortfolioAddPage = () => {
           navigate('/profile/edit');
         }
       } catch (err) {
-        console.error('Ошибка при загрузке данных:', err);
+
         toast({
           title: 'Ошибка',
           description: 'Не удалось загрузить необходимые данные',
@@ -283,7 +283,7 @@ const PortfolioAddPage = () => {
       // Возвращаемся на страницу профиля
       navigate(-1);
     } catch (err: any) {
-      console.error('Ошибка при сохранении работы:', err);
+
       toast({
         title: 'Ошибка',
         description: err?.response?.data?.detail || 'Не удалось добавить работу в портфолио',

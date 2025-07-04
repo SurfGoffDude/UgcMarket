@@ -41,7 +41,7 @@ const FilePreview: React.FC<FilePreviewProps> = ({ url, fileName, fileType }) =>
           setIsLoading(false);
         })
         .catch(err => {
-          console.error('Ошибка при загрузке текстового файла:', err);
+
           setError(`Не удалось загрузить содержимое файла: ${err.message}`);
           setIsLoading(false);
         });

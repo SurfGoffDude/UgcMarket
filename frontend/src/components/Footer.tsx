@@ -1,4 +1,5 @@
 import React from 'react';
+import Logo from '@/components/ui/logo/Logo';
 
 const Footer = () => {
   return (
@@ -8,10 +9,8 @@ const Footer = () => {
           {/* Logo and description */}
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
-              <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">U</span>
-              </div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">UGC Market</span>
+              <Logo variant="small" />
+              <span className="text-2xl font-bold text-white">UGC Market</span>
             </div>
             <p className="text-gray-400 text-sm leading-relaxed">
               Платформа для поиска и заказа качественного UGC-контента от лучших креаторов социальных сетей.

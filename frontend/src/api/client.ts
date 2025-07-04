@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 // Базовая конфигурация для axios
 const apiConfig: AxiosRequestConfig = {
-  baseURL: 'http://localhost:8000/api/',
+  baseURL: '/api', // Используем относительный путь для работы как в development, так и в production
   timeout: 30000, // 30 секунд таймаут
   headers: {
     'Content-Type': 'application/json',
@@ -13,10 +13,7 @@ const apiConfig: AxiosRequestConfig = {
 // Создание экземпляра axios с базовой конфигурацией
 const apiClient: AxiosInstance = axios.create(apiConfig);
 
-// Диагностическая функция для отладки
-const logApiDiagnostics = (message: string, data?: any) => {
-  console.log(`%c[API DIAGNOSTICS] ${message}`, 'color: #9c27b0; font-weight: bold', data || '');
-};
+
 
 // Перехватчик для добавления токена авторизации ко всем запросам
 apiClient.interceptors.request.use(
@@ -28,12 +25,22 @@ apiClient.interceptors.request.use(
     }
     
     // Детальный лог запроса API
-    logApiDiagnostics('Отправка запроса', { 
-      url: `${config.baseURL || ''}${config.url || ''}`,
-      method: config.method,
-      hasToken: !!token,
-      tokenType: token ? (token.length < 50 ? 'Короткий токен' : 'JWT/Длинный токен') : 'Нет токена'
-    });
+    // Корректное формирование URL для логирования
+    let fullUrl = '';
+    if (config.baseURL && config.url) {
+      // Убедимся, что между baseURL и url есть только один слеш
+      if (config.baseURL.endsWith('/') && config.url.startsWith('/')) {
+        fullUrl = `${config.baseURL}${config.url.substring(1)}`;
+      } else if (!config.baseURL.endsWith('/') && !config.url.startsWith('/')) {
+        fullUrl = `${config.baseURL}/${config.url}`;
+      } else {
+        fullUrl = `${config.baseURL}${config.url}`;
+      }
+    } else {
+      fullUrl = `${config.baseURL || ''}${config.url || ''}`;
+    }
+    
+
     
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -41,7 +48,7 @@ apiClient.interceptors.request.use(
     return config;
   },
   (error) => {
-    logApiDiagnostics('Ошибка при отправке запроса', error);
+
     return Promise.reject(error);
   }
 );
@@ -50,31 +57,17 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
     // Логируем успешные ответы, особенно для профиля креатора
-    if (response.config.url?.includes('creator-profile') || response.config.url?.includes('creator-profiles')) {
-      logApiDiagnostics('Получен ответ профиля креатора', {
-        url: response.config.url,
-        status: response.status,
-        statusText: response.statusText,
-        data: response.data
-      });
-    }
+
     return response;
   },
   async (error) => {
-    // Логируем ошибки API
-    logApiDiagnostics('Ошибка API', {
-      url: error.config?.url,
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
-      message: error.message
-    });
+    // Обработка ошибок API
 
     const originalRequest = error.config;
     
     // Если ошибка 401 (не авторизован) и не было попытки обновления токена
     if (error.response?.status === 401 && !originalRequest._retry) {
-      logApiDiagnostics('Попытка обновления токена');
+
       originalRequest._retry = true;
       
       try {

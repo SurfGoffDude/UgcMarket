@@ -19,24 +19,13 @@ export const authApi = {
    * @returns Промис с данными зарегистрированного пользователя
    */
   register: async (userData: RegisterRequest): Promise<AxiosResponse<User>> => {
-    console.log('Отправка запроса на регистрацию:', { url: 'auth/register/', data: userData });
+
     try {
       const response = await apiClient.post('auth/register/', userData);
-      console.log('Успешный ответ от сервера:', response.data);
+
       return response;
     } catch (error: any) {
-      console.error('Ошибка регистрации:', { 
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        headers: error.response?.headers,
-        config: {
-          url: error.config?.url,
-          method: error.config?.method,
-          baseURL: error.config?.baseURL,
-          data: error.config?.data
-        }
-      });
+
       throw error;
     }
   },

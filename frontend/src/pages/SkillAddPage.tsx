@@ -172,8 +172,7 @@ const SkillAddPage = () => {
 
   // Обработчик отправки формы
   const onSubmit = async (data: FormData) => {
-    console.log('Отправка формы:', data);
-    console.log('Ошибки формы:', form.formState.errors);
+
     if (!creatorId) {
       toast({
         title: 'Ошибка',
@@ -186,9 +185,6 @@ const SkillAddPage = () => {
     setIsSubmitting(true);
 
     try {
-      console.log('Режим формы:', data.skillMode, 'Редактирование:', isEditingExisting);
-      // Добавим логирование creatorId для отладки
-      console.log('Идентификатор профиля креатора:', creatorId);
 
       if (isEditingExisting && editingSkill?.id) {
         // Редактируем существующий навык
@@ -232,10 +228,6 @@ const SkillAddPage = () => {
         }
 
         // Создаем новый навык
-        console.log('Создаем новый навык:', {
-          name: data.newSkillName?.trim(),
-          description: data.newSkillDescription?.trim() || undefined
-        });
         
         try {
           const response = await apiClient.post(
@@ -247,43 +239,30 @@ const SkillAddPage = () => {
             { signal: abortControllerRef.current?.signal }
           );
 
-          console.log('Успешно создан навык:', response.data);
-          
           if (response?.data?.id) {
             // После создания навыка, добавляем его в профиль креатора
             try {
-              // Добавляем более подробный лог пайлоада
               const creatorSkillPayload = { 
                 skill_id: response.data.id, // Исправлено имя поля: skill -> skill_id
                 creator_profile: Number(creatorId) // Явное преобразование в число
               };
-              console.log('Отправляем пайлоад для добавления навыка в профиль:', creatorSkillPayload);
               const addResult = await apiClient.post(
                 '/creator-skills/',
                 creatorSkillPayload
               );
-              console.log('Навык добавлен в профиль:', addResult.data);
             } catch (addError) {
-              console.error('Ошибка при добавлении навыка в профиль:', addError);
-              
               // Детальный анализ ошибки Axios
               if (addError && typeof addError === 'object' && 'response' in addError) {
                 const axiosError = addError as AxiosError;
-                console.error('Детали ошибки:', {
-                  status: axiosError.response?.status,
-                  statusText: axiosError.response?.statusText,
-                  data: axiosError.response?.data,
-                  headers: axiosError.response?.headers
-                });
                 
                 // Выводим отдельно все поля ошибки для отладки
                 if (axiosError.response?.data) {
-                  console.log('Данные ошибки 400:', JSON.stringify(axiosError.response.data));
+  
                   
                   // Проверяем наличие non_field_errors и других конкретных полей
                   if (typeof axiosError.response.data === 'object') {
                     Object.entries(axiosError.response.data).forEach(([key, value]) => {
-                      console.log(`Поле ошибки ${key}:`, value);
+  
                     });
                   }
                 }
@@ -332,7 +311,7 @@ const SkillAddPage = () => {
             navigate('/creator-profile');
           }
         } catch (createError) {
-          console.error('Ошибка при создании навыка:', createError);
+
           toast({
             title: 'Ошибка при создании навыка',
             description: createError instanceof Error ? createError.message : 'Неизвестная ошибка',
@@ -347,7 +326,7 @@ const SkillAddPage = () => {
             skill_id: Number(data.existingSkillId), // Исправлено имя поля: skill -> skill_id
             creator_profile: Number(creatorId) // Явное преобразование в число
           };
-          console.log('Пайлоад для добавления существующего навыка:', payload);
+
           
           const response = await apiClient.post(
             '/creator-skills/',
@@ -364,16 +343,11 @@ const SkillAddPage = () => {
           }
         } catch (error) {
           // Обработка ошибок при добавлении существующего навыка
-          console.error('Ошибка при добавлении существующего навыка:', error);
+
           
           // Детальный анализ ошибки Axios
           if (error && typeof error === 'object' && 'response' in error) {
             const axiosError = error as AxiosError;
-            console.error('Детали ошибки:', {
-              status: axiosError.response?.status,
-              statusText: axiosError.response?.statusText,
-              data: axiosError.response?.data,
-            });
             
             const errorDetail = axiosError.response?.data && typeof axiosError.response.data === 'object'
               ? JSON.stringify(axiosError.response.data)
@@ -395,7 +369,7 @@ const SkillAddPage = () => {
       }
     } catch (error) {
       const err = error as AxiosError<{ detail?: string }>;
-      console.error('Ошибка при сохранении навыка:', error);
+
       
       let errorMessage = 'Произошла ошибка при сохранении';
       if (err.response?.data?.detail) {
@@ -462,7 +436,7 @@ const SkillAddPage = () => {
         <CardContent className="pt-6">
           <Form {...form}>
             <form onSubmit={(e) => {
-                console.log('Начало отправки формы');
+
                 form.handleSubmit(onSubmit)(e);
               }} 
               className="space-y-6">

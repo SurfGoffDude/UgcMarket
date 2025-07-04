@@ -91,7 +91,7 @@ const NotificationsPage: React.FC = () => {
     try {
       await markAsRead(id).unwrap();
     } catch (error) {
-      console.error('Ошибка при отметке уведомления как прочитанного:', error);
+
     }
   };
   
@@ -99,7 +99,7 @@ const NotificationsPage: React.FC = () => {
     try {
       await markAllAsRead().unwrap();
     } catch (error) {
-      console.error('Ошибка при отметке всех уведомлений как прочитанных:', error);
+
     }
   };
   
@@ -108,7 +108,7 @@ const NotificationsPage: React.FC = () => {
       try {
         await clearAll().unwrap();
       } catch (error) {
-        console.error('Ошибка при очистке всех уведомлений:', error);
+
       }
     }
   };

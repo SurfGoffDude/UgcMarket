@@ -19,19 +19,7 @@ const CatalogPage: React.FC = () => {
   const [filters, setFilters] = useState<Filters>({ tags: {}, query: '' });
   const { creators, loading, error, refetch } = useCreatorsList(filters);
 
-  // Добавляем логирование для отладки фильтрации
-  useEffect(() => {
-    try {
-      console.log('%c[DEBUG] Фильтры и результаты:', 'color: #4CAF50; font-weight: bold', {
-        appliedFilters: filters,
-        creatorCount: Array.isArray(creators) ? creators.length : 0,
-        hasSelectedTags: Object.keys(filters.tags || {}).length > 0,
-        tagCount: Object.values(filters.tags || {}).flat().length,
-      });
-    } catch (error) {
-      console.error('Error in logging filters and results:', error);
-    }
-  }, [filters, creators]);
+
 
   const handleFilterChange = (newFilters: Filters) => {
     setFilters(newFilters);

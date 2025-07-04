@@ -19,11 +19,11 @@ interface OrderPreviewProps {
   title: string;
   description: string;
   contentType: string;
-  platform: string;
   deadline: string;
   budget: string;
   privacy: string;
   references: string[];
+  tags?: { id: string; name: string }[];
   onEdit: () => void;
   onPublish: () => void;
 }
@@ -38,11 +38,11 @@ const OrderPreview: React.FC<OrderPreviewProps> = ({
   title, 
   description,
   contentType,
-  platform,
   deadline,
   budget,
   privacy,
   references,
+  tags = [],
   onEdit,
   onPublish
 }) => {
@@ -81,7 +81,7 @@ const OrderPreview: React.FC<OrderPreviewProps> = ({
   return (
     <div className="max-w-4xl mx-auto">
       <Card className="overflow-hidden border-0 shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-purple-700 to-pink-600 text-white p-8">
+        <CardHeader className="bg-[#E95C4B] text-white p-8">
           <div className="mb-4 flex justify-between items-center">
             <Badge variant="secondary" className="bg-white/20 hover:bg-white/30">
               {privacy === 'open' ? 'Открытый заказ' : 'Приватный заказ'}
@@ -101,11 +101,7 @@ const OrderPreview: React.FC<OrderPreviewProps> = ({
               </Badge>
             )}
             
-            {platform && (
-              <Badge variant="outline" className="text-white border-white/40 bg-white/10">
-                {platform}
-              </Badge>
-            )}
+
           </div>
         </CardHeader>
         
@@ -113,8 +109,8 @@ const OrderPreview: React.FC<OrderPreviewProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             {deadline && (
               <div className="flex items-center gap-3">
-                <div className="bg-purple-100 p-3 rounded-full">
-                  <Calendar className="h-5 w-5 text-purple-600" />
+                <div className="bg-[#FCF5F4] p-3 rounded-full">
+                  <Calendar className="h-5 w-5 text-[#E95C4B]" />
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Срок выполнения</p>
@@ -124,8 +120,8 @@ const OrderPreview: React.FC<OrderPreviewProps> = ({
             )}
             
             <div className="flex items-center gap-3">
-              <div className="bg-pink-100 p-3 rounded-full">
-                <DollarSign className="h-5 w-5 text-pink-600" />
+              <div className="bg-[#FCF5F4] p-3 rounded-full">
+                <DollarSign className="h-5 w-5 text-[#E95C4B]" />
               </div>
               <div>
                 <p className="text-sm text-gray-500">Бюджет</p>
@@ -134,11 +130,11 @@ const OrderPreview: React.FC<OrderPreviewProps> = ({
             </div>
             
             <div className="flex items-center gap-3">
-              <div className="bg-blue-100 p-3 rounded-full">
+              <div className="bg-[#FCF5F4] p-3 rounded-full">
                 {privacy === 'open' ? (
-                  <Globe className="h-5 w-5 text-blue-600" />
+                  <Globe className="h-5 w-5 text-[#E95C4B]" />
                 ) : (
-                  <Users className="h-5 w-5 text-blue-600" />
+                  <Users className="h-5 w-5 text-[#E95C4B]" />
                 )}
               </div>
               <div>
@@ -160,6 +156,20 @@ const OrderPreview: React.FC<OrderPreviewProps> = ({
               )}
             </div>
           </div>
+          
+          {tags && tags.length > 0 && (
+            <div className="mb-8">
+              <h2 className="text-lg font-semibold mb-4">Теги</h2>
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag) => (
+                  <Badge key={tag.id} variant="secondary" className="py-1.5">
+                    <Tag className="h-3.5 w-3.5 mr-1.5" />
+                    {tag.name}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
           
           {references && references.length > 0 && (
             <div className="mb-8">
@@ -195,7 +205,7 @@ const OrderPreview: React.FC<OrderPreviewProps> = ({
           
           <Button
             onClick={onPublish}
-            className="bg-gradient-to-r from-purple-700 to-pink-600 text-white"
+            className="bg-[#E95C4B] hover:bg-[#d54538] text-white"
           >
             Опубликовать заказ
           </Button>

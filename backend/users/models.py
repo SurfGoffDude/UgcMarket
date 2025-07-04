@@ -182,9 +182,9 @@ class CreatorProfile(models.Model):
     average_response_time = models.DurationField(_('average response time'), null=True, blank=True)
     # Новое поле тегов, заменяющее навыки
     tags = models.ManyToManyField(
-        'Tag',
+        'core.Tag',  # Ссылаемся на модель Tag из приложения core
         related_name='creators',
-        verbose_name=_('Теги'),
+        verbose_name=_('Tags'),
         blank=True
     )
     created_at = models.DateTimeField(_('created at'), auto_now_add=True)
@@ -204,30 +204,8 @@ class CreatorProfile(models.Model):
         return {link.name.lower(): link.url for link in self.social_links.all()}
 
 
-class Tag(models.Model):
-    """
-    Модель тега.
-
-    Представляет собой метку, по которой можно фильтровать креаторов.
-    """
-    name = models.CharField(
-        verbose_name=_('Название'),
-        max_length=100,
-        unique=True
-    )
-    slug = models.SlugField(
-        verbose_name=_('Slug'),
-        max_length=100,
-        unique=True
-    )
-
-    class Meta:
-        verbose_name = _('Тег')
-        verbose_name_plural = _('Теги')
-        ordering = ['name']
-
-    def __str__(self):
-        return self.name
+# Класс Tag перемещен в core.models.
+# Теперь все ссылки на Tag должны использовать 'core.Tag'
 
 
 class Skill(models.Model):

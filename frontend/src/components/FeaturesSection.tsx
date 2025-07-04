@@ -108,8 +108,8 @@ const FeaturesSection = () => {
                 className="group bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm hover:shadow-lg transition-shadow duration-300 border border-gray-100 dark:border-gray-700"
                 variants={item}
               >
-                <div className="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-900/50 flex items-center justify-center mb-4 group-hover:bg-purple-100 dark:group-hover:bg-purple-900/70 transition-colors duration-300">
-                  <Icon className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                <div className="w-12 h-12 rounded-xl bg-[var(--primary-50)] dark:bg-[var(--primary-900/50)] flex items-center justify-center mb-4 group-hover:bg-[var(--primary-100)] dark:group-hover:bg-[var(--primary-900/70)] transition-colors duration-300">
+                  <Icon className="w-6 h-6 text-primary dark:text-[var(--primary-400)]" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
                   {feature.title}

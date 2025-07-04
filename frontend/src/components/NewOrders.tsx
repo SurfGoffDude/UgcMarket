@@ -89,7 +89,7 @@ const NewOrders = () => {
   };
 
   return (
-    <section id="new-orders" className="py-16 bg-white dark:bg-gray-900">
+    <section className="py-16 bg-gray-50 dark:bg-gray-800/30">
       <div className="container mx-auto px-4">
         <motion.div 
           className="text-center mb-12"
@@ -97,7 +97,7 @@ const NewOrders = () => {
           animate={inView ? "visible" : "hidden"}
           variants={fadeInUp}
         >
-          <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+          <h2 className="text-4xl font-bold mb-4 text-[#E95C4B] dark:text-[#E95C4B]">
             Новые заказы
           </h2>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
@@ -121,14 +121,14 @@ const NewOrders = () => {
               <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                    <h3 className="text-xl font-semibold text-primary dark:text-[var(--primary-400)] mb-4">
                       {order.title}
                     </h3>
-                    <div className="flex items-center space-x-2 mb-3">
-                      <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 text-sm font-medium rounded-full">
+                    <div className="flex gap-2 mb-4">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--primary-100)] text-[var(--primary-800)] dark:bg-[var(--primary-900/50)] dark:text-[var(--primary-300)]">
                         {order.category}
                       </span>
-                      <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-full">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--secondary-100)] text-[var(--secondary-800)] dark:bg-[var(--secondary-900/50)] dark:text-[var(--secondary-300)]">
                         {order.platform}
                       </span>
                     </div>
@@ -170,7 +170,7 @@ const NewOrders = () => {
           animate={inView ? "visible" : "hidden"}
           variants={fadeInUp}
         >
-          <Button variant="outline" className="px-8 py-6 rounded-full text-base border-2 border-purple-600 text-purple-600 hover:bg-purple-50 dark:border-purple-500 dark:text-purple-400 dark:hover:bg-gray-800">
+          <Button variant="outline" className="px-8 py-6 rounded-full text-base border-2 border-[var(--primary-600)] text-primary hover:bg-[var(--primary-50)] dark:border-[var(--primary-500)] dark:text-[var(--primary-400)] dark:hover:bg-gray-800/70">
             Смотреть все заказы
           </Button>
         </motion.div>

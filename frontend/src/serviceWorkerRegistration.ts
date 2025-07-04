@@ -37,7 +37,6 @@ export function register(config?: Config): void {
 
         // Добавляем дополнительную информацию для разработки
         navigator.serviceWorker.ready.then(() => {
-          console.log('Service Worker зарегистрирован в режиме разработки');
         });
       } else {
         // На продакшене сразу регистрируем Service Worker
@@ -63,7 +62,6 @@ function registerValidSW(swUrl: string, config?: Config): void {
           if (installingWorker.state === 'installed') {
             if (navigator.serviceWorker.controller) {
               // Новая версия Service Worker доступна
-              console.log('Новая версия Service Worker доступна');
               
               // Выполняем колбэк при обновлении, если он предоставлен
               if (config && config.onUpdate) {
@@ -71,7 +69,6 @@ function registerValidSW(swUrl: string, config?: Config): void {
               }
             } else {
               // Service Worker установлен впервые
-              console.log('Service Worker готов к использованию (кэширован для оффлайн режима)');
               
               // Выполняем колбэк при успешной установке, если он предоставлен
               if (config && config.onSuccess) {
@@ -83,7 +80,6 @@ function registerValidSW(swUrl: string, config?: Config): void {
       };
     })
     .catch((error) => {
-      console.error('Ошибка при регистрации Service Worker:', error);
     });
 }
 
@@ -114,7 +110,6 @@ function checkValidServiceWorker(swUrl: string, config?: Config): void {
       }
     })
     .catch(() => {
-      console.log('Интернет-соединение отсутствует. Приложение работает в оффлайн режиме.');
     });
 }
 
@@ -128,7 +123,6 @@ export function unregister(): void {
         registration.unregister();
       })
       .catch((error) => {
-        console.error('Ошибка при отмене регистрации Service Worker:', error);
       });
   }
 }
