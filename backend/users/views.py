@@ -56,6 +56,30 @@ class IsProfileOwner(permissions.BasePermission):
         return False
 
 
+class IsVerifiedUser(permissions.BasePermission):
+    """Разрешение — пользователь должен иметь подтвержденный email."""
+
+    def has_permission(self, request, view):
+        # Проверяем, что пользователь аутентифицирован и имеет подтвержденный email
+        is_authenticated = request.user and request.user.is_authenticated
+        # Проверка на методы, которые не требуют верификации (например, GET для просмотра)
+        safe_methods = request.method in permissions.SAFE_METHODS
+        
+        # Если запрос на чтение данных, то верификация не требуется
+        if safe_methods:
+            return is_authenticated
+        
+        # Для методов изменения данных нужна верификация
+        return is_authenticated and request.user.is_verified
+
+    def has_object_permission(self, request, view, obj):
+        # Для методов чтения верификация не требуется
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        # Для методов изменения требуется верификация
+        return request.user.is_verified
+
+
 # ────────────────────────── текущее «я» ──────────────────────────
 class CurrentCreatorProfileView(generics.RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated]
@@ -101,49 +125,111 @@ class UserRegistrationView(generics.CreateAPIView):
 
         serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            # Возвращаем подробные ошибки валидации
+            detailed_errors = {}
+            for field, errors in serializer.errors.items():
+                detailed_errors[field] = [str(error) for error in errors]
+            return Response(
+                {
+                    "error": "Ошибка при регистрации пользователя",
+                    "details": detailed_errors
+                }, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        user = serializer.save()
-        send_verification_email(user, request)
+        # Используем транзакцию для гарантии атомарности операции
+        from django.db import transaction
+        try:
+            with transaction.atomic():
+                user = serializer.save()
+                send_verification_email(user, request)
 
-        return Response(
-            {
-                "message": (
-                    "Пользователь успешно зарегистрирован. "
-                    "Проверьте email для верификации аккаунта."
-                ),
-                "user": UserSerializer(user, context=self.get_serializer_context()).data,
-            },
-            status=status.HTTP_201_CREATED,
-        )
+            return Response(
+                {
+                    "message": (
+                        "Пользователь успешно зарегистрирован. "
+                        "Проверьте email для верификации аккаунта."
+                    ),
+                    "user": UserSerializer(user, context=self.get_serializer_context()).data,
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        except Exception as e:
+            logger.error(f"Ошибка при регистрации пользователя: {e}")
+            return Response(
+                {
+                    "error": "Ошибка при регистрации пользователя",
+                    "details": str(e)
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 class EmailVerificationView(generics.GenericAPIView):
     permission_classes = [AllowAny]
     serializer_class = EmailVerificationSerializer
+    template_name = 'users/email_verified.html'  # Шаблон для успешного подтверждения
+    error_template_name = 'users/email_verification_error.html'  # Шаблон для ошибок
 
     def get(self, request, uidb64, token):
+        # Определяем URL для перенаправления на страницу логина
+        frontend_url = request.build_absolute_uri('/').rstrip('/')
+        if '/api' in frontend_url:
+            frontend_url = frontend_url.split('/api')[0]
+        login_url = f"{frontend_url}/login"
+        
         try:
             uid = force_str(urlsafe_base64_decode(uidb64))
             user = User.objects.get(pk=uid)
         except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-            return Response(
-                {"error": "Недействительная ссылка для верификации"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            # Рендерим HTML-шаблон с ошибкой
+            from django.shortcuts import render
+            return render(request, self.error_template_name, {
+                'error_message': "Недействительный пользователь. Возможно, ссылка повреждена или некорректна.",
+                'login_url': login_url
+            })
 
         if not email_verification_token.check_token(user, token):
-            return Response(
-                {"error": "Недействительная ссылка для верификации"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            # Рендерим HTML-шаблон с ошибкой
+            from django.shortcuts import render
+            return render(request, self.error_template_name, {
+                'error_message': "Недействительная или устаревшая ссылка для верификации.",
+                'login_url': login_url
+            })
 
         if not user.is_verified:
             user.is_verified = True
             user.is_active = True
             user.save(update_fields=["is_verified", "is_active"])
 
-        return Response({"message": "Email успешно подтвержден"})
+        # Определяем URL для перенаправления на профиль
+        # Получаем базовый URL без /api
+        frontend_url = request.build_absolute_uri('/').rstrip('/')
+        # Если URL содержит /api, удаляем эту часть
+        if '/api' in frontend_url:
+            frontend_url = frontend_url.split('/api')[0]
+            
+        # Определяем тип профиля пользователя (клиент или креатор)
+        try:
+            if hasattr(user, 'creator_profile'):
+                profile_url = f"{frontend_url}/creator-profile"
+            else:
+                # По умолчанию используем клиентский профиль
+                profile_url = f"{frontend_url}/client-profile"
+        except Exception:
+            # В случае ошибки используем общий профиль
+            profile_url = f"{frontend_url}/login"
+        
+        # Возвращаем HTML страницу вместо простого JSON ответа
+        from django.shortcuts import render
+        from django.http import HttpResponse
+        
+        context = {
+            'user': user,
+            'profile_url': profile_url,
+        }
+        
+        return render(request, self.template_name, context)
 
 
 # ───────────────────────────── users ─────────────────────────────
@@ -199,7 +285,7 @@ class CreatorProfileViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = CreatorProfileSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsVerifiedUser]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     queryset = CreatorProfile.objects.all()
@@ -355,7 +441,7 @@ class CreatorProfileViewSet(viewsets.ModelViewSet):
 # ─────────────────────── portfolio items ───────────────────────
 class PortfolioItemViewSet(viewsets.ModelViewSet):
     serializer_class = PortfolioItemSerializer
-    permission_classes = [IsAuthenticated, IsProfileOwner]
+    permission_classes = [IsAuthenticated, IsProfileOwner, IsVerifiedUser]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     queryset = PortfolioItem.objects.all()
 
@@ -423,7 +509,7 @@ class PortfolioImageViewSet(viewsets.ModelViewSet):
 # ───────────────────────── services ─────────────────────────
 class ServiceViewSet(viewsets.ModelViewSet):
     serializer_class = ServiceSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsVerifiedUser]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     queryset = Service.objects.all()
 

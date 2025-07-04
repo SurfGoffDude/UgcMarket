@@ -86,7 +86,7 @@ const HeroSection = () => {
                 Найти заказы
               </Button>
             </motion.div>
-
+            {/*
             <motion.div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-8" variants={item}>
               <div className="flex items-center space-x-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                 <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
@@ -116,8 +116,9 @@ const HeroSection = () => {
                 </div>
               </div>
             </motion.div>
+            */}
           </motion.div>
-
+          
           <motion.div 
             className="relative"
             initial={{ opacity: 0, x: 50 }}

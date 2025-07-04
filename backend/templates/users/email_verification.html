@@ -11,28 +11,58 @@
             color: #333;
             margin: 0;
             padding: 0;
+            background-color: #f9f9f9;
         }
         .container {
             width: 100%;
             max-width: 600px;
             margin: 0 auto;
             padding: 20px;
+            background-color: #ffffff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
         }
         .header {
             text-align: center;
             padding: 20px 0;
             border-bottom: 1px solid #eee;
         }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #E95C4B;
+        }
         .content {
-            padding: 20px 0;
+            padding: 30px 0;
+        }
+        .button-container {
+            text-align: center;
+            margin: 30px 0;
         }
         .button {
             display: inline-block;
-            background-color: #4A90E2;
-            color: white;
+            background-color: #E95C4B;
+            color: #ffffff !important;
             text-decoration: none;
-            padding: 12px 24px;
+            padding: 14px 28px;
             border-radius: 4px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        .button:hover {
+            background-color: #d54538;
+        }
+        .verification-link {
+            word-break: break-all;
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        .info-box {
+            background-color: #f8e9e7;
+            border-left: 4px solid #E95C4B;
+            padding: 15px;
             margin: 20px 0;
         }
         .footer {
@@ -47,18 +77,29 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>UGC Market</h1>
+            <div class="logo">UGC Market</div>
         </div>
         <div class="content">
             <h2>Здравствуйте, {{ user.first_name|default:user.username }}!</h2>
             <p>Благодарим вас за регистрацию в сервисе UGC Market. Для завершения регистрации и подтверждения вашего email адреса, пожалуйста, нажмите на кнопку ниже:</p>
             
-            <a class="button" href="{{ verification_url }}">Подтвердить email</a>
+            <div class="button-container">
+                <a class="button" href="{{ verification_url }}">Подтвердить email</a>
+            </div>
             
             <p>Или вы можете скопировать и вставить следующую ссылку в адресную строку вашего браузера:</p>
-            <p>{{ verification_url }}</p>
+            <div class="verification-link">{{ verification_url }}</div>
             
-            <p>Данная ссылка будет действительна в течение 24 часов.</p>
+            <div class="info-box">
+                <p><strong>Что дальше?</strong></p>
+                <p>После подтверждения email вы будете автоматически перенаправлены в свой профиль, где сможете:</p>
+                <ul>
+                    <li>Заполнить информацию о себе</li>
+                    <li>Начать пользоваться всеми функциями UGC Market</li>
+                    <li>Просматривать доступные услуги и заказы</li>
+                </ul>
+                <p>Данная ссылка будет действительна в течение 24 часов.</p>
+            </div>
             
             <p>Если вы не регистрировались на UGC Market, просто проигнорируйте это письмо.</p>
             

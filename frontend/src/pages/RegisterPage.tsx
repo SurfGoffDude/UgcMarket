@@ -134,10 +134,11 @@ const RegisterPage: React.FC = () => {
       
       if (success) {
 
-        // Перенаправляем на страницу входа с сообщением о подтверждении email
-        navigate('/login', { 
-          state: { message: 'На ваш email отправлено письмо с инструкциями по подтверждению аккаунта.' } 
+        // Перенаправляем на страницу подтверждения email
+        navigate('/email-verification', { 
+          state: { email: formData.email } 
         });
+        return;
       } else {
 
         setError('Не удалось зарегистрироваться. Пожалуйста, попробуйте еще раз.');

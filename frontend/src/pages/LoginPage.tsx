@@ -20,14 +20,19 @@ const LoginPage: React.FC = () => {
   const navigate = useNavigate();
 
   // Получаем функции из контекста аутентификации
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
 
-  // Перенаправляем на главную страницу, если пользователь уже авторизован
+  // Перенаправляем на страницу профиля, если пользователь уже авторизован
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/');
+    if (isAuthenticated && user) {
+      // Определяем, куда перенаправить пользователя в зависимости от типа аккаунта
+      if (user.has_creator_profile) {
+        navigate('/creator-profile');
+      } else {
+        navigate('/client-profile');
+      }
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, user, navigate]);
 
   /**
    * Обрабатывает отправку формы входа
@@ -43,8 +48,10 @@ const LoginPage: React.FC = () => {
       const success = await login({ username, password });
       
       if (success) {
-        // Перенаправляем на главную страницу после успешного входа
-        navigate('/');
+        // Перенаправление произойдет автоматически в useEffect,
+        // когда обновится состояние isAuthenticated и user
+        // Нет необходимости делать перенаправление здесь,
+        // т.к. это дублирование логики
       } else {
         setError('Не удалось войти. Пожалуйста, проверьте учетные данные и повторите попытку.');
       }

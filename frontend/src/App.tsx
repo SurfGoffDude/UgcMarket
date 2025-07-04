@@ -26,6 +26,7 @@ import CreateOrder from "@/pages/CreateOrder";
 import NotFound from "@/pages/NotFound";
 import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
+import EmailVerificationPage from "@/pages/EmailVerificationPage";
 import ClientProfilePage from "@/pages/ClientProfilePage";
 import OrdersPage from "@/pages/OrdersPage";
 import OrderDetailPage from "@/pages/OrderDetailPage";
@@ -104,6 +105,7 @@ const App = () => {
                 {/* Страницы аутентификации */}
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
+                <Route path="/email-verification" element={<EmailVerificationPage />} />
                 <Route path="/client-profile" element={<ClientProfilePage />} />
                 
                 {/* Страницы заказов */}
