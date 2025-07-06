@@ -22,6 +22,7 @@ export interface User {
   location?: string;
   is_verified?: boolean;
   full_name?: string;
+  gender?: '' | 'male' | 'female' | 'other' | 'prefer_not_to_say'; // Поле для пола пользователя
   
   // Поля для профиля креатора
   has_creator_profile?: boolean;
@@ -128,6 +129,8 @@ export interface CreatorProfile extends UserProfile {
   services?: any[];
   website?: string;
   specialization?: string;
+  experience?: string;
+  average_work_time?: '' | 'up_to_24_hours' | 'up_to_3_days' | 'up_to_10_days' | 'up_to_14_days' | 'up_to_30_days' | 'up_to_60_days' | 'more_than_60_days';
 }
 
 /**

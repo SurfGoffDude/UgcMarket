@@ -22,13 +22,29 @@ class User(AbstractUser):
         bio (TextField): Краткая биография или описание пользователя.
         avatar (ImageField): Аватар пользователя.
         is_verified (BooleanField): Флаг подтверждения email пользователя.
+        gender (CharField): Пол пользователя (с выбором значка мальчик/девочка).
     """
+    # Варианты пола для выбора
+    GENDER_CHOICES = [
+        ('male', _('Мужской')),
+        ('female', _('Женский')),
+        ('prefer_not_to_say', _('Не указывать')),
+    ]
+    
     email = models.EmailField(_('email address'), unique=True)
     phone = models.CharField(_('phone number'), max_length=20, blank=True, null=True)
     bio = models.TextField(_('biography'), blank=True, null=True)
     location = models.CharField(_('location'), max_length=255, blank=True, null=True)
     avatar = models.ImageField(_('avatar'), upload_to='avatars/', blank=True, null=True)
     is_verified = models.BooleanField(_('verified'), default=False)
+    gender = models.CharField(
+        _('gender'),
+        max_length=20,
+        choices=GENDER_CHOICES,
+        blank=True,
+        null=True,
+        help_text=_('Пол пользователя для отображения соответствующего значка')
+    )
     
     class Meta:
         verbose_name = _('user')
@@ -161,9 +177,21 @@ class CreatorProfile(models.Model):
         rating (DecimalField): Рейтинг креатора.
         completed_orders (PositiveIntegerField): Количество завершенных заказов.
         average_response_time (DurationField): Среднее время ответа.
+        average_work_time (CharField): Среднее время выполнения работы.
         created_at (DateTimeField): Дата создания профиля.
         updated_at (DateTimeField): Дата обновления профиля.
     """
+    # Варианты среднего времени работы
+    AVERAGE_WORK_TIME_CHOICES = [
+        ('up_to_24_hours', _('До 24 часов')),
+        ('up_to_3_days', _('До 3 дней')),
+        ('up_to_10_days', _('До 10 дней')),
+        ('up_to_14_days', _('До 14 дней')),
+        ('up_to_30_days', _('До 30 дней')),
+        ('up_to_60_days', _('До 60 дней')),
+        ('more_than_60_days', _('Более 60 дней')),
+    ]
+    
     user = models.OneToOneField(
         User, 
         on_delete=models.CASCADE, 
@@ -180,6 +208,15 @@ class CreatorProfile(models.Model):
     rating = models.DecimalField(_('rating'), max_digits=3, decimal_places=2, default=0)
     completed_orders = models.PositiveIntegerField(_('completed orders'), default=0)
     average_response_time = models.DurationField(_('average response time'), null=True, blank=True)
+    average_work_time = models.CharField(
+        _('average work time'),
+        max_length=30,
+        choices=AVERAGE_WORK_TIME_CHOICES,
+        default='up_to_3_days',
+        blank=True,
+        null=True,
+        help_text=_('Среднее время выполнения работы креатором')
+    )
     # Новое поле тегов, заменяющее навыки
     tags = models.ManyToManyField(
         'core.Tag',  # Ссылаемся на модель Tag из приложения core
@@ -396,10 +433,29 @@ class Service(models.Model):
         decimal_places=2, 
         verbose_name=_('Цена')
     )
+    TIME_UNIT_CHOICES = [
+        ('hour', _('час')),
+        ('day', _('день')),
+        ('week', _('неделя')),
+        ('month', _('месяц')),
+        ('year', _('год'))
+    ]
+    
+    estimated_time_value = models.PositiveIntegerField(
+        verbose_name=_('Количество единиц времени'),
+        help_text=_('Количество единиц времени для выполнения услуги'),
+        default=1
+    )
+    estimated_time_unit = models.CharField(
+        max_length=10,
+        choices=TIME_UNIT_CHOICES,
+        default='day',
+        verbose_name=_('Единица измерения времени')
+    )
     estimated_time = models.CharField(
         max_length=100,
-        verbose_name=_('Примерное время выполнения'),
-        help_text=_('Например: 2-3 дня, 1 неделя и т.д.'),
+        verbose_name=_('Примерное время выполнения (устаревшее)'),
+        help_text=_('Устаревшее поле, оставлено для совместимости'),
         blank=True,
         null=True
     )
@@ -436,6 +492,34 @@ class Service(models.Model):
     def __str__(self):
         """Строковое представление объекта."""
         return f"{self.title} ({self.creator_profile.user.username})"
+    
+    def get_formatted_time(self):
+        """Возвращает отформатированное время выполнения услуги.
+        
+        Returns:
+            str: Время выполнения в формате '3 дня'.
+        """
+        time_units = {
+            'hour': ['час', 'часа', 'часов'],
+            'day': ['день', 'дня', 'дней'],
+            'week': ['неделя', 'недели', 'недель'],
+            'month': ['месяц', 'месяца', 'месяцев'],
+            'year': ['год', 'года', 'лет']
+        }
+        
+        # Функция для выбора правильной формы существительного
+        def choose_plural_form(number, forms):
+            if number % 10 == 1 and number % 100 != 11:
+                return forms[0]
+            elif 2 <= number % 10 <= 4 and (number % 100 < 10 or number % 100 >= 20):
+                return forms[1]
+            else:
+                return forms[2]
+        
+        unit_forms = time_units.get(self.estimated_time_unit, ['', '', ''])
+        unit_form = choose_plural_form(self.estimated_time_value, unit_forms)
+        
+        return f"{self.estimated_time_value} {unit_form}"
 
 
 class ServiceImage(models.Model):

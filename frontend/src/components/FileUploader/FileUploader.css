@@ -1,26 +1,64 @@
 .file-uploader {
   width: 100%;
   margin-bottom: 20px;
+  border: 1px solid hsl(214.3 31.8% 91.4%);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.file-uploader__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: hsl(0 0% 100%);
+  border-bottom: 1px solid hsl(214.3 31.8% 91.4%);
+}
+
+.file-uploader__title {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0;
+  color: hsl(222.2 47.4% 11.2%);
+}
+
+.file-uploader__info-button {
+  padding: 0;
+  height: 24px;
+  width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.file-uploader__tooltip-content {
+  max-width: 300px;
+}
+
+.file-uploader__info-content p {
+  margin: 4px 0;
+  font-size: 14px;
 }
 
 .file-uploader__dropzone {
-  border: 2px dashed #ccc;
+  border: 2px dashed hsl(214.3 31.8% 91.4%);
   border-radius: 8px;
-  padding: 20px;
+  padding: 40px 20px;
   text-align: center;
   cursor: pointer;
-  transition: all 0.3s ease;
-  background-color: #f9f9f9;
-  min-height: 150px;
+  transition: all 0.2s ease;
+  background-color: hsl(0 0% 98%);
+  min-height: 180px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  margin: 0;
 }
 
 .file-uploader__dropzone--active {
-  border-color: #4a90e2;
-  background-color: #e6f2ff;
+  border-color: hsl(221.2 83.2% 53.3%);
+  background-color: hsla(221.2 83.2% 53.3% / 0.05);
 }
 
 .file-uploader__dropzone--disabled {
@@ -29,13 +67,25 @@
 }
 
 .file-uploader__content {
-  color: #666;
+  color: hsl(215.4 16.3% 46.9%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 10px;
 }
 
 .file-uploader__hint {
   font-size: 0.85em;
-  color: #999;
+  color: hsl(215.4 16.3% 56.9%);
   margin-top: 8px;
+}
+
+.file-uploader__formats {
+  font-size: 0.85em;
+  color: hsl(215.4 16.3% 56.9%);
+  margin-top: 4px;
 }
 
 .file-uploader__loading {
@@ -59,14 +109,14 @@
 .file-uploader__progress-bar {
   height: 8px;
   width: 100%;
-  background-color: #eee;
+  background-color: hsl(214.3 31.8% 91.4%);
   border-radius: 4px;
   overflow: hidden;
 }
 
 .file-uploader__progress-fill {
   height: 100%;
-  background-color: #4a90e2;
+  background-color: hsl(221.2 83.2% 53.3%);
   transition: width 0.3s ease;
 }
 
@@ -77,14 +127,16 @@
 }
 
 .file-uploader__errors {
-  margin-top: 15px;
+  margin-top: 0;
+  padding: 12px 16px;
+  background-color: hsla(0 84.2% 60.2% / 0.1);
+  border-top: 1px solid hsla(0 72.2% 50.6% / 0.2);
 }
 
 .file-uploader__error {
-  color: #e74c3c;
+  color: hsl(0 72.2% 50.6%);
   font-size: 14px;
-  padding: 8px;
-  margin-bottom: 5px;
-  background-color: #fde8e7;
-  border-radius: 4px;
+  margin: 4px 0;
+  display: flex;
+  align-items: center;
 }

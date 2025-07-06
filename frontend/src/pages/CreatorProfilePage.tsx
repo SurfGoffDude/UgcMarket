@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useCreatorProfile } from '@/hooks/useCreatorProfile';
-import { Star, MapPin, Pencil, Plus, Calendar, Briefcase, GraduationCap, Lock, Unlock, ExternalLink, Phone } from 'lucide-react';
+import { Star, MapPin, Pencil, Plus, Calendar, Briefcase, GraduationCap, Lock, Unlock, ExternalLink, Phone, Clock, UserIcon, Heart, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 import PortfolioItem from '@/components/PortfolioItem';
@@ -42,7 +42,7 @@ const CreatorProfilePage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto p-4 md:p-6">
+    <div className="w-full p-4 md:p-6">
       {/* "Шапка" профиля */}
       <Card className="relative rounded-xl p-6 mt-8 space-y-4 shadow-md">
         {isOwner && (
@@ -64,7 +64,7 @@ const CreatorProfilePage: React.FC = () => {
                 {creator.user?.first_name?.[0] || 'A'}
               </AvatarFallback>
             </Avatar>
-            <div className="flex flex-col justify-center">
+            <div className="flex flex-col text-left">
               <h1 className="text-2xl font-bold">{creator.user?.first_name} {creator.user?.last_name}</h1>
               <p className="text-gray-500">@{creator.user?.username}</p>
               <div className="flex items-center gap-4 text-sm text-gray-600 mt-2">
@@ -72,6 +72,22 @@ const CreatorProfilePage: React.FC = () => {
                   <Star className="h-4 w-4 text-yellow-400" />
                   {ratingValue !== null ? ratingValue.toFixed(1) : 'N/A'}
                 </span>
+                {creator.user?.gender && (
+                  <span className="flex items-center gap-1">
+                    {creator.user.gender === 'male' ? (
+                      <UserIcon className="h-4 w-4 text-blue-500" />
+                    ) : creator.user.gender === 'female' ? (
+                      <Heart className="h-4 w-4 text-pink-500" />
+                    ) : (
+                      <User className="h-4 w-4 text-gray-400" />
+                    )}
+                    <span>
+                      {creator.user.gender === 'male' ? 'Мужской' :
+                       creator.user.gender === 'female' ? 'Женский' :
+                       creator.user.gender === 'other' ? 'Другой' : 'Не указан'}
+                    </span>
+                  </span>
+                )}
                 <span className="flex items-center gap-1">
                   <MapPin className="h-4 w-4" />
                   {creator.user?.location || 'Не указано'}
@@ -124,11 +140,29 @@ const CreatorProfilePage: React.FC = () => {
               </div>
             </div>
           )}
+
+          {creator.average_work_time && (
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" />
+              <div>
+                <h3 className="font-medium text-sm text-gray-500">Среднее время выполнения</h3>
+                <p>
+                  {creator.average_work_time === 'up_to_24_hours' && 'До 24 часов'}
+                  {creator.average_work_time === 'up_to_3_days' && 'До 3 дней'}
+                  {creator.average_work_time === 'up_to_10_days' && 'До 10 дней'}
+                  {creator.average_work_time === 'up_to_14_days' && 'До 14 дней'}
+                  {creator.average_work_time === 'up_to_30_days' && 'До 30 дней'}
+                  {creator.average_work_time === 'up_to_60_days' && 'До 60 дней'}
+                  {creator.average_work_time === 'more_than_60_days' && 'Более 60 дней'}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
         
         {/* Описание/био */}
         {creator.user?.bio && (
-          <div className="pt-2">
+          <div className="pt-2 text-left">
             <h3 className="font-medium text-sm text-gray-500">О себе</h3>
             <p className="text-gray-700 whitespace-pre-line">{creator.user?.bio}</p>
           </div>

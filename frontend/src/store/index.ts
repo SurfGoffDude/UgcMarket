@@ -2,11 +2,12 @@
  * Конфигурация Redux store для приложения
  * 
  * Объединяет все редьюсеры и middleware для работы с глобальным состоянием.
- * Настраивает RTK Query для работы с API уведомлений.
+ * Настраивает RTK Query для работы с API уведомлений и хранилища файлов.
  */
 import { configureStore } from '@reduxjs/toolkit';
 import { setupListeners } from '@reduxjs/toolkit/query';
 import { notificationsApi } from '../api/notificationsApi';
+import { storageApi } from '../api/storageApi';
 
 /**
  * Корневой Redux store приложения
@@ -21,10 +22,14 @@ export const store = configureStore({
   reducer: {
     // Добавляем редьюсеры из RTK Query API
     [notificationsApi.reducerPath]: notificationsApi.reducer,
+    [storageApi.reducerPath]: storageApi.reducer,
     // Сюда можно добавить другие редьюсеры при необходимости
   },
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(notificationsApi.middleware),
+    getDefaultMiddleware().concat(
+      notificationsApi.middleware,
+      storageApi.middleware
+    ),
   devTools: process.env.NODE_ENV !== 'production',
 });
 

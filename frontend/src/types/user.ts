@@ -23,6 +23,7 @@ export interface User {
   date_joined: string;
   has_creator_profile: boolean;
   has_client_profile: boolean;
+  gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say'; // Добавлено поле для пола пользователя
 }
 
 /**
@@ -55,6 +56,7 @@ export interface CreatorProfile {
   review_count?: number;
   completed_orders: number;
   average_response_time?: string;
+  average_work_time?: 'up_to_24_hours' | 'up_to_3_days' | 'up_to_10_days' | 'up_to_14_days' | 'up_to_30_days' | 'up_to_60_days' | 'more_than_60_days'; // Добавлено поле среднего времени работы
   created_at: string;
   updated_at: string;
 }

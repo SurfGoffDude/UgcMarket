@@ -19,13 +19,51 @@ interface Service {
   title: string;
   description: string;
   price: string;
-  estimated_time: string;
+  estimated_time: string; // Устаревшее поле, оставлено для совместимости
+  estimated_time_value?: number; // Количество единиц времени
+  estimated_time_unit?: string; // Единица измерения времени (hour, day, week, month, year)
   allows_modifications: boolean;
   modifications_price: string | null;
   creator_username: string;
   creator_profile: number;
   images: ServiceImage[];
 }
+
+/**
+ * Форматирует время выполнения услуги с учетом новых полей
+ * @param service - данные услуги
+ * @returns отформатированное время выполнения
+ */
+const formatEstimatedTime = (service: Service): string => {
+  // Если есть новые поля, используем их
+  if (service.estimated_time_value && service.estimated_time_unit) {
+    const value = service.estimated_time_value;
+    const unit = service.estimated_time_unit;
+    
+    // Функция для правильного склонения в зависимости от количества
+    const getUnitText = (): string => {
+      switch (unit) {
+        case 'hour':
+          return value === 1 ? 'час' : value < 5 ? 'часа' : 'часов';
+        case 'day':
+          return value === 1 ? 'день' : value < 5 ? 'дня' : 'дней';
+        case 'week':
+          return value === 1 ? 'неделя' : value < 5 ? 'недели' : 'недель';
+        case 'month':
+          return value === 1 ? 'месяц' : value < 5 ? 'месяца' : 'месяцев';
+        case 'year':
+          return value === 1 ? 'год' : value < 5 ? 'года' : 'лет';
+        default:
+          return '';
+      }
+    };
+    
+    return `${value} ${getUnitText()}`;
+  } 
+  
+  // Если нет новых полей, используем старое поле
+  return service.estimated_time || 'Не указано';
+};
 
 const ServiceDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -175,7 +213,7 @@ const ServiceDetailPage = () => {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Срок выполнения</span>
-                  <span className="font-semibold">{service.estimated_time}</span>
+                  <span className="font-semibold">{formatEstimatedTime(service)}</span>
                 </div>
                 <Separator />
                 <Button 

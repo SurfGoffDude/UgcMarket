@@ -45,6 +45,7 @@ class UserSerializer(serializers.ModelSerializer):
             "phone",
             "bio",
             "location",
+            "gender",
             "is_verified",
             "user_type",
             "date_joined",
@@ -284,6 +285,7 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
             "review_count",
             "completed_orders",
             "average_response_time",
+            "average_work_time",
             "created_at",
             "updated_at",
         ]
@@ -323,12 +325,20 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
         return profile
 
     def update(self, instance, validated_data):
+        # Отладка входящих данных
+        print("DEBUG - CreatorProfileSerializer.update - validated_data:", validated_data)
+        
         social_links = validated_data.pop("social_links", None)
         tags_data = validated_data.pop("tags", None)
         user_data = validated_data.pop("user", {})
         bio = validated_data.pop("bio", None)
         location = validated_data.pop("location_write", None)
         avatar = validated_data.pop("avatar", None)
+        
+        # Отладка полей после извлечения
+        print("DEBUG - CreatorProfileSerializer.update - user_data:", user_data)
+        print("DEBUG - CreatorProfileSerializer.update - bio:", bio)
+        print("DEBUG - CreatorProfileSerializer.update - location:", location)
 
         # --- update CreatorProfile itself
         for attr, value in validated_data.items():
@@ -343,9 +353,20 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
             user.location = location
         if avatar is not None:
             user.avatar = avatar
+            
+        # Отладка поля gender в user_data и его установка
+        print("DEBUG - CreatorProfileSerializer.update - gender в user_data:", user_data.get('gender'))
+        gender = user_data.get('gender')
+        if gender is not None:
+            print("DEBUG - Установка поля gender:", gender)
+            user.gender = gender
+            
+        # Обработка других полей пользователя
         for attr, value in user_data.items():
-            if value is not None:
+            if attr != 'gender' and value is not None:  # Пропускаем gender, т.к. мы уже его обработали выше
                 setattr(user, attr, value)
+                
+        print("DEBUG - CreatorProfileSerializer.update - gender после установки:", user.gender)
         user.save()
 
         # --- tags
@@ -497,7 +518,8 @@ class PortfolioImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = PortfolioImage
         fields = ["id", "portfolio_item", "image", "image_url", "caption", "order"]
-        read_only_fields = ["portfolio_item"]
+        # Убираю portfolio_item из read_only_fields, так как контроллер ожидает это поле в запросе
+        read_only_fields = []
         extra_kwargs = {"image": {"write_only": True}}
 
     def get_image_url(self, obj):

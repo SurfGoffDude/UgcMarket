@@ -7,7 +7,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 // Базовый URL для API запросов к хранилищу
-const API_BASE_URL = '/api/storage';
+const API_BASE_URL = '/api';
 
 /**
  * Интерфейсы для типизации данных файлов
@@ -79,7 +79,7 @@ export const storageApi = createApi({
     credentials: 'include',
     prepareHeaders: (headers) => {
       // Получаем токен из localStorage
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('access_token');
       if (token) {
         headers.set('Authorization', `Bearer ${token}`);
       }
@@ -92,7 +92,7 @@ export const storageApi = createApi({
      */
     getFiles: builder.query<{ results: FileMetadata[], count: number }, FilesFilterParams>({
       query: (params) => ({
-        url: '/files/',
+        url: '/portfolio-images/',
         params,
       }),
       providesTags: (result) => 
@@ -109,7 +109,7 @@ export const storageApi = createApi({
      */
     uploadFile: builder.mutation<FileUploadResponse, FormData>({
       query: (fileData) => ({
-        url: '/files/',
+        url: '/portfolio-images/',
         method: 'POST',
         body: fileData,
         // Отключаем автоматический парсинг JSON для FormData
@@ -123,7 +123,7 @@ export const storageApi = createApi({
      */
     deleteFile: builder.mutation<void, number>({
       query: (id) => ({
-        url: `/files/${id}/`,
+        url: `/portfolio-images/${id}/`,
         method: 'DELETE',
       }),
       invalidatesTags: (result, error, id) => [
@@ -137,7 +137,7 @@ export const storageApi = createApi({
      */
     bulkDeleteFiles: builder.mutation<BulkDeleteResponse, BulkDeleteRequest>({
       query: (data) => ({
-        url: '/files/bulk_delete/',
+        url: '/portfolio-images/bulk_delete/',
         method: 'POST',
         body: data,
       }),
@@ -149,7 +149,7 @@ export const storageApi = createApi({
      */
     uploadTemporaryFile: builder.mutation<TemporaryFileMetadata, FormData>({
       query: (fileData) => ({
-        url: '/temp-files/',
+        url: '/portfolio-images/temporary/',
         method: 'POST',
         body: fileData,
         formData: true,
@@ -162,7 +162,7 @@ export const storageApi = createApi({
      */
     confirmTemporaryFiles: builder.mutation<FileMetadata[], FileConfirmRequest>({
       query: (data) => ({
-        url: '/temp-files/confirm/',
+        url: '/portfolio-images/confirm/',
         method: 'POST',
         body: data,
       }),
@@ -177,7 +177,7 @@ export const storageApi = createApi({
      */
     getSignedUrl: builder.query<{ signed_url: string }, { fileId: number; expiresIn?: number }>({
       query: ({ fileId, expiresIn }) => ({
-        url: `/files/${fileId}/signed-url/`,
+        url: `/portfolio-images/${fileId}/signed-url/`,
         params: { expires_in: expiresIn },
       }),
     }),

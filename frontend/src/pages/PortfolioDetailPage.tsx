@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, Eye, Heart, Link as LinkIcon, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Calendar, Eye, Heart, Link as LinkIcon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -352,7 +352,7 @@ const PortfolioDetailPage = () => {
                   className="absolute top-1/2 right-4 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2"
                   onClick={nextImage}
                 >
-                  <ArrowLeft className="h-5 w-5 transform rotate-180" />
+                  <ArrowRight className="h-5 w-5" />
                 </button>
               </>
             )}

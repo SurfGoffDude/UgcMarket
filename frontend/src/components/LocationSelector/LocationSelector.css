@@ -1,0 +1,31 @@
+.location-selector .popover-content {
+  width: 100%;
+}
+
+.location-selector .search-results {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.location-selector .city-item {
+  cursor: pointer;
+  padding: 8px 12px;
+  transition: background-color 0.2s;
+}
+
+.location-selector .city-item:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.location-selector .city-item.selected {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.location-selector .city-name {
+  font-weight: 500;
+}
+
+.location-selector .region-name {
+  font-size: 0.8em;
+  color: #666;
+}

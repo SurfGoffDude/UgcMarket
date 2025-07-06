@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
-import { Loader2, Trash2, AlertCircle, Plus, Upload } from 'lucide-react';
+import { Loader2, Trash2, AlertCircle, Plus, Upload, UserIcon, Heart, XCircle } from 'lucide-react';
 import apiClient from '@/api/client';
 import { useToast } from '@/components/ui/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -18,12 +18,15 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { LockIcon, UnlockIcon } from "lucide-react";
+import LocationSelector from '@/components/LocationSelector';
+import { cn } from '@/lib/utils';
 
 const profileFormSchema = z.object({
   // Общие поля
   first_name: z.string().max(30, 'Слишком длинное имя').optional(),
   last_name: z.string().max(30, 'Слишком длинная фамилия').optional(),
   username: z.string().max(30, 'Слишком длинное имя пользователя').optional(),
+  gender: z.enum(['', 'male', 'female', 'other', 'prefer_not_to_say']).optional(),
   phone: z.string().max(20, 'Слишком длинный номер телефона').optional(),
   bio: z.string().max(500, 'Слишком длинное описание').optional(),
   location: z.string().max(100, 'Слишком длинное название локации').optional(),
@@ -32,6 +35,10 @@ const profileFormSchema = z.object({
   // Специфические поля для CreatorProfile
   specialization: z.string().max(255, 'Слишком длинная специализация').optional(),
   experience: z.string().max(255, 'Слишком длинное описание опыта').optional(),
+  average_work_time: z.enum([
+    '', 'up_to_24_hours', 'up_to_3_days', 'up_to_10_days', 'up_to_14_days', 
+    'up_to_30_days', 'up_to_60_days', 'more_than_60_days'
+  ]).optional(),
   available_for_hire: z.boolean().default(true),
   social_links: z.array(z.object({
     platform: z.string().min(1, "Платформа не может быть пустой"),
@@ -87,9 +94,15 @@ const CreatorProfileEditPage: React.FC = () => {
     }
   }, [creator, currentUser, id, navigate]);
 
-  // Заполнение формы данными профиля
+  // Загружаем данные профиля при монтировании компонента
   useEffect(() => {
     if (creator) {
+      // Отладка: выводим данные профиля
+      console.log('DEBUG - Данные профиля:', creator);
+      console.log('DEBUG - Поле gender в user:', creator.user?.gender);
+      console.log('DEBUG - Поле average_work_time:', creator.average_work_time);
+      
+      // Преобразуем профиль в формат формы
       form.reset({
         first_name: creator.user?.first_name || '',
         last_name: creator.user?.last_name || '',
@@ -102,6 +115,8 @@ const CreatorProfileEditPage: React.FC = () => {
         experience: creator.experience || '',
         available_for_hire: creator.available_for_hire !== undefined ? creator.available_for_hire : true,
         social_links: creator.social_links || [],
+        gender: creator.user?.gender || '',
+        average_work_time: creator.average_work_time || '',
       });
       
       // Установка превью аватара, если он есть
@@ -134,6 +149,11 @@ const CreatorProfileEditPage: React.FC = () => {
     setIsSubmitting(true);
     setApiError(null);
     try {
+      // Отладка: выводим данные формы перед отправкой
+      console.log('DEBUG - Данные формы перед отправкой:', data);
+      console.log('DEBUG - Поле gender перед отправкой:', data.gender);
+      console.log('DEBUG - Поле average_work_time перед отправкой:', data.average_work_time);
+      
       // Получаем данные из формы
       const { 
       first_name, last_name, username, phone, 
@@ -157,10 +177,13 @@ const CreatorProfileEditPage: React.FC = () => {
         userFields.phone = phone;
       }
       
-      // Обновляем bio в модели User
-      if (creator?.user?.bio !== bio && bio !== undefined) {
-        userFields.bio = bio;
-      }
+      // Добавляем поля пользователя (User)
+      userFields.gender = data.gender || '';
+      console.log('DEBUG - userFields после добавления gender:', userFields);
+      
+      // Обновляем bio в модели User - всегда отправляем bio в поля User
+      // Это критично для корректного сохранения
+      userFields.bio = bio;
       
       // Обновляем location в модели User
       if (creator?.user?.location !== location && location !== undefined) {
@@ -175,32 +198,60 @@ const CreatorProfileEditPage: React.FC = () => {
       // Создаем FormData для отправки файлов
       const formData = new FormData();
       
-      // Формируем данные для обновления CreatorProfile
-      const creatorProfileData: Record<string, any> = {
+      // Специфические поля для CreatorProfile
+      const creatorProfileData = {
+        user: userFields,
         ...otherData,
-        bio, // Поле bio для CreatorProfile
-        location_write: location || '', // location_write с пустой строкой по умолчанию
-        social_links: social_links || [],
+        // Обязательно передаем bio в оба места - и в CreatorProfile, и в User
+        bio, 
+        // Добавляем другие поля профиля креатора
         specialization,
         experience,
-        available_for_hire
+        available_for_hire,
+        average_work_time: data.average_work_time || ''
       };
       
-      // Добавляем поля User только если есть изменения
-      if (Object.keys(userFields).length > 0) {
-        creatorProfileData.user = userFields;
-      }
+      // Отладка: выводим данные CreatorProfile перед отправкой
+      console.log('DEBUG - CreatorProfile данные перед отправкой:', creatorProfileData);
+      
+      // Всегда добавляем поля User
+      creatorProfileData.user = userFields;
       
       // Преобразуем данные в FormData
-      Object.entries(creatorProfileData).forEach(([key, value]) => {
-        if (key === 'social_links' || key === 'user') {
+    Object.entries(creatorProfileData).forEach(([key, value]) => {
+      if (key === 'social_links') {
+        console.log(`DEBUG - Сериализация объекта ${key}:`, JSON.stringify(value));
+        formData.append(key, JSON.stringify(value));
+      } else if (key === 'user') {
+        // Проверка, что объект user не пустой и содержит нужные поля
+        if (Object.keys(value as Record<string, any>).length > 0) {
+          console.log(`DEBUG - Сериализация объекта ${key}:`, JSON.stringify(value));
           formData.append(key, JSON.stringify(value));
-        } else if (key === 'available_for_hire') {
-          formData.append(key, value ? 'true' : 'false');
-        } else {
-          formData.append(key, value === null ? '' : String(value));
+          
+          // Для надёжности также передаём user.gender и user.bio как отдельные поля
+          if ((value as Record<string, any>).gender !== undefined) {
+            formData.append('user.gender', (value as Record<string, any>).gender);
+          }
+          
+          if ((value as Record<string, any>).bio !== undefined) {
+            formData.append('user.bio', (value as Record<string, any>).bio);
+          }
         }
-      });
+      } else if (key === 'available_for_hire') {
+        formData.append(key, value ? 'true' : 'false');
+      } else {
+        formData.append(key, value === null ? '' : String(value));
+      }
+    });
+    
+    // Дополнительно проверяем, что gender и bio попадают в запрос
+    if (!formData.has('user.gender') && data.gender) {
+      formData.append('user.gender', data.gender);
+    }
+    
+    if (!formData.has('user.bio') && bio) {
+      formData.append('user.bio', bio);
+    }
       
       // Вариант с аватаром - тестируем другой подход
       if (avatar) {
@@ -210,6 +261,11 @@ const CreatorProfileEditPage: React.FC = () => {
       }
       
       
+      // Отладка: просмотр сформированного FormData
+      for (const pair of formData.entries()) {
+        console.log('DEBUG - FormData поле:', pair[0], pair[1]);
+      }
+
       // Отправляем обновление профиля креатора
       await apiClient.patch(`creator-profiles/${id}/`, formData, {
         headers: {
@@ -249,28 +305,36 @@ const CreatorProfileEditPage: React.FC = () => {
           errorMessage = data.detail;
         } else {
           // Попытка извлечь текст ошибки из вложенных полей
-          const errors: string[] = [];
+          const fieldErrors: Record<string, string> = {};
           
           // Обрабатываем ошибки во вложенных объектах, например user.username
           Object.entries(data).forEach(([key, value]) => {
             if (typeof value === 'string') {
-              errors.push(`${key}: ${value}`);
+              fieldErrors[key] = value;
             } else if (Array.isArray(value)) {
-              errors.push(`${key}: ${value.join(', ')}`);
+              fieldErrors[key] = value.join(', ');
             } else if (typeof value === 'object' && value !== null) {
               // Для вложенных объектов (например, user)
               Object.entries(value).forEach(([nestedKey, nestedValue]) => {
                 if (Array.isArray(nestedValue)) {
-                  errors.push(`${key}.${nestedKey}: ${nestedValue.join(', ')}`);
+                  fieldErrors[nestedKey] = nestedValue.join(', ');
                 } else {
-                  errors.push(`${key}.${nestedKey}: ${nestedValue}`);
+                  fieldErrors[nestedKey] = String(nestedValue);
                 }
               });
             }
           });
           
-          if (errors.length > 0) {
-            errorMessage = errors.join('\n');
+          // Устанавливаем ошибки для полей формы
+          Object.entries(fieldErrors).forEach(([field, message]) => {
+            form.setError(field as any, {
+              type: 'manual',
+              message: message,
+            });
+          });
+          
+          if (Object.keys(fieldErrors).length > 0) {
+            errorMessage = 'Пожалуйста, исправьте ошибки в форме';
           }
         }
       }
@@ -402,6 +466,59 @@ const CreatorProfileEditPage: React.FC = () => {
                 
                 <FormField
                   control={form.control}
+                  name="gender"
+                  render={({ field }) => (
+                    <div className="space-y-3">
+                      <div className="font-medium">Пол</div>
+                      <div className="flex gap-3">
+                        <Button 
+                          type="button" 
+                          variant={field.value === 'male' ? 'default' : 'outline'}
+                          className={cn(
+                            "flex-1 flex items-center justify-center gap-2",
+                            field.value === 'male' ? 'bg-blue-500 text-white hover:bg-blue-600' : ''
+                          )}
+                          onClick={() => {
+                            field.onChange('male');
+                          }}
+                        >
+                          <UserIcon className="h-5 w-5" />
+                          <span>Мужской</span>
+                        </Button>
+                        <Button 
+                          type="button" 
+                          variant={field.value === 'female' ? 'default' : 'outline'}
+                          className={cn(
+                            "flex-1 flex items-center justify-center gap-2",
+                            field.value === 'female' ? 'bg-pink-500 text-white hover:bg-pink-600' : ''
+                          )}
+                          onClick={() => {
+                            field.onChange('female');
+                          }}
+                        >
+                          <Heart className="h-5 w-5" />
+                          <span>Женский</span>
+                        </Button>
+                        <Button 
+                          type="button"
+                          variant="ghost" 
+                          className="w-10 p-0 flex items-center justify-center text-gray-500 hover:text-red-500"
+                          onClick={() => {
+                            field.onChange('');
+                          }}
+                        >
+                          <XCircle className="h-5 w-5" />
+                        </Button>
+                      </div>
+                      {form.formState.errors.gender && (
+                        <p className="text-sm font-medium text-destructive">{form.formState.errors.gender.message}</p>
+                      )}
+                    </div>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
                   name="phone"
                   render={({ field }) => (
                     <FormItem>
@@ -435,8 +552,15 @@ const CreatorProfileEditPage: React.FC = () => {
                     <FormItem>
                       <FormLabel>Местоположение</FormLabel>
                       <FormControl>
-                        <Input placeholder="Ваше местоположение" {...field} />
+                        <LocationSelector 
+                          value={field.value || ''} 
+                          onChange={field.onChange}
+                          disabled={isSubmitting}
+                        />
                       </FormControl>
+                      <FormDescription>
+                        Выберите местоположение из списка городов России
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -466,6 +590,36 @@ const CreatorProfileEditPage: React.FC = () => {
                       <FormControl>
                         <Input placeholder="Ваш опыт работы" {...field} />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="average_work_time"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Среднее время работы</FormLabel>
+                      <FormControl>
+                        <select
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          {...field}
+                          value={field.value || ''}
+                        >
+                          <option value="">Выберите среднее время работы</option>
+                          <option value="up_to_24_hours">До 24 часов</option>
+                          <option value="up_to_3_days">До 3 дней</option>
+                          <option value="up_to_10_days">До 10 дней</option>
+                          <option value="up_to_14_days">До 14 дней</option>
+                          <option value="up_to_30_days">До 30 дней</option>
+                          <option value="up_to_60_days">До 60 дней</option>
+                          <option value="more_than_60_days">Более 60 дней</option>
+                        </select>
+                      </FormControl>
+                      <FormDescription>
+                        Укажите среднее время выполнения заказа
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

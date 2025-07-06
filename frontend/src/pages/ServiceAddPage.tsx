@@ -1,5 +1,12 @@
 import { Button } from '@/components/ui/button';
 import { useNavigate, useParams } from 'react-router-dom';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ArrowLeft, Loader2, Upload, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -36,7 +43,12 @@ const formSchema = z.object({
     .refine(val => !isNaN(parseFloat(val)) && parseFloat(val) >= 0, {
       message: "Стоимость должна быть положительным числом",
     }),
-  estimated_time: z.string().min(3, "Укажите примерное время").max(100, "Слишком длинное описание"),
+  estimated_time_value: z.number()
+    .int("Должно быть целым числом")
+    .positive("Должно быть положительным числом")
+    .default(1),
+  estimated_time_unit: z.enum(["hour", "day", "week", "month", "year"])
+    .default("day"),
   allows_modifications: z.boolean().default(true),
   modifications_price: z.string().optional(),
   is_active: z.boolean().default(true),
@@ -76,7 +88,8 @@ const ServiceAddPage = () => {
       title: '',
       description: '',
       price: '',
-      estimated_time: '',
+      estimated_time_value: 1,
+      estimated_time_unit: 'day',
       allows_modifications: true,
       modifications_price: '',
       is_active: true,
@@ -104,11 +117,48 @@ const ServiceAddPage = () => {
         try {
           const response = await apiClient.get(`/services/${serviceId}/`);
           const serviceData = response.data;
+          // Обрабатываем данные времени выполнения
+          let timeValue = 1;
+          let timeUnit = 'day';
+          
+          // Если есть новые поля, используем их
+          if (serviceData.estimated_time_value && serviceData.estimated_time_unit) {
+            timeValue = serviceData.estimated_time_value;
+            timeUnit = serviceData.estimated_time_unit;
+          } 
+          // Иначе пытаемся извлечь из старого поля estimated_time (обратная совместимость)
+          else if (serviceData.estimated_time) {
+            const estimatedTimeStr = serviceData.estimated_time;
+            // Попытка извлечь число и единицу из строки типа "3 дня" или "2 часа"
+            const matches = estimatedTimeStr.match(/(\d+)\s*([а-яА-Я]+)/i);
+            if (matches && matches.length >= 3) {
+              const extractedValue = parseInt(matches[1]);
+              const extractedUnit = matches[2].toLowerCase();
+              if (!isNaN(extractedValue) && extractedValue > 0) {
+                timeValue = extractedValue;
+                
+                // Определяем единицу измерения на основе русского текста
+                if (extractedUnit.includes('час')) {
+                  timeUnit = 'hour';
+                } else if (extractedUnit.includes('ден') || extractedUnit.includes('дн')) {
+                  timeUnit = 'day';
+                } else if (extractedUnit.includes('недел')) {
+                  timeUnit = 'week';
+                } else if (extractedUnit.includes('месяц') || extractedUnit.includes('месяц')) {
+                  timeUnit = 'month';
+                } else if (extractedUnit.includes('год') || extractedUnit.includes('лет')) {
+                  timeUnit = 'year';
+                }
+              }
+            }
+          }
+          
           form.reset({
             title: serviceData.title || '',
             description: serviceData.description || '',
             price: String(serviceData.price) || '',
-            estimated_time: serviceData.estimated_time || '',
+            estimated_time_value: timeValue,
+            estimated_time_unit: timeUnit as "hour" | "day" | "week" | "month" | "year",
             allows_modifications: serviceData.allows_modifications,
             modifications_price: String(serviceData.modifications_price) || '',
             is_active: serviceData.is_active,
@@ -243,19 +293,60 @@ const ServiceAddPage = () => {
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="estimated_time"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Примерный срок выполнения</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Например, '3-5 рабочих дней'" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="space-y-4">
+                      <FormLabel>Примерный срок выполнения</FormLabel>
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="estimated_time_value"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="1"
+                                  placeholder="Например: 3" 
+                                  value={field.value}
+                                  onChange={(e) => {
+                                    const value = parseInt(e.target.value);
+                                    if (!isNaN(value) && value > 0) {
+                                      field.onChange(value);
+                                    }
+                                  }}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="estimated_time_unit"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormControl>
+                                <Select
+                                  value={field.value}
+                                  onValueChange={field.onChange}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Выберите единицу" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="hour">Час</SelectItem>
+                                    <SelectItem value="day">День</SelectItem>
+                                    <SelectItem value="week">Неделя</SelectItem>
+                                    <SelectItem value="month">Месяц</SelectItem>
+                                    <SelectItem value="year">Год</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
                 </div>
 
                 <FormField

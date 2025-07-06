@@ -73,7 +73,9 @@ export interface Service {
   average_rating?: number;
   review_count?: number;
   delivery_time: number; // в днях
-  estimated_time: string;
+  estimated_time: string; // Устаревшее поле, оставлено для совместимости
+  estimated_time_value: number; // Количество единиц времени
+  estimated_time_unit: string; // Единица измерения времени (hour, day, week, month, year)
   allows_modifications: boolean;
   modifications_price: number;
   is_featured: boolean;
