@@ -46,12 +46,34 @@ class TagViewSet(viewsets.ReadOnlyModelViewSet):
     Представление для просмотра тегов.
     
     Позволяет получить список тегов и детали конкретного тега.
+    По умолчанию возвращает только теги с типом 'creator'.
     """
+    # Сохраняем базовый queryset для регистрации в роутере
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
     permission_classes = [permissions.AllowAny]
-    filter_backends = [filters.SearchFilter]
+    filter_backends = [filters.SearchFilter, DjangoFilterBackend]
     search_fields = ['name']
+    filterset_fields = ['type', 'category']
+    
+    def get_queryset(self):
+        """
+        Возвращает только теги с типом 'creator' или фильтрует по типу, если он указан в запросе.
+        """
+        # Начинаем с базового queryset
+        queryset = super().get_queryset()
+        
+        # Проверяем, указан ли тип в запросе
+        tag_type = self.request.query_params.get('type')
+        
+        # Если тип не указан, возвращаем только теги с типом 'creator'
+        if not tag_type:
+            queryset = queryset.filter(type='creator')
+        else:
+            # Если тип указан, фильтруем по нему
+            queryset = queryset.filter(type=tag_type)
+            
+        return queryset
 
 
 class OrderViewSet(viewsets.ModelViewSet):

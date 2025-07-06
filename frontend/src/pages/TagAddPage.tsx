@@ -42,15 +42,16 @@ const TagAddPage: React.FC = () => {
   
 
   // Получить все теги
-  interface Tag { id: number; name: string; category: string }
+  interface Tag { id: number; name: string; category: any; type?: string }
 
   
 
-  const { data: tags = [], isPending, isError } = useQuery<Tag[]>({
+  const { data: allTags = [], isPending, isError } = useQuery<Tag[]>({
     queryKey: ['tags'],
     queryFn: async () => {
       try {
-        const res = await apiClient.get('tags/');
+        // Добавляем параметр type=creator для фильтрации на бэкенде
+        const res = await apiClient.get('tags/', { params: { type: 'creator' } });
         const payload = res.data;
         if (Array.isArray(payload)) return payload as Tag[];
         return (payload?.results ?? []) as Tag[];
@@ -65,13 +66,34 @@ const TagAddPage: React.FC = () => {
     retry: false,
   });
 
+  // Когда и профиль, и список тегов загружены  // Дополнительная фильтрация на стороне клиента
+  const tags = React.useMemo(() => {
+    // Выводим в консоль первый тег для анализа структуры
+    if (allTags.length > 0) console.log('All tags before filtering:', allTags.length, 'Types:', [...new Set(allTags.map(tag => tag.type))]);
+    
+    // Фильтруем только теги с типом creator, строго
+    return allTags.filter(tag => {
+      // Строгая проверка - только type='creator'
+      return tag.type === 'creator';
+    });
+  }, [allTags]);
+
   // Когда и профиль, и список тегов загружены — конвертируем теги из профиля (имена/id) в id
   useEffect(() => {
-    if (!profileData || tags.length === 0) return;
-    const mappedIds = profileData.tags
-      .map(item => typeof item === 'number' ? item : tags.find(t => t.name === item)?.id)
-      .filter((id): id is number => typeof id === 'number');
-    setSelected(mappedIds);
+    if (!profileData?.tags || tags.length === 0) return;
+
+    const profileTags = profileData.tags;
+    const selectedIds = tags
+      .filter(tag => {
+        if (typeof profileTags[0] === 'number') {
+          return (profileTags as number[]).includes(tag.id);
+        }
+        // Если в профиле теги как строки, сравниваем по имени
+        return (profileTags as string[]).includes(tag.name);
+      })
+      .map(tag => tag.id);
+
+    setSelected(selectedIds);
   }, [profileData, tags]);
 
   const {
@@ -113,16 +135,62 @@ const TagAddPage: React.FC = () => {
   return (
     <div className="container mx-auto p-4 md:p-6 max-w-2xl">
       <h1 className="text-2xl font-bold mb-4">Выберите теги</h1>
-      <div className="columns-2 gap-4">
+      {/* Дополнительная отладочная информация для анализа тегов */}
+      {(() => {
+        // Выводим всю информацию о тегах для анализа
+        console.log('Tags count after filtering:', tags.length);
+        console.log('Tags types:', [...new Set(tags.map(tag => tag.type))]);
+        if (tags.length > 0) {
+          console.log('First filtered tag:', tags[0]);
+        }
+        return null;
+      })()}
+      
+      <div className="flex flex-col gap-4">
         {Object.entries(
+          // Без фильтрации, чтобы видеть все теги
           tags.reduce<Record<string, Tag[]>>((acc, t) => {
-            acc[t.category] = acc[t.category] ? [...acc[t.category], t] : [t];
+            const catKey = typeof t.category === 'object' ? JSON.stringify(t.category) : String(t.category);
+            if (!acc[catKey]) {
+              acc[catKey] = [];
+            }
+            // Проверка на дубликаты по id
+            if (!acc[catKey].some(item => item.id === t.id)) {
+              acc[catKey].push(t);
+            }
             return acc;
           }, {})
         ).map(([cat, list]) => (
           <Card key={cat} className="p-4 mb-4 break-inside-avoid">
-            <h2 className="font-semibold mb-2">{cat}</h2>
-            <div className="space-y-1">
+            <h2 className="font-semibold mb-2">
+              {(() => {
+                try {
+                  // Извлекаем только название категории
+                  const catStr = String(cat); // Приводим к строке для безопасной работы
+                  
+                  // Если это JSON-строка объекта, пробуем парсить
+                  if (catStr && typeof catStr === 'string' && catStr.startsWith('{')) {
+                    try {
+                      const parsed = JSON.parse(catStr);
+                      // Извлекаем читаемое имя без id
+                      return parsed.name || 'Без категории';
+                    } catch (e) {
+                      return 'Неизвестная категория';
+                    }
+                  }
+                  
+                  // Если это простая строка
+                  if (cat !== null && typeof cat === 'string' && catStr && !catStr.startsWith('{')) {
+                    return cat;
+                  }
+                  
+                  return 'Без категории';
+                } catch {
+                  return 'Без категории';
+                }
+              })()}
+            </h2>
+            <div className="flex flex-wrap gap-2">
               {list.map(tag => (
                 <label key={tag.id} className="flex items-center gap-2 cursor-pointer">
                   <Checkbox checked={selected.includes(tag.id)} onCheckedChange={() => toggle(tag.id)} />
@@ -136,9 +204,18 @@ const TagAddPage: React.FC = () => {
 
       <div className="flex gap-2 mt-6">
         <Button onClick={() => navigate(-1)} variant="outline">Отмена</Button>
-        <Button onClick={() => saveTags()} disabled={isSaving}>
-          {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Сохранить
-        </Button>
+        <div>
+          <p className="text-sm text-gray-500 mb-2">Выбрано: {selected.length} тегов. Всего тегов с типом creator: {tags.length}</p>
+          <Button
+            className="mt-2"
+            onClick={() => saveTags()}
+            disabled={isPending || isSaving}
+            variant="default"
+          >
+            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Сохранить выбранные теги
+          </Button>
+        </div>
       </div>
 
       {/* Выбранные */}
