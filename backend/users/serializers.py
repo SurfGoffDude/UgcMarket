@@ -512,30 +512,44 @@ class CreatorProfileDetailSerializer(CreatorProfileSerializer):
         return representation
 
 # ───────────────────────── PORTFOLIO ─────────────────────────
+from django.core.files.uploadedfile import UploadedFile
+from .validators import validate_image_or_svg
+
 class PortfolioImageSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
+    # Заменяем ImageField на FileField с кастомным валидатором для поддержки SVG
+    image = serializers.FileField(validators=[validate_image_or_svg], write_only=True)
 
     class Meta:
         model = PortfolioImage
         fields = ["id", "portfolio_item", "image", "image_url", "caption", "order"]
         # Убираю portfolio_item из read_only_fields, так как контроллер ожидает это поле в запросе
         read_only_fields = []
-        extra_kwargs = {"image": {"write_only": True}}
 
     def get_image_url(self, obj):
         if obj.image:
             request = self.context.get("request")
             return request.build_absolute_uri(obj.image.url) if request else obj.image.url
         return None
+        
+    def validate_image(self, value):
+        """Custom validation for image field to support SVG files."""
+        if isinstance(value, UploadedFile):
+            # Применяем кастомный валидатор
+            validate_image_or_svg(value)
+        return value
 
 
 class PortfolioItemSerializer(serializers.ModelSerializer):
     images = PortfolioImageSerializer(many=True, read_only=True)
+    # Заменяем ImageField на FileField с кастомным валидатором для поддержки SVG
     uploaded_images = serializers.ListField(
-        child=serializers.ImageField(max_length=100_000),
+        child=serializers.FileField(validators=[validate_image_or_svg], max_length=100_000),
         write_only=True,
         required=False,
     )
+    # Заменяем ImageField на FileField с кастомным валидатором для поддержки SVG
+    cover_image = serializers.FileField(validators=[validate_image_or_svg], write_only=True)
     cover_image_url = serializers.SerializerMethodField()
 
     class Meta:

@@ -78,7 +78,6 @@ const PortfolioAddPage = () => {
     'image/jpeg': ['.jpg', '.jpeg'],
     'image/png': ['.png'],
     'image/webp': ['.webp'],
-    'image/gif': ['.gif'],
     'image/svg+xml': ['.svg'],
   };
   
@@ -181,7 +180,6 @@ const PortfolioAddPage = () => {
       const fileURL = URL.createObjectURL(file);
       setCoverPreview(fileURL);
       
-      console.log('Выбран файл обложки:', file.name, 'размер:', (file.size / (1024 * 1024)).toFixed(2) + 'MB');
     }
   };
 
@@ -230,14 +228,8 @@ const PortfolioAddPage = () => {
         formData.append('caption', caption);
       }
       
-      // Детально логируем перед отправкой
-      console.log(`Отправляем файл: name=${file.name}, size=${file.size}, type=${file.type}`);
-      console.log(`Дополнительные параметры: portfolio_item=${portfolioItemId}, order=${order}, caption=${caption || 'не указан'}`);
-      // Для отладки выводим содержимое FormData
-      console.log('Содержимое FormData для загрузки файла:');
-      for (const pair of formData.entries()) {
-        console.log(`${pair[0]}: ${pair[1]}`);
-      }
+
+
       
       // Проверка, что formData не пуста
       let hasEntries = false;
@@ -251,14 +243,6 @@ const PortfolioAddPage = () => {
         throw new Error('FormData пустой');
       }
       
-      console.log('Тип portfolio_item:', typeof portfolioItemId);
-      console.log('Файл портфолио и комментарий:', {
-        'portfolio_item': portfolioItemId,
-        'order': order,
-        'caption': caption,
-        'image': `[File: ${file.name}, ${file.type}, ${file.size} bytes]`
-      });
-      
       // Явно указываем Content-Type: multipart/form-data для корректной отправки файлов
       const response = await apiClient.post('/portfolio-images/', formData, {
         headers: {
@@ -266,7 +250,6 @@ const PortfolioAddPage = () => {
         },
       });
       
-      console.log('Успешная загрузка файла:', response.data);
       return response.data;
       
     } catch (error: any) {
@@ -386,7 +369,6 @@ const PortfolioAddPage = () => {
     }
     
     // Проверка валидности файла обложки
-    console.log('Тип файла обложки:', coverFile.type);
     
     // Список допустимых типов изображений
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml'];
@@ -413,16 +395,10 @@ const PortfolioAddPage = () => {
       formData.append('description', data.description);
       
       // Проверяем объект файла обложки перед добавлением
-      console.log('Информация о файле обложки:', {
-        name: coverFile.name,
-        type: coverFile.type,
-        size: coverFile.size,
-        lastModified: coverFile.lastModified
-      });
+
       
       // Создаем новый File-объект с корректными MIME-типами для гарантии правильной передачи
       const coverFileObject = new File([coverFile], coverFile.name, { type: coverFile.type });
-      console.log('Создан File-объект для обложки с явным MIME-типом');
       
       // Отправляем только файл обложки
       // Изменяем подход: не передаем обложку в uploaded_images
@@ -434,37 +410,26 @@ const PortfolioAddPage = () => {
         formData.append('external_url', data.external_url);
       }
       
-      // Для отладки выведем содержимое FormData
-      console.log('Отправка элемента портфолио. Данные:');
-      
-      // Детальное логирование содержимого FormData
-      console.log('ВСЕ ПОЛЯ FormData перед отправкой:');
+
       const allFields = [];
       for (const pair of formData.entries()) {
         allFields.push(pair[0]);
-        console.log(pair[0] + ': ' + (pair[0] === 'cover_image' ? 
-          `[File: ${(pair[1] as File).name}, ${(pair[1] as File).type}, ${(pair[1] as File).size} bytes]` : 
-          pair[1]));
+
       }
-      console.log('Список всех полей в FormData:', allFields);
+
       
       // Используем apiClient для отправки данных с явным указанием Content-Type
-      console.log('Отправляем запрос через apiClient на /portfolio/...');
       const response = await apiClient.post('/portfolio/', formData, {
         headers: {
           'Content-Type': 'multipart/form-data', // Явно указываем тип контента для корректной отправки файлов
         },
       });
       
-      console.log('Ответ от сервера при создании портфолио:', response.data);
-      
       // Получаем ID созданного элемента портфолио
       const portfolioItemId = response.data.id;
-      console.log(`Получен ID портфолио: ${portfolioItemId}`);
       
       // Загружаем дополнительные изображения с указанием portfolio_item_id
       if (additionalImages.length > 0) {
-        console.log(`Загрузка ${additionalImages.length} дополнительных изображений...`);
         
         // Устанавливаем индикатор загрузки дополнительных изображений
         setIsSubmitting(true);
@@ -477,14 +442,12 @@ const PortfolioAddPage = () => {
         // Используем функцию uploadFileWithPortfolioId
         const uploadPromises = additionalImages.map((img, idx) => {
           const orderNum = idx + 1;
-          console.log(`Загрузка файла ${img.file.name} с order=${orderNum} и portfolio_item=${portfolioItemId}`);
           return uploadFileWithPortfolioId(img.file, portfolioItemId, orderNum, img.caption);
         });
         
         try {
           // Загружаем все изображения параллельно И ДОЖИДАЕМСЯ РЕЗУЛЬТАТА
           const results = await Promise.all(uploadPromises);
-          console.log('Результаты загрузки дополнительных изображений:', results);
           
           // Показываем уведомление об успехе ПОСЛЕ завершения загрузки всех изображений
           toast({
