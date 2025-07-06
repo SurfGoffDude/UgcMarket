@@ -564,12 +564,26 @@ class PortfolioItemSerializer(serializers.ModelSerializer):
 
     # --- CRUD ---------------------------------------------------------------
     def create(self, validated_data):
+        # Отладочный код для выявления проблем
+        import logging
+        logger = logging.getLogger('django.request')
+        logger.debug(f"\n\n=== Детали валидации PortfolioItemSerializer ===\n")
+        logger.debug(f"validated_data: {validated_data}\n")
+        
         uploaded_images = validated_data.pop("uploaded_images", [])
-        item = PortfolioItem.objects.create(**validated_data)
-
-        for order, image in enumerate(uploaded_images):
-            PortfolioImage.objects.create(portfolio_item=item, image=image, order=order)
-        return item
+        logger.debug(f"uploaded_images: {uploaded_images}\n")
+        
+        try:
+            item = PortfolioItem.objects.create(**validated_data)
+            
+            for order, image in enumerate(uploaded_images):
+                PortfolioImage.objects.create(portfolio_item=item, image=image, order=order)
+            return item
+        except Exception as e:
+            logger.debug(f"\n\n=== Ошибка при создании PortfolioItem ===\n")
+            logger.debug(f"Exception: {str(e)}\n")
+            logger.debug(f"Exception type: {type(e)}\n\n")
+            raise
 
     def update(self, instance, validated_data):
         uploaded_images = validated_data.pop("uploaded_images", None)
@@ -626,6 +640,8 @@ class ServiceSerializer(serializers.ModelSerializer):
             "description",
             "price",
             "estimated_time",
+            "estimated_time_value",
+            "estimated_time_unit",
             "allows_modifications",
             "modifications_price",
             "is_active",

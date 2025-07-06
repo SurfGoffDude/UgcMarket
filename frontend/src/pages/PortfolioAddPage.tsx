@@ -214,39 +214,29 @@ const PortfolioAddPage = () => {
   /**
    * Загружаем файл на сервер с указанием ID портфолио
    */
-  const uploadFileWithPortfolioId = async (file: File, portfolioItemId: number, order: number = 0, caption: string = '') => {
+  const uploadFileWithPortfolioId = async (file: File, portfolioItemId: number, order: number, caption?: string) => {
     try {
-      console.log(`Начало загрузки файла для portfolio_item=${portfolioItemId}, order=${order}`);
-      
-      // Проверка параметров перед формированием FormData
-      if (!portfolioItemId) {
-        console.error('Ошибка: portfolio_item не указан или равен 0');
-        throw new Error('portfolio_item не указан');
+      if (!file) {
+        throw new Error('Файл не найден');
       }
-      
-      if (!file || !(file instanceof File)) {
-        console.error('Ошибка: файл не передан или неверного типа', file);
-        throw new Error('Файл не передан или неверного типа');
-      }
-      
-      // Создаем FormData для отправки файла
+
       const formData = new FormData();
-      
       // Сначала добавляем основные поля
+      formData.append('image', file);
       formData.append('portfolio_item', String(portfolioItemId));
       formData.append('order', String(order));
-      
-      if (caption) {
+      // Добавляем caption, если он есть
+      if (caption && caption.trim()) {
         formData.append('caption', caption);
       }
       
-      // Добавляем файл под названием 'image' - это критически важно!
-      formData.append('image', file, file.name);
-      
+      // Детально логируем перед отправкой
+      console.log(`Отправляем файл: name=${file.name}, size=${file.size}, type=${file.type}`);
+      console.log(`Дополнительные параметры: portfolio_item=${portfolioItemId}, order=${order}, caption=${caption || 'не указан'}`);
       // Для отладки выводим содержимое FormData
       console.log('Содержимое FormData для загрузки файла:');
       for (const pair of formData.entries()) {
-        console.log(pair[0] + ': ' + (pair[1] instanceof File ? `[File: ${(pair[1] as File).name}, ${(pair[1] as File).type}, ${(pair[1] as File).size} bytes]` : pair[1]));
+        console.log(`${pair[0]}: ${pair[1]}`);
       }
       
       // Проверка, что formData не пуста
@@ -261,27 +251,42 @@ const PortfolioAddPage = () => {
         throw new Error('FormData пустой');
       }
       
-      console.log('Отправляем POST запрос на /portfolio-images/ с данными:', {
+      console.log('Тип portfolio_item:', typeof portfolioItemId);
+      console.log('Файл портфолио и комментарий:', {
         'portfolio_item': portfolioItemId,
         'order': order,
         'caption': caption,
         'image': `[File: ${file.name}, ${file.type}, ${file.size} bytes]`
       });
       
-      // Проверим тип данных в консоли
-      console.log('Тип portfolio_item:', typeof portfolioItemId);
-      
-      // Отправляем запрос на загрузку изображения портфолио
-      // НЕ устанавливаем заголовок Content-Type вручную,
-      // позволим axios автоматически установить правильный заголовок для multipart/form-data
-      // с правильной границей (boundary)
-      const response = await apiClient.post('/portfolio-images/', formData);
+      // Явно указываем Content-Type: multipart/form-data для корректной отправки файлов
+      const response = await apiClient.post('/portfolio-images/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       
       console.log('Успешная загрузка файла:', response.data);
       return response.data;
       
     } catch (error: any) {
-      console.error('Ошибка при загрузке файла:', error);
+      setIsSubmitting(false);
+      console.error('Ошибка от сервера:', error);
+      console.error('Статус ошибки:', error.response?.status);
+      console.error('Заголовки ответа:', error.response?.headers);
+      console.error('Детали ошибки:', error.response?.data);
+      
+      // Более подробный вывод ошибок для каждого поля
+      if (error.response?.data) {
+        if (error.response.data.cover_image) {
+          console.error('Детальная ошибка cover_image:', JSON.stringify(error.response.data.cover_image));
+        }
+        if (error.response.data.uploaded_images) {
+          console.error('Детальная ошибка uploaded_images:', JSON.stringify(error.response.data.uploaded_images));
+        }
+        // Вывести весь ответ как JSON для удобства анализа
+        console.error('Полный ответ сервера как JSON:', JSON.stringify(error.response.data));
+      }
       
       // Подробная информация об ошибке для отладки
       if (error.response) {
@@ -419,13 +424,11 @@ const PortfolioAddPage = () => {
       const coverFileObject = new File([coverFile], coverFile.name, { type: coverFile.type });
       console.log('Создан File-объект для обложки с явным MIME-типом');
       
-      // Отправляем файл обложки
+      // Отправляем только файл обложки
+      // Изменяем подход: не передаем обложку в uploaded_images
       formData.append('cover_image', coverFileObject);
       
-      // Передаем изображения как элементы массива uploaded_images[]
-      // Для ListField нужно использовать формат имени поля с индексами
-      // Добавляем обложку как первый элемент массива
-      formData.append('uploaded_images[0]', coverFileObject);
+      // Теперь отправляем только основные данные и обложку
       
       if (data.external_url) {
         formData.append('external_url', data.external_url);
@@ -433,15 +436,25 @@ const PortfolioAddPage = () => {
       
       // Для отладки выведем содержимое FormData
       console.log('Отправка элемента портфолио. Данные:');
+      
+      // Детальное логирование содержимого FormData
+      console.log('ВСЕ ПОЛЯ FormData перед отправкой:');
+      const allFields = [];
       for (const pair of formData.entries()) {
+        allFields.push(pair[0]);
         console.log(pair[0] + ': ' + (pair[0] === 'cover_image' ? 
           `[File: ${(pair[1] as File).name}, ${(pair[1] as File).type}, ${(pair[1] as File).size} bytes]` : 
           pair[1]));
       }
+      console.log('Список всех полей в FormData:', allFields);
       
-      // Используем apiClient для отправки данных
+      // Используем apiClient для отправки данных с явным указанием Content-Type
       console.log('Отправляем запрос через apiClient на /portfolio/...');
-      const response = await apiClient.post('/portfolio/', formData);
+      const response = await apiClient.post('/portfolio/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data', // Явно указываем тип контента для корректной отправки файлов
+        },
+      });
       
       console.log('Ответ от сервера при создании портфолио:', response.data);
       
@@ -453,6 +466,14 @@ const PortfolioAddPage = () => {
       if (additionalImages.length > 0) {
         console.log(`Загрузка ${additionalImages.length} дополнительных изображений...`);
         
+        // Устанавливаем индикатор загрузки дополнительных изображений
+        setIsSubmitting(true);
+        toast({
+          title: 'Загрузка',
+          description: `Загружаем ${additionalImages.length} дополнительных изображений...`,
+          variant: 'default'
+        });
+        
         // Используем функцию uploadFileWithPortfolioId
         const uploadPromises = additionalImages.map((img, idx) => {
           const orderNum = idx + 1;
@@ -461,56 +482,47 @@ const PortfolioAddPage = () => {
         });
         
         try {
-          // Загружаем все изображения параллельно
+          // Загружаем все изображения параллельно И ДОЖИДАЕМСЯ РЕЗУЛЬТАТА
           const results = await Promise.all(uploadPromises);
           console.log('Результаты загрузки дополнительных изображений:', results);
-        } catch (uploadError) {
-          console.error('Ошибка загрузки дополнительных изображений:', uploadError);
-          // Показываем предупреждение, но не блокируем успешное создание портфолио
+          
+          // Показываем уведомление об успехе ПОСЛЕ завершения загрузки всех изображений
           toast({
-            title: 'Предупреждение',
-            description: 'Работа создана, но некоторые дополнительные изображения не были загружены',
+            title: 'Успешно',
+            description: 'Работа и все дополнительные изображения добавлены в портфолио',
             variant: 'default'
           });
-        }
-      }
-      
-      // Показываем уведомление об успехе
-      toast({
-        title: 'Успешно',
-        description: 'Работа добавлена в портфолио',
-        variant: 'default'
-      });
-      
-      // Перенаправляем на страницу профиля
-      navigate('/creator-profile');
-    } catch (error: any) {
-      let errorMessage = 'Не удалось добавить работу в портфолио';
-      
-      if (error.response) {
-        console.error('Ошибка от сервера:', error.response);
-        console.error('Статус ошибки:', error.response.status);
-        console.error('Заголовки ответа:', error.response.headers);
-        
-        if (error.response.data) {
-          console.error('Детали ошибки:', error.response.data);
           
-          // Формируем сообщение об ошибке на основе ответа сервера
-          const errorData = error.response.data;
-          errorMessage = Object.entries(errorData)
-            .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
-            .join('; ');
+          // Перенаправляем на страницу профиля ТОЛЬКО после успешной загрузки всех изображений
+          navigate('/creator-profile');
+        } catch (uploadError) {
+          console.error('Ошибка загрузки дополнительных изображений:', uploadError);
+          // Показываем подробное предупреждение о проблеме с загрузкой изображений
+          toast({
+            title: 'Предупреждение',
+            description: 'Основная работа создана, но некоторые дополнительные изображения не были загружены. Пожалуйста, повторите попытку позже.',
+            variant: 'destructive'
+          });
+          
+          // Даже при ошибке загрузки дополнительных изображений, основная работа создана, перенаправляем пользователя
+          navigate('/creator-profile');
         }
-      } else if (error.request) {
-        console.error('Ошибка запроса:', error.request);
       } else {
-        console.error('Ошибка:', error.message);
+        // Если дополнительных изображений нет, сразу показываем уведомление об успехе
+        toast({
+          title: 'Успешно',
+          description: 'Работа добавлена в портфолио',
+          variant: 'default'
+        });
+        
+        // Перенаправляем на страницу профиля ТОЛЬКО после успешной загрузки всех изображений
+        navigate('/creator-profile');
       }
       
 
       toast({
         title: 'Ошибка',
-        description: errorMessage,
+        description: 'Не удалось создать портфолио',
         variant: 'destructive'
       });
     } finally {

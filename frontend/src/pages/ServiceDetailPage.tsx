@@ -36,7 +36,7 @@ interface Service {
  */
 const formatEstimatedTime = (service: Service): string => {
   // Если есть новые поля, используем их
-  if (service.estimated_time_value && service.estimated_time_unit) {
+  if (service?.estimated_time_value && service?.estimated_time_unit) {
     const value = service.estimated_time_value;
     const unit = service.estimated_time_unit;
     
@@ -54,7 +54,7 @@ const formatEstimatedTime = (service: Service): string => {
         case 'year':
           return value === 1 ? 'год' : value < 5 ? 'года' : 'лет';
         default:
-          return '';
+          return 'единиц времени';
       }
     };
     
@@ -62,7 +62,7 @@ const formatEstimatedTime = (service: Service): string => {
   } 
   
   // Если нет новых полей, используем старое поле
-  return service.estimated_time || 'Не указано';
+  return service?.estimated_time || 'Не указано';
 };
 
 const ServiceDetailPage = () => {

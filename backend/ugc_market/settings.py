@@ -157,6 +157,10 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'  # Директория для сбора
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Увеличенные лимиты для загрузки файлов
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 20 MB (по умолчанию 2.5 MB)
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 20 MB (по умолчанию 2.5 MB)
+
 # Настройка кастомной модели пользователя
 AUTH_USER_MODEL = 'users.User'
 
@@ -209,4 +213,40 @@ EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+
+# Расширенное логирование для диагностики ошибок
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose'
+        },
+    },
+    'loggers': {
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'django.server': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'rest_framework': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
 

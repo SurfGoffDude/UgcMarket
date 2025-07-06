@@ -440,10 +440,47 @@ class CreatorProfileViewSet(viewsets.ModelViewSet):
 
 # ─────────────────────── portfolio items ───────────────────────
 class PortfolioItemViewSet(viewsets.ModelViewSet):
+    """Portfolio items management."""
+
+    queryset = PortfolioItem.objects.all()
     serializer_class = PortfolioItemSerializer
     permission_classes = [IsAuthenticated, IsProfileOwner, IsVerifiedUser]
+    filterset_fields = ['creator_profile']
     parser_classes = [MultiPartParser, FormParser, JSONParser]
-    queryset = PortfolioItem.objects.all()
+
+    def create(self, request, *args, **kwargs):
+        """
+        Переопределение метода create для отладки ошибок валидации
+        """
+        import logging
+        import json
+        logger = logging.getLogger('django.request')
+        
+        logger.debug(f"\n\n=== Данные запроса PortfolioItemViewSet ===\n")
+        logger.debug(f"Request method: {request.method}\n")
+        logger.debug(f"Content-Type: {request.content_type}\n")
+        logger.debug(f"Request FILES: {request.FILES}\n")
+        logger.debug(f"Request DATA: {request.data}\n")
+        
+        # Создаём экземпляр сериализатора
+        serializer = self.get_serializer(data=request.data)
+        
+        # Проверяем валидацию
+        if not serializer.is_valid():
+            logger.debug(f"\n\n=== Ошибки валидации ===\n")
+            logger.debug(f"Validation errors: {serializer.errors}\n\n")
+            
+            # Дополнительная проверка полей
+            if 'cover_image' in serializer.errors:
+                logger.debug(f"Cover image errors: {serializer.errors['cover_image']}\n")
+                if 'cover_image' in request.FILES:
+                    cover_img = request.FILES['cover_image']
+                    logger.debug(f"Cover image details: name={cover_img.name}, size={cover_img.size}, content_type={cover_img.content_type}\n")
+                else:
+                    logger.debug("Cover image not found in FILES\n")
+            
+        # Вызываем родительский метод
+        return super().create(request, *args, **kwargs)
 
     def get_queryset(self):
         user = self.request.user
