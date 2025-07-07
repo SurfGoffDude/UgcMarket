@@ -27,7 +27,7 @@ const CatalogPage: React.FC = () => {
 
   return (
     <div className="bg-gray-50 dark:bg-gray-950 min-h-screen">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mx-auto max-w-[95%] px-4 sm:px-6 lg:px-8 py-8">
         <header className="mb-8">
           <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-gray-100 sm:text-5xl md:text-6xl">
             Каталог Креаторов
@@ -37,32 +37,38 @@ const CatalogPage: React.FC = () => {
           </p>
         </header>
 
-        <CreatorFilters onFilterChange={handleFilterChange} initialFilters={filters} />
+        <div className="flex flex-col lg:flex-row gap-10 justify-start">
+          {/* Фильтры в левой колонке */}
+          <aside className="lg:w-1/4">
+            <CreatorFilters onFilterChange={handleFilterChange} initialFilters={filters} />
+          </aside>
 
-        <main>
-          {loading ? (
-            <div className="flex justify-center items-center py-12">
-              <Loader2 className="h-12 w-12 animate-spin text-purple-600" />
-            </div>
-          ) : error ? (
-            <div className="text-center py-12">
-              <p className="text-red-500 mb-4">Произошла ошибка при загрузке данных.</p>
-              <Button variant="outline" onClick={() => refetch()}>
-                Попробовать снова
-              </Button>
-            </div>
-          ) : creators.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500">Креаторы пока не найдены.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {creators.slice(0, 3).map((creator) => (
-                <CreatorCard key={creator.id} creator={creator} />
-              ))}
-            </div>
-          )}
-        </main>
+          {/* Основной контент */}
+          <main className="lg:w-1/4">
+            {loading ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="h-12 w-12 animate-spin text-purple-600" />
+              </div>
+            ) : error ? (
+              <div className="text-center py-12">
+                <p className="text-red-500 mb-4">Произошла ошибка при загрузке данных.</p>
+                <Button variant="outline" onClick={() => refetch()}>
+                  Попробовать снова
+                </Button>
+              </div>
+            ) : creators.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500">Креаторы пока не найдены.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-8">
+                {creators.slice(0, 3).map((creator) => (
+                  <CreatorCard key={creator.id} creator={creator} />
+                ))}
+              </div>
+            )}
+          </main>
+        </div>
       </div>
     </div>
   );

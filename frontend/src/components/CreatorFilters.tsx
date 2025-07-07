@@ -32,9 +32,19 @@ export interface SelectedTags {
   [categoryId: string]: string[];
 }
 
+/**
+ * Интерфейс для фильтров креаторов
+ */
+export interface CreatorFilters {
+  tags: SelectedTags;
+  query: string;
+  gender?: 'male' | 'female' | 'other' | null;
+  responseTime?: 'fast' | 'medium' | 'slow' | null;
+}
+
 export interface CreatorFiltersProps {
-  onFilterChange: (filters: { tags: SelectedTags; query: string }) => void;
-  initialFilters?: { tags: SelectedTags; query: string };
+  onFilterChange: (filters: CreatorFilters) => void;
+  initialFilters?: CreatorFilters;
 }
 
 /**
@@ -89,10 +99,12 @@ const parseTagsFromMarkdown = (markdown: string): TagCategory[] => {
   return categories;
 };
 
-const CreatorFilters: React.FC<CreatorFiltersProps> = ({ onFilterChange, initialFilters = { tags: {}, query: '' } }) => {
+const CreatorFilters: React.FC<CreatorFiltersProps> = ({ onFilterChange, initialFilters = { tags: {}, query: '', gender: null, responseTime: null } }) => {
   const [searchQuery, setSearchQuery] = useState(initialFilters.query);
   const [inputValue, setInputValue] = useState(initialFilters.query);
   const [selectedTags, setSelectedTags] = useState<SelectedTags>(initialFilters.tags);
+  const [selectedGender, setSelectedGender] = useState<'male' | 'female' | 'other' | null>(initialFilters.gender || null);
+  const [selectedResponseTime, setSelectedResponseTime] = useState<'fast' | 'medium' | 'slow' | null>(initialFilters.responseTime || null);
   const [tagCategories, setTagCategories] = useState<TagCategory[]>([]);
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -160,14 +172,22 @@ const CreatorFilters: React.FC<CreatorFiltersProps> = ({ onFilterChange, initial
 
   // Обработчик сброса фильтров
   const handleReset = () => {
-    setSearchQuery('');
     setSelectedTags({});
-    onFilterChange({ tags: {}, query: '' });
+    setSearchQuery('');
+    setInputValue('');
+    setSelectedGender(null);
+    setSelectedResponseTime(null);
+    onFilterChange({ tags: {}, query: '', gender: null, responseTime: null });
   };
 
   // Обработчик применения фильтров
   const handleApplyFilters = () => {
-    onFilterChange({ tags: selectedTags, query: searchQuery });
+    onFilterChange({ 
+      tags: selectedTags, 
+      query: searchQuery,
+      gender: selectedGender,
+      responseTime: selectedResponseTime
+    });
   };
 
   // Обработчик удаления выбранного тега
@@ -211,8 +231,8 @@ const CreatorFilters: React.FC<CreatorFiltersProps> = ({ onFilterChange, initial
   };
 
   return (
-    <div className="mb-8 bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
-      <div className="mb-4">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 h-full border border-gray-100 dark:border-gray-700">
+      <div className="mb-6">
         <div className="relative flex items-center gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -259,8 +279,64 @@ const CreatorFilters: React.FC<CreatorFiltersProps> = ({ onFilterChange, initial
         </div>
       )}
 
+      {/* Фильтр по полу */}
+      <div className="mb-6">
+        <p className="text-sm font-medium mb-2 flex items-center">
+          <Filter className="h-4 w-4 mr-2" />
+          Пол креатора
+        </p>
+        <div className="grid grid-cols-3 gap-2">
+          <div 
+            onClick={() => setSelectedGender(selectedGender === 'male' ? null : 'male')}
+            className={`p-2 border rounded-md cursor-pointer text-center text-sm ${selectedGender === 'male' ? 'bg-primary text-white' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+          >
+            Мужской
+          </div>
+          <div 
+            onClick={() => setSelectedGender(selectedGender === 'female' ? null : 'female')}
+            className={`p-2 border rounded-md cursor-pointer text-center text-sm ${selectedGender === 'female' ? 'bg-primary text-white' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+          >
+            Женский
+          </div>
+          <div 
+            onClick={() => setSelectedGender(selectedGender === 'other' ? null : 'other')}
+            className={`p-2 border rounded-md cursor-pointer text-center text-sm ${selectedGender === 'other' ? 'bg-primary text-white' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+          >
+            Другой
+          </div>
+        </div>
+      </div>
+
+      {/* Фильтр по среднему времени ответа */}
+      <div className="mb-6">
+        <p className="text-sm font-medium mb-2 flex items-center">
+          <Filter className="h-4 w-4 mr-2" />
+          Среднее время ответа
+        </p>
+        <div className="grid grid-cols-3 gap-2">
+          <div 
+            onClick={() => setSelectedResponseTime(selectedResponseTime === 'fast' ? null : 'fast')}
+            className={`p-2 border rounded-md cursor-pointer text-center text-sm ${selectedResponseTime === 'fast' ? 'bg-primary text-white' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+          >
+            Быстрое
+          </div>
+          <div 
+            onClick={() => setSelectedResponseTime(selectedResponseTime === 'medium' ? null : 'medium')}
+            className={`p-2 border rounded-md cursor-pointer text-center text-sm ${selectedResponseTime === 'medium' ? 'bg-primary text-white' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+          >
+            Среднее
+          </div>
+          <div 
+            onClick={() => setSelectedResponseTime(selectedResponseTime === 'slow' ? null : 'slow')}
+            className={`p-2 border rounded-md cursor-pointer text-center text-sm ${selectedResponseTime === 'slow' ? 'bg-primary text-white' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+          >
+            Медленное
+          </div>
+        </div>
+      </div>
+
       {/* Аккордеон с категориями тегов */}
-      <div className="mb-4">
+      <div className="mb-6">
         <p className="text-sm font-medium mb-2 flex items-center">
           <Filter className="h-4 w-4 mr-2" />
           Фильтры по тегам
@@ -286,7 +362,7 @@ const CreatorFilters: React.FC<CreatorFiltersProps> = ({ onFilterChange, initial
                 
                 {expandedCategories.includes(category.id) && (
                   <div className="p-3 pt-0">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-2">
                       {category.tags.map((tag) => (
                         <div key={tag.id} className="flex items-center space-x-2">
                           <Checkbox 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Star, Heart, MessageSquare, Check, ExternalLink, Briefcase, MapPin, GraduationCap, Lock, Unlock, Phone, Mail, Calendar } from 'lucide-react';
+import { Star, Heart, MessageSquare, Check, ExternalLink, Briefcase, MapPin, GraduationCap, Lock, Unlock, Phone, Mail, Calendar, Globe, Instagram, Twitter, Facebook, Youtube, Linkedin, Github } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Creator as MockCreator } from '@/data/creators';
@@ -40,6 +40,7 @@ interface APICreator {
   response_time?: string;
   completion_rate?: number;
   date_joined?: string;
+  avatar?: string;
   last_login?: string;
   // Дополнительные поля
   first_name?: string;
@@ -136,12 +137,23 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator, useLink, showDetaile
   const getCategories = (): string[] => {
     if ('categories' in creator) {
       if (Array.isArray(creator.categories)) {
-        // Для API формата
-        return creator.categories.map(cat => cat.name || cat.slug || '');
+        // Если массив объектов, извлекаем свойство name
+        return creator.categories.map(cat => {
+          if (typeof cat === 'object' && cat !== null) {
+            if ('name' in cat && typeof cat.name === 'string') {
+              return cat.name;
+            }
+            if ('slug' in cat && typeof cat.slug === 'string') {
+              return cat.slug;
+            }
+          }
+          return String(cat);
+        });
       }
     }
-    
-    if ('category' in creator) return [creator.category];
+    if ('category' in creator && typeof creator.category === 'string') {
+      return [creator.category];
+    }
     return [];
   };
   
@@ -150,21 +162,36 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator, useLink, showDetaile
     return [];
   };
   
+  /**
+   * Получает количество услуг креатора
+   * @returns {number} Количество услуг
+   */
   const getServicesCount = (): number => {
     if ('services' in creator && Array.isArray(creator.services)) return creator.services.length;
     if ('services_count' in creator) {
       const count = creator.services_count;
-      return typeof count === 'number' ? count : parseInt(count as string) || 0;
+      if (typeof count === 'number') return count;
+      if (typeof count === 'string') return parseInt(count) || 0;
     }
     return 0;
   };
   
+  /**
+   * Получает базовую цену услуг креатора
+   * @returns {string | number} Базовая цена
+   */
   const getBasePrice = (): string | number => {
-    if ('base_price' in creator) {
-      const price = creator.base_price;
-      return price || 0;
+    if ('basePrice' in creator) {
+      const price = creator.basePrice;
+      return (price !== undefined && price !== null) ? price : 0;
     }
-    if ('price' in creator) return creator.price;
+
+    if ('base_price' in creator && creator.base_price !== undefined) {
+      const price = creator.base_price;
+      if (typeof price === 'string' || typeof price === 'number') {
+        return price;
+      }
+    }
     return 0;
   };
   
@@ -174,8 +201,8 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator, useLink, showDetaile
   };
   
   const getReviews = (): number | undefined => {
-    if ('reviews_count' in creator) return typeof creator.reviews_count === 'number' ? creator.reviews_count : undefined;
     if ('reviewsCount' in creator) return creator.reviewsCount;
+    if ('reviews_count' in creator && typeof creator.reviews_count === 'number') return creator.reviews_count;
     return undefined;
   };
   
@@ -214,14 +241,26 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator, useLink, showDetaile
     return user?.email;
   };
   
+  /**
+   * Получает дату регистрации креатора
+   * @returns {string | undefined} Дата регистрации в формате строки
+   */
   const getDateJoined = (): string | undefined => {
+    if ('date_joined' in creator) {
+      const date = creator.date_joined;
+      return typeof date === 'string' ? date : undefined;
+    }
     const user = getNestedUser();
-    return user?.date_joined;
+    if (user && 'date_joined' in user) {
+      const date = user.date_joined;
+      return typeof date === 'string' ? date : undefined;
+    }
+    return undefined;
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 dark:border-gray-700 hover:border-purple-200 dark:hover:border-purple-800 group">
-      <div className="relative p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 dark:border-gray-700 hover:border-purple-200 dark:hover:border-purple-800 group h-full">
+      <div className="relative p-8">
         {/* Верхняя часть карточки с аватаркой, именем и статусами */}
         <div className="flex items-center mb-4">
           <div className="relative mr-4">
@@ -251,7 +290,7 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator, useLink, showDetaile
                 <Check className="h-4 w-4 ml-1 text-primary" />
               )}
             </div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">
+            <div className="text-sm text-gray-500 dark:text-gray-400 text-left">
               @{getUsername()}
             </div>
             <div className="flex flex-wrap items-center gap-3 mt-1 text-xs">
@@ -330,7 +369,7 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator, useLink, showDetaile
         </div>
 
         {/* Описание (всегда отображаем) */}
-        <div className="mb-4">
+        <div className="mb-4 text-left">
           <h3 className="font-medium text-xs text-gray-500 mb-1">О себе</h3>
           <p className="text-gray-600 dark:text-gray-300 text-sm line-clamp-3">
             {getBio() || 'Нет информации'}
@@ -352,21 +391,47 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator, useLink, showDetaile
           </div>
         )}
 
-        {/* Социальные сети */}
+        {/* Социальные сети с миниатюрами */}
         {getSocialLinks() && getSocialLinks()!.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-4">
-            {getSocialLinks()!.slice(0, 3).map((link, idx) => (
-              <a 
-                key={idx} 
-                href={link.url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 text-primary text-xs hover:underline"
-              >
-                <ExternalLink className="h-3 w-3" />
-                {link.platform}
-              </a>
-            ))}
+          <div className="flex flex-wrap gap-3 mb-4">
+            {getSocialLinks()!.map((link, idx) => {
+              // Определяем иконку в зависимости от платформы
+              const getSocialIcon = () => {
+                const platform = link.platform.toLowerCase();
+                if (platform.includes('instagram')) return <Instagram className="h-5 w-5" />;
+                if (platform.includes('facebook')) return <Facebook className="h-5 w-5" />;
+                if (platform.includes('twitter') || platform.includes('x.com')) return <Twitter className="h-5 w-5" />;
+                if (platform.includes('youtube')) return <Youtube className="h-5 w-5" />;
+                if (platform.includes('linkedin')) return <Linkedin className="h-5 w-5" />;
+                if (platform.includes('github')) return <Github className="h-5 w-5" />;
+                return <Globe className="h-5 w-5" />; // Для всех остальных
+              };
+              
+              // Определяем цвет в зависимости от платформы
+              const getSocialColor = () => {
+                const platform = link.platform.toLowerCase();
+                if (platform.includes('instagram')) return 'hover:text-pink-600';
+                if (platform.includes('facebook')) return 'hover:text-blue-600';
+                if (platform.includes('twitter') || platform.includes('x.com')) return 'hover:text-blue-400';
+                if (platform.includes('youtube')) return 'hover:text-red-600';
+                if (platform.includes('linkedin')) return 'hover:text-blue-700';
+                if (platform.includes('github')) return 'hover:text-gray-900 dark:hover:text-white';
+                return 'hover:text-primary'; // Для всех остальных
+              };
+              
+              return (
+                <a 
+                  key={idx} 
+                  href={link.url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className={`flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-full p-2 text-gray-600 dark:text-gray-300 transition-colors ${getSocialColor()}`}
+                  title={link.platform}
+                >
+                  {getSocialIcon()}
+                </a>
+              );
+            })}
           </div>
         )}
 
