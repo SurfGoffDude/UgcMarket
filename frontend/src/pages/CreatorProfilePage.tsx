@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 import PortfolioItem from '@/components/PortfolioItem';
 import ServiceCard from '@/components/ServiceCard';
+import SocialIcon from '@/components/SocialIcon';
 
 const CreatorProfilePage: React.FC = () => {
   const { id } = useParams();
@@ -34,7 +35,7 @@ const CreatorProfilePage: React.FC = () => {
   }
 
   if (error) {
-    return <div className="text-red-500 text-center p-4">{error}</div>;
+    return <div className="text-red-500 text-center p-4">{error instanceof Error ? error.message : String(error)}</div>;
   }
 
   if (!creator) {
@@ -178,18 +179,18 @@ const CreatorProfilePage: React.FC = () => {
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="flex items-center gap-1 text-primary hover:underline"
+                title={link.platform}
               >
-                <ExternalLink className="h-4 w-4" />
-                {link.platform}
+                <SocialIcon platform={link.platform} className="h-5 w-5" />
               </a>
             ))}
           </div>
         )}
 
         {/* Теги */}
-        {creator.tags && creator.tags.length > 0 && (
+        {(creator as any).tags && (creator as any).tags.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-2">
-            {creator.tags.slice(0, 10).map((tag: string, idx: number) => (
+            {(creator as any).tags.slice(0, 10).map((tag: string, idx: number) => (
               <Badge key={idx} variant="outline" className="text-sm">{`#${tag}`}</Badge>
             ))}
           </div>
@@ -240,7 +241,7 @@ const CreatorProfilePage: React.FC = () => {
           {creator.services && creator.services.length > 0 ? (
             <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
               {creator.services.map((service, idx) => (
-                <ServiceCard key={idx} service={service as any} creatorId={creator.id!} />
+                <ServiceCard key={idx} service={service as any} />
               ))}
             </div>
           ) : (
