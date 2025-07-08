@@ -465,10 +465,31 @@ class CreatorProfileViewSet(viewsets.ModelViewSet):
         if average_work_time:
             # Логируем запрос для отладки
             logger.debug(f"Фильтрация по среднему времени выполнения: {average_work_time}")
-            # Фильтруем креаторов по среднему времени выполнения работы
-            qs = qs.filter(average_work_time=average_work_time)
+            
+            # Определяем приоритеты времени ответа
+            time_priority = {
+                'up_to_24_hours': 1,
+                'up_to_3_days': 2,
+                'up_to_10_days': 3,
+                'up_to_14_days': 4,
+                'up_to_30_days': 5,
+                'up_to_60_days': 6,
+                'more_than_60_days': 7,
+            }
+            
+            # Получаем приоритет выбранного времени
+            filter_priority = time_priority.get(average_work_time, 999)
+            
+            # Получаем все допустимые значения времени (с приоритетом меньше или равным выбранному)
+            valid_times = [time for time, priority in time_priority.items() if priority <= filter_priority]
+            
+            logger.debug(f"Допустимые значения времени для фильтра '{average_work_time}': {valid_times}")
+            
+            # Фильтруем креаторов по всем допустимым значениям времени
+            qs = qs.filter(average_work_time__in=valid_times)
+            
             # Логируем количество найденных креаторов
-            logger.debug(f"Найдено креаторов со средним временем выполнения '{average_work_time}': {qs.count()}")
+            logger.debug(f"Найдено креаторов со средним временем выполнения до '{average_work_time}': {qs.count()}")
                 
         return qs
 
