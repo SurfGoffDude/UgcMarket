@@ -20,6 +20,7 @@ import { Label } from '@/components/ui/label';
 import { LockIcon, UnlockIcon } from "lucide-react";
 import LocationSelector from '@/components/LocationSelector';
 import { cn } from '@/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const profileFormSchema = z.object({
   // Общие поля
@@ -208,7 +209,9 @@ const CreatorProfileEditPage: React.FC = () => {
         specialization,
         experience,
         available_for_hire,
-        average_work_time: data.average_work_time || ''
+        average_work_time: data.average_work_time || '',
+        // Добавляем социальные сети
+        social_links
       };
       
       // Отладка: выводим данные CreatorProfile перед отправкой
@@ -356,7 +359,7 @@ const CreatorProfileEditPage: React.FC = () => {
   }
 
   if (error) {
-    return <div className="text-red-500 text-center mt-10">{error}</div>;
+    return <div className="text-red-500 text-center mt-10">{typeof error === 'string' ? error : error instanceof Error ? error.message : 'Произошла ошибка'}</div>;
   }
   
   if (apiError) {
@@ -674,7 +677,29 @@ const CreatorProfileEditPage: React.FC = () => {
                           render={({ field }) => (
                             <FormItem className="flex-1">
                               <FormControl>
-                                <Input placeholder="Платформа (e.g. GitHub)" {...field} />
+                                <Select 
+                                  value={field.value} 
+                                  onValueChange={field.onChange}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Выберите платформу" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="facebook">Facebook</SelectItem>
+                                    <SelectItem value="youtube">YouTube</SelectItem>
+                                    <SelectItem value="twitter">Twitter</SelectItem>
+                                    <SelectItem value="instagram">Instagram</SelectItem>
+                                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                                    <SelectItem value="tiktok">TikTok</SelectItem>
+                                    <SelectItem value="linkedin">LinkedIn</SelectItem>
+                                    <SelectItem value="telegram">Telegram</SelectItem>
+                                    <SelectItem value="pinterest">Pinterest</SelectItem>
+                                    <SelectItem value="reddit">Reddit</SelectItem>
+                                    <SelectItem value="vkontakte">ВКонтакте</SelectItem>
+                                    <SelectItem value="dzen">Дзен</SelectItem>
+                                    <SelectItem value="twitch">Twitch</SelectItem>
+                                  </SelectContent>
+                                </Select>
                               </FormControl>
                               <FormMessage />
                             </FormItem>

@@ -2,6 +2,7 @@
 Представления для приложения users.
 """
 
+import json
 import logging
 
 from django.utils.encoding import force_str
@@ -287,6 +288,87 @@ class CreatorProfileViewSet(viewsets.ModelViewSet):
     serializer_class = CreatorProfileSerializer
     permission_classes = [IsAuthenticated, IsVerifiedUser]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
+    
+    # Переопределяем стандартный метод partial_update
+    def partial_update(self, request, *args, **kwargs):
+        import json
+        # Добавляем подробное логирование
+        print("\n" + "*" * 80)
+        print("DEBUG - CreatorProfileViewSet.partial_update - НАЧАЛО ОБРАБОТКИ")
+        print(f"DEBUG - CreatorProfileViewSet.partial_update - request.data (тип): {type(request.data)}")
+        print("DEBUG - CreatorProfileViewSet.partial_update - request.data (содержимое):")
+        for key in request.data:
+            value = request.data[key]
+            print(f"    {key}: {value} (тип: {type(value)})")
+        print("*" * 80 + "\n")
+        
+        instance = self.get_object()
+        
+        # Подготовим правильный формат данных для сериализатора
+        # Поскольку мы получаем QueryDict, мы должны правильно обработать типы
+        processed_data = {}
+        
+        # Обрабатываем все поля
+        for key, value in request.data.items():
+            # Обработка JSON-полей
+            if key == 'user' and isinstance(value, str):
+                try:
+                    processed_data[key] = json.loads(value)
+                except:
+                    processed_data[key] = value
+            # Обработка булевых полей
+            elif key == 'available_for_hire':
+                processed_data[key] = value.lower() == 'true'
+            # Остальные поля передаем как есть
+            else:
+                processed_data[key] = value
+        
+        # Обработка social_links
+        if 'social_links' in processed_data and isinstance(processed_data['social_links'], str):
+            try:
+                print("DEBUG - Текущие social_links в БД:", list(instance.social_links.all().values()))
+                print("DEBUG - Десериализация social_links из строки JSON:", processed_data['social_links'])
+                social_links_data = json.loads(processed_data['social_links'])
+                print("DEBUG - После десериализации social_links_data:", social_links_data)
+                
+                # Добавляем social_links_data в обработанные данные
+                processed_data['social_links_data'] = social_links_data
+                # Удаляем исходное поле social_links
+                del processed_data['social_links']
+            except Exception as e:
+                print(f"DEBUG - Ошибка десериализации social_links: {e}")
+        
+        print("DEBUG - Обработанные данные перед передачей сериализатору:", processed_data)
+        
+        serializer = self.get_serializer(instance, data=processed_data, partial=True)
+        valid = serializer.is_valid(raise_exception=False)
+        
+        if not valid:
+            print("DEBUG - Ошибки валидации:", serializer.errors)
+            raise ValidationError(serializer.errors)
+        
+        self.perform_update(serializer)
+        
+        # Проверим, что social_links сохранились
+        instance.refresh_from_db()
+        print("DEBUG - После сохранения, social_links:", list(instance.social_links.all().values()))
+        
+        if getattr(instance, "_prefetched_objects_cache", None):
+            # Если объект имеет предзагруженные отношения, мы должны их очистить
+            # поскольку они не будут автоматически обновлены
+            instance._prefetched_objects_cache = {}
+
+        return Response(serializer.data)
+        
+        # Проверяем, сохранились ли социальные ссылки
+        instance.refresh_from_db()
+        print(f"DEBUG - social_links после сохранения: {list(instance.social_links.all())}")
+        if getattr(instance, '_prefetched_objects_cache', None):
+            # Сбрасываем prefetched_objects_cache если он существует
+            instance._prefetched_objects_cache = {}
+        
+        print("DEBUG - CreatorProfileViewSet.partial_update - ЗАВЕРШЕНО")
+        return Response(serializer.data)
 
     queryset = CreatorProfile.objects.all()
 

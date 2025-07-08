@@ -138,25 +138,54 @@ class SocialLink(models.Model):
     
     Attributes:
         creator_profile (ForeignKey): Связь с CreatorProfile.
-        name (CharField): Название социальной сети.
+        platform (CharField): Платформа социальной сети (выбор из фиксированного списка).
         url (URLField): Ссылка на профиль в социальной сети.
     """
+    # Фиксированный список платформ для выбора
+    PLATFORM_CHOICES = [
+        ('facebook', 'Facebook'),
+        ('youtube', 'YouTube'),
+        ('twitter', 'Twitter'),
+        ('instagram', 'Instagram'),
+        ('whatsapp', 'WhatsApp'),
+        ('tiktok', 'TikTok'),
+        ('linkedin', 'LinkedIn'),
+        ('telegram', 'Telegram'),
+        ('pinterest', 'Pinterest'),
+        ('reddit', 'Reddit'),
+        ('vkontakte', 'ВКонтакте'),
+        ('dzen', 'Дзен'),
+        ('twitch', 'Twitch'),
+    ]
+    
     creator_profile = models.ForeignKey(
         'CreatorProfile', 
         on_delete=models.CASCADE, 
         related_name='social_links',
         verbose_name=_('creator profile')
     )
-    name = models.CharField(_('name'), max_length=50)
-    url = models.URLField(_('url'))
+    platform = models.CharField(
+        _('platform'),
+        max_length=50,
+        choices=PLATFORM_CHOICES,
+        help_text=_('Платформа социальной сети')
+    )
+    url = models.URLField(_('url'), help_text=_('Ссылка на профиль'))
+    
+    # Для обратной совместимости со старым кодом
+    @property
+    def name(self):
+        return self.platform
     
     class Meta:
         verbose_name = _('social link')
         verbose_name_plural = _('social links')
+        unique_together = ['creator_profile', 'platform']
     
     def __str__(self):
         """Возвращает строковое представление социальной ссылки."""
-        return f"{self.creator_profile.user.username} - {self.name}"
+        platform_display = dict(self.PLATFORM_CHOICES).get(self.platform, self.platform)
+        return f"{self.creator_profile.user.username} - {platform_display}"
 
 
 class CreatorProfile(models.Model):
@@ -237,8 +266,12 @@ class CreatorProfile(models.Model):
     
     @property
     def social_links_dict(self):
-        """Возвращает словарь с социальными ссылками."""
-        return {link.name.lower(): link.url for link in self.social_links.all()}
+        """Возвращает словарь с социальными ссылками.
+        
+        Returns:
+            dict: Словарь с платформами в качестве ключей и URL в качестве значений.
+        """
+        return {link.platform.lower(): link.url for link in self.social_links.all()}
 
 
 # Класс Tag перемещен в core.models.

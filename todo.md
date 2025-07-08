@@ -67,7 +67,7 @@
 Каталог креаторов:
 [x] Перместить в левый бок
 [ ] Добавить миниатюры соц сейтей в самый низ карточки креатора
-[ ] Добавить фильтрацию по полу, среднему времени ответа
+[x] Добавить фильтрацию по полу, среднему времени ответа
 
 [ ] Добавить логирование для бекенда и фронтенда в общую папку м подразделами
 
@@ -82,3 +82,46 @@
 8. Ошибки в обеспечении целостности ПО и данных
 9. Ошибки в обеспечении логирования и мониторинга безопасности
 10. Подделка запросов на стороне сервера
+
+Facebook
+https://www.facebook.com/username
+
+YouTube
+
+    По ID канала: https://www.youtube.com/channel/UCxxxxxxxxxxxx
+
+    По псевдониму: https://www.youtube.com/@username
+    rickyspears.com+1lobstr.io+1
+
+Twitter (X)
+https://twitter.com/username
+
+Instagram
+https://www.instagram.com/username
+
+WhatsApp
+https://wa.me/номер_в_международном_формате
+
+TikTok
+https://www.tiktok.com/@username
+
+LinkedIn
+https://www.linkedin.com/in/username
+
+Telegram
+https://t.me/username
+
+Pinterest
+https://www.pinterest.com/username
+
+Reddit
+https://www.reddit.com/user/username
+
+ВКонтакте
+https://vk.com/username
+
+Дзен (Яндекс.Дзен)
+https://zen.yandex.ru/id/цифровой_идентификатор
+
+Twitch
+https://www.twitch.tv/username

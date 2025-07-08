@@ -236,9 +236,26 @@ class CreatorProfileCatalogSerializer(serializers.ModelSerializer):
 
 # ─────────────────── CREATOR PROFILE (detail / edit) ───────────────────
 class SocialLinkSerializer(serializers.ModelSerializer):
+    """Сериализатор для социальных сетей креатора.
+    
+    Позволяет выбрать платформу из фиксированного списка и добавить ссылку на профиль.
+    """
+    platform_display = serializers.SerializerMethodField()
+    
     class Meta:
         model = SocialLink
-        fields = ["name", "url"]
+        fields = ["platform", "url", "platform_display"]
+        
+    def get_platform_display(self, obj):
+        """Возвращает человекочитаемое название платформы."""
+        return dict(SocialLink.PLATFORM_CHOICES).get(obj.platform, obj.platform)
+        
+    def to_representation(self, instance):
+        """Добавляем поддержку обратной совместимости для старого API."""
+        ret = super().to_representation(instance)
+        # Для обратной совместимости добавляем поле name с тем же значением, что и platform
+        ret['name'] = instance.platform
+        return ret
 
 
 class CreatorProfileSerializer(serializers.ModelSerializer):
@@ -248,6 +265,7 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
     """
     user = UserSerializer(required=False)
     social_links = SocialLinkSerializer(many=True, required=False)
+    social_links_data = serializers.ListField(child=serializers.DictField(), write_only=True, required=False)
     skills = serializers.ListField(child=serializers.DictField(), required=False, write_only=True)
     # Поддержка как ID, так и строк для тегов
     tags = serializers.ListField(required=False, write_only=True)
@@ -279,6 +297,7 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
             "is_online",
             "available_for_hire",
             "social_links",
+            "social_links_data",
             "skills",
             "tags",
             "rating",
@@ -328,7 +347,15 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
         # Отладка входящих данных
         print("DEBUG - CreatorProfileSerializer.update - validated_data:", validated_data)
         
-        social_links = validated_data.pop("social_links", None)
+        # Получаем social_links из social_links_data (для multipart/form-data)
+        social_links_data = validated_data.pop("social_links_data", None)
+        if social_links_data is not None:
+            print("DEBUG - CreatorProfileSerializer.update - Найдено social_links_data:", social_links_data)
+            social_links = social_links_data
+        else:
+            # Стандартная обработка (для application/json)
+            social_links = validated_data.pop("social_links", None)
+            
         tags_data = validated_data.pop("tags", None)
         user_data = validated_data.pop("user", {})
         bio = validated_data.pop("bio", None)
@@ -419,9 +446,26 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
 
         # --- social links
         if social_links is not None:
+            print("\n" + "#" * 80)
+            print(f"DEBUG - CreatorProfileSerializer.update - Обработка social_links: {social_links}")
+            print("DEBUG - Тип social_links:", type(social_links))
+            
+            # Удаляем существующие ссылки
+            current_links = list(instance.social_links.all())
+            print(f"DEBUG - Удаляем текущие ссылки: {current_links}")
             instance.social_links.all().delete()
-            for link in social_links:
-                SocialLink.objects.create(creator_profile=instance, **link)
+            
+            print(f"DEBUG - Создаем новые ссылки:")
+            for i, link in enumerate(social_links):
+                print(f"  {i+1}. {link}")
+                try:
+                    new_link = SocialLink.objects.create(creator_profile=instance, **link)
+                    print(f"     Создано: {new_link}")
+                except Exception as e:
+                    print(f"     ОШИБКА: {str(e)}")
+            print("#" * 80 + "\n")
+        else:
+            print("DEBUG - CreatorProfileSerializer.update - social_links is None, пропускаем обработку")
 
         return instance
 
