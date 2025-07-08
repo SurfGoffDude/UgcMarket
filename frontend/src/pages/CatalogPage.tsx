@@ -10,13 +10,24 @@ import CreatorFilters from '@/components/CreatorFilters';
 import { useCreatorsList, SelectedTags } from '@/hooks/useSearchApi';
 import { Button } from '@/components/ui/button';
 
+type GenderFilter = 'male' | 'female' | 'other' | null;
+/**
+ * Интерфейс фильтров каталога креаторов
+ */
 interface Filters {
   tags: SelectedTags;
   query: string;
+  gender: GenderFilter;
+  responseTime: 'fast' | 'medium' | 'slow' | null;
 }
 
 const CatalogPage: React.FC = () => {
-  const [filters, setFilters] = useState<Filters>({ tags: {}, query: '' });
+  const [filters, setFilters] = useState<Filters>({
+  tags: {},
+  query: '',
+  gender: null,
+  responseTime: null,
+});
   const { creators, loading, error, refetch } = useCreatorsList(filters);
 
 

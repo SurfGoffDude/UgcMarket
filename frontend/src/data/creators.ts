@@ -23,6 +23,7 @@ export interface Creator {
   location?: string;
   joinedDate?: string;
   lastActive?: string;
+  gender?: 'male' | 'female' | 'other';
   socialLinks?: {
     instagram?: string;
     tiktok?: string;
@@ -52,6 +53,7 @@ export const creators: Creator[] = [
     languages: ['Русский', 'English'],
     location: 'Москва, Россия',
     joinedDate: '2022-01-15',
+    gender: 'female',
     socialLinks: {
       instagram: 'https://instagram.com/anna_creative',
       tiktok: 'https://tiktok.com/@anna_creative',
@@ -76,6 +78,7 @@ export const creators: Creator[] = [
     languages: ['Русский', 'English'],
     location: 'Санкт-Петербург, Россия',
     joinedDate: '2021-05-22',
+    gender: 'male',
     socialLinks: {
       youtube: 'https://youtube.com/max_tech',
       instagram: 'https://instagram.com/max_tech',
@@ -100,6 +103,7 @@ export const creators: Creator[] = [
     languages: ['Русский'],
     location: 'Казань, Россия',
     joinedDate: '2022-03-10',
+    gender: 'female',
     socialLinks: {
       instagram: 'https://instagram.com/katya_fit',
     },

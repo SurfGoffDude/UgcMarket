@@ -299,6 +299,15 @@ class CreatorProfileViewSet(viewsets.ModelViewSet):
         return self.serializer_class
 
     def get_queryset(self):
+        # Добавляем прямой вывод всех query параметров для отладки
+        print("\n\n")
+        print("*" * 80)
+        print("ФИЛЬТРАЦИЯ КРЕАТОРОВ: ПОЛУЧЕНЫ ПАРАМЕТРЫ:")
+        for key, value in self.request.query_params.items():
+            print(f"   {key}: {value}")
+        print("*" * 80)
+        print("\n\n")
+        
         qs = (
             CreatorProfile.objects.select_related("user")
             .prefetch_related("tags", "portfolio_items", "social_links")
@@ -350,25 +359,116 @@ class CreatorProfileViewSet(viewsets.ModelViewSet):
         # Получаем параметры запроса для фильтрации по тегам
         tag_ids_param = self.request.query_params.get('tag_ids')
         tag_match_type = self.request.query_params.get('tag_match_type', 'any').lower()
+        
+        # Добавляем прямой вывод информации в консоль
+        
+        # Проверяем исходный набор данных
+        pre_filter_count = qs.count()
+        print(f"\nКоличество креаторов до фильтрации: {pre_filter_count}")
+        
+        # Получаем список креаторов для анализа
+        creators_with_tags_info = []
+        for creator in CreatorProfile.objects.all():
+            tags = [{'id': t.id, 'name': t.name} for t in creator.tags.all()]
+            creators_with_tags_info.append({
+                'id': creator.id, 
+                'name': getattr(creator.user, 'first_name', '') or getattr(creator.user, 'username', ''),
+                'tag_count': len(tags),
+                'tags': tags
+            })
+        
+        print("\nИнформация о креаторах и их тегах:")
+        for creator_info in creators_with_tags_info:
+            print(f"\nКреатор #{creator_info['id']} {creator_info['name']}:")
+            print(f"  - Кол-во тегов: {creator_info['tag_count']}")
+            if creator_info['tag_count'] > 0:
+                print("  - Теги: ")
+                for tag in creator_info['tags']:
+                    print(f"    * ID: {tag['id']}, Название: {tag['name']}")
+        print("\n")
+        
+        # Если есть параметр tag_ids, проверяем наличие креаторов с этими тегами
+        if tag_ids_param:
+            try:
+                tag_ids = [int(tag_id.strip()) for tag_id in tag_ids_param.split(',') if tag_id.strip()]
+                print(f"\nПроверка креаторов с тегами {tag_ids}:")
+                
+                # Получаем информацию о тегах
+                from django.apps import apps
+                Tag = apps.get_model('core', 'Tag')
+                existing_tags = Tag.objects.filter(id__in=tag_ids)
+                print(f"  Найденные теги: {list(existing_tags.values('id', 'name'))}")
+                
+                # Проверяем, есть ли креаторы с этими тегами
+                creators_with_tags = CreatorProfile.objects.filter(tags__id__in=tag_ids).values_list('id', flat=True).distinct()
+                print(f"  ID креаторов с этими тегами: {list(creators_with_tags)}")
+                print(f"  Количество креаторов с этими тегами: {len(creators_with_tags)}")
+            except Exception as e:
+                print(f"\nОшибка при проверке тегов: {str(e)}")
+        
+        # Конец дополнительного вывода
 
         # Если указаны ID тегов, применяем фильтрацию
         if tag_ids_param:
             try:
                 tag_ids = [int(tag_id.strip()) for tag_id in tag_ids_param.split(',') if tag_id.strip()]
+                logger.debug(f"[FILTER DEBUG] Преобразованные ID тегов для фильтрации: {tag_ids}")
                 
                 if tag_ids:
+                    # Предварительная проверка: есть ли в базе теги с такими ID?
+                    from django.apps import apps
+                    Tag = apps.get_model('core', 'Tag')
+                    existing_tags = Tag.objects.filter(id__in=tag_ids)
+                    logger.debug(f"[FILTER DEBUG] Найдены следующие теги в базе: {list(existing_tags.values('id', 'name'))}")
+                    
+                    # Предварительная проверка: есть ли креаторы с этими тегами?
+                    creators_with_tags = CreatorProfile.objects.filter(tags__id__in=tag_ids).values('id').distinct()
+                    logger.debug(f"[FILTER DEBUG] Количество креаторов с этими тегами: {creators_with_tags.count()}")
+                    logger.debug(f"[FILTER DEBUG] ID креаторов с этими тегами: {[c['id'] for c in creators_with_tags]}")
+                    
                     if tag_match_type == 'all':
                         # Фильтрация по всем указанным тегам (AND)
                         # Аннотируем количество совпадающих тегов и фильтруем по этому количеству
                         qs = qs.annotate(
                             matching_tags_count=Count('tags', filter=Q(tags__id__in=tag_ids), distinct=True)
                         ).filter(matching_tags_count=len(tag_ids))
+                        logger.debug(f"[FILTER DEBUG] Применена фильтрация по ВСЕМ тегам (AND). SQL: {qs.query}")
                     else:  # 'any' или любое другое значение
                         # Фильтрация по любому из указанных тегов (OR)
                         qs = qs.filter(tags__id__in=tag_ids).distinct()
-            except ValueError:
+                        logger.debug(f"[FILTER DEBUG] Применена фильтрация по ЛЮБОМУ из тегов (OR). SQL: {qs.query}")
+                    
+                    # Логируем результат после фильтрации
+                    post_filter_count = qs.count()
+                    logger.debug(f"[FILTER DEBUG] Количество креаторов после фильтрации по тегам: {post_filter_count} (было {pre_filter_count})")
+                else:
+                    logger.debug("[FILTER DEBUG] После обработки список tag_ids пуст, фильтрация не применена")
+            except ValueError as e:
                 # Если в параметре tag_ids передано некорректное значение, игнорируем фильтрацию
+                logger.error(f"[FILTER DEBUG] Ошибка при обработке tag_ids: {str(e)}. Значение параметра: '{tag_ids_param}'")
                 pass
+        else:
+            logger.debug("[FILTER DEBUG] Параметр tag_ids отсутствует, фильтрация по тегам не применяется")
+                
+        # Фильтрация по полу пользователя
+        gender = self.request.query_params.get('gender')
+        if gender:
+            # Логируем запрос для отладки
+            logger.debug(f"Фильтрация по полу: {gender}")
+            # Фильтруем креаторов по полу связанного пользователя
+            qs = qs.filter(user__gender=gender)
+            # Логируем количество найденных креаторов
+            logger.debug(f"Найдено креаторов с полом '{gender}': {qs.count()}")
+        
+        # Фильтрация по среднему времени выполнения работы
+        average_work_time = self.request.query_params.get('average_work_time')
+        if average_work_time:
+            # Логируем запрос для отладки
+            logger.debug(f"Фильтрация по среднему времени выполнения: {average_work_time}")
+            # Фильтруем креаторов по среднему времени выполнения работы
+            qs = qs.filter(average_work_time=average_work_time)
+            # Логируем количество найденных креаторов
+            logger.debug(f"Найдено креаторов со средним временем выполнения '{average_work_time}': {qs.count()}")
                 
         return qs
 

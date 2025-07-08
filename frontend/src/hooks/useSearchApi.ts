@@ -2,7 +2,7 @@
  * Хуки для работы с API расширенного поиска, историей поиска и рекомендациями
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   SearchParams, 
   searchParamsToQueryString,
@@ -11,6 +11,7 @@ import {
   SearchRecommendation
 } from '@/types/search';
 import { Service } from '@/types/services';
+import { Creator } from '@/data/creators';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -155,14 +156,39 @@ export interface SelectedTags {
 }
 
 /**
+ * Типы гендера для фильтрации
+ */
+export type GenderFilter = 'male' | 'female' | 'prefer_not_to_say' | null;
+
+/**
+ * Типы среднего времени ответа для фильтрации
+ */
+export type ResponseTimeFilter = 'up_to_24_hours' | 'up_to_3_days' | 'up_to_10_days' | 'up_to_14_days' | 'up_to_30_days' | 'up_to_60_days' | 'more_than_60_days' | null;
+
+/**
+ * Интерфейс входных фильтров для списка креаторов
+ */
+interface CreatorListFilters {
+  tags: SelectedTags;
+  query: string;
+  gender: GenderFilter;
+  responseTime: ResponseTimeFilter;
+}
+
+/**
  * Хук для получения списка всех креаторов с поддержкой фильтрации и поиска
  */
-// Импортируем мок-данные креаторов для использования при недоступности API
-import { creators as mockCreators } from '@/data/creators';
 
-export function useCreatorsList(filters?: { tags: SelectedTags; query: string }) {
+/**
+ * Хук для работы со списком креаторов
+ * Поддерживает фильтрацию по полу, среднему времени ответа и тегам
+ */
+export function useCreatorsList(filters?: CreatorListFilters) {
   const [url, setUrl] = useState(`${API_URL}/creator-profiles/`);
   const { data: apiData, loading, error, execute: refetch } = useApiRequest<any>(url, true);
+  
+  // Отслеживаем финальные отфильтрованные данные
+  const [finalData, setFinalData] = useState<Creator[]>([]);
   
   // Добавляем перезагрузку данных при изменении URL
   useEffect(() => {
@@ -172,75 +198,6 @@ export function useCreatorsList(filters?: { tags: SelectedTags; query: string })
     }
   }, [url, refetch]);
   
-  // Используем мок-данные, если API недоступен
-  const rawData = apiData || mockCreators;
-  
-  // Применяем локальную фильтрацию к мок-данным, если нет данных из API
-  const [filteredData, setFilteredData] = useState(rawData);
-  
-  // Применяем локальную фильтрацию, если используем мок-данные
-  useEffect(() => {
-    // Извлекаем массив креаторов из API данных, если они приходят в формате { results: [...] }
-    const apiCreators = apiData 
-      ? (apiData.results && Array.isArray(apiData.results) 
-          ? apiData.results 
-          : (Array.isArray(apiData) ? apiData : []))
-      : null;
-
-    // Если фильтры отсутствуют или пустые, показываем всех креаторов
-    if (!filters || 
-        (!filters.query && (!filters.tags || Object.keys(filters.tags).length === 0))) {
-      setFilteredData(apiCreators || mockCreators);
-      return;
-    }
-    
-    if (!apiData) {
-      // Фильтрация мок-данных на клиенте
-      let result = [...mockCreators];
-      
-      // Фильтрация по поисковому запросу
-      if (filters.query) {
-        const query = filters.query.toLowerCase();
-        result = result.filter(creator => 
-          creator.name.toLowerCase().includes(query) || 
-          creator.username.toLowerCase().includes(query) ||
-          (creator.description && creator.description.toLowerCase().includes(query))
-        );
-      }
-      
-      // Фильтрация по тегам
-      if (filters.tags && Object.keys(filters.tags).length > 0) {
-        const tagValues: string[] = [];
-        Object.entries(filters.tags).forEach(([categoryId, tagIds]) => {
-          tagIds.forEach(tagId => {
-            const tagValue = tagId.startsWith('#') ? tagId.substring(1) : tagId;
-            tagValues.push(tagValue);
-          });
-        });
-        
-        if (tagValues.length > 0) {
-          // Если есть выбранные теги, фильтруем креаторов по наличию этих тегов
-          result = result.filter(creator => {
-            if (!creator.tags || !Array.isArray(creator.tags)) return false;
-            
-            // Проверяем, есть ли хотя бы один тег у креатора, совпадающий с выбранными
-            return tagValues.some(tagValue => 
-              creator.tags?.some(creatorTag => 
-                creatorTag.toLowerCase() === tagValue.toLowerCase()
-              )
-            );
-          });
-        }
-      }
-      
-      // Устанавливаем отфильтрованные данные
-      setFilteredData(result);
-    } else {
-      // Если есть данные из API, извлекаем из них массив креаторов
-      setFilteredData(apiCreators || []);
-    }
-  }, [apiData, filters, mockCreators]);
-
   // Обновление URL при изменении фильтров
   useEffect(() => {
     if (!filters) {
@@ -248,97 +205,123 @@ export function useCreatorsList(filters?: { tags: SelectedTags; query: string })
       return;
     }
 
-    let queryParams = new URLSearchParams();
+    const queryParams = new URLSearchParams();
     
     // Добавление поискового запроса
     if (filters.query) {
       queryParams.append('search', filters.query);
     }
     
+    // Добавление пола
+    if (filters.gender) {
+      queryParams.append('gender', filters.gender);
+    }
+
+    // Добавление среднего времени выполнения работы
+    if (filters.responseTime) {
+      queryParams.append('average_work_time', filters.responseTime);
+    }
+
     // Добавление тегов
-    // Преобразуем ID тегов в их текстовые значения для поиска
-    const tagValues: string[] = [];
-    
-    Object.entries(filters.tags).forEach(([categoryId, tagIds]) => {
-      // Преобразуем ID тегов в формат, который соответствует тегам креаторов
-      tagIds.forEach(tagId => {
-        // Теги креаторов хранятся в формате "делает-под-родителей" (без # в начале)
-        const tagValue = tagId.startsWith('#') ? tagId.substring(1) : tagId;
-        tagValues.push(tagValue);
+    if (filters.tags && Object.keys(filters.tags).length > 0) {
+      const tagValues: string[] = [];
+      
+      Object.entries(filters.tags).forEach(([categoryId, tagIds]) => {
+        tagIds.forEach(tagId => {
+          // Извлекаем только числовую часть тега для отправки на бэкенд
+          // Ожидается формат "tagname-123", где 123 - это ID для бэкенда
+          const tagParts = tagId.split('-');
+          const numericId = tagParts.length > 1 ? tagParts[tagParts.length - 1] : tagId;
+          
+          // Проверяем, что ID числовой
+          if (!isNaN(Number(numericId))) {
+            tagValues.push(numericId);
+            console.log(`[DEBUG] Добавлен ID тега: ${numericId} из тега ${tagId}`);
+          }
+        });
       });
-    });
-    
-    if (tagValues.length > 0) {
-      queryParams.append('tags', tagValues.join(','));
+      
+      if (tagValues.length > 0) {
+        queryParams.append('tag_ids', tagValues.join(','));
+      }
     }
     
     const queryString = queryParams.toString();
-    setUrl(`${API_URL}/creator-profiles/${queryString ? `?${queryString}` : ''}`);
-  }, [filters]);
-
-  // Django REST Framework часто возвращает пагинированные данные в объекте { results: [...] }.
-  // Этот код проверяет, есть ли поле results, и возвращает его.
-  // В противном случае, он возвращает сами данные (если ответ не пагинирован).
-  
-  // Дополнительная проверка фильтрации для несуществующих тегов
-  let finalData = filteredData;
-  
-  // Если есть выбранные теги, проверяем наличие этих тегов у креаторов
-  if (filters?.tags && Object.keys(filters.tags).length > 0) {
-    const tagValues: string[] = [];
-    Object.entries(filters.tags).forEach(([categoryId, tagIds]) => {
-      tagIds.forEach(tagId => {
-        const tagValue = tagId.startsWith('#') ? tagId.substring(1) : tagId;
-        tagValues.push(tagValue.toLowerCase());
-      });
-    });
+    const newUrl = queryString ? `${API_URL}/creator-profiles/?${queryString}` : `${API_URL}/creator-profiles/`;
     
-    if (tagValues.length > 0 && Array.isArray(finalData)) {
-      // Дебаг-информация для проверки тегов
-      console.log('%c[DEBUG] Проверка тегов:', 'color: #FF5722; font-weight: bold', {
-        tagValues,
-        creatorsTags: finalData.map(creator => creator.tags || [])
-      });
-      
-      // Фильтруем креаторов по наличию выбранных тегов
-      finalData = finalData.filter(creator => {
-        if (!creator.tags || !Array.isArray(creator.tags)) return false;
-        
-        // Преобразуем теги креатора в нижний регистр
-        const lowerCaseCreatorTags = creator.tags.map(tag => tag.toLowerCase());
-        
-        // Проверяем разные варианты совпадения
-        const hasMatchingTag = tagValues.some(tagValue => {
-          // Точное совпадение
-          const exactMatch = lowerCaseCreatorTags.includes(tagValue);
-          
-          // Проверка на содержание
-          const containsMatch = lowerCaseCreatorTags.some(creatorTag => 
-            creatorTag.includes(tagValue) || tagValue.includes(creatorTag)
-          );
-          
-          // Проверка с удалением спецсимволов
-          const tagValueWithoutDashes = tagValue.replace(/-/g, ' ');
-          const containsMatchWithoutDashes = lowerCaseCreatorTags.some(creatorTag => {
-            const creatorTagWithoutDashes = creatorTag.replace(/-/g, ' ');
-            return creatorTagWithoutDashes.includes(tagValueWithoutDashes) || 
-                  tagValueWithoutDashes.includes(creatorTagWithoutDashes);
-          });
-          
-          return exactMatch || containsMatch || containsMatchWithoutDashes;
-        });
-        
-        return hasMatchingTag;
-      });
-    }
-  }
+    console.log('[DEBUG] Обновление URL с фильтрами:', newUrl);
+    setUrl(newUrl);
+  }, [filters]);
   
-  // Возвращаем отфильтрованные данные или пустой массив, если данных нет
-  return { 
-    creators: Array.isArray(finalData) ? finalData : [], 
-    loading, 
-    error, 
-    refetch 
+  // Обрабатываем полученные от API данные
+  useEffect(() => {
+    // Извлекаем массив креаторов из API данных, если они приходят в формате { results: [...] }
+    const apiCreators = apiData 
+      ? (apiData.results && Array.isArray(apiData.results) 
+          ? apiData.results 
+          : (Array.isArray(apiData) ? apiData : []))
+      : [];
+    
+    console.log('[DEBUG] Получены данные от API:', apiCreators.length, 'креаторов');
+    
+    // Больше не применяем дублирующую фильтрацию на клиенте,
+    // так как фильтрация уже была выполнена на сервере через параметры URL
+    setFinalData(apiCreators);
+  }, [apiData]);
+  
+  // Добавляем индикацию активных фильтров для UI
+  const activeFilters = useMemo(() => {
+    if (!filters) return {
+      hasActiveFilters: false,
+      activeFilterCount: 0,
+      filterInfo: {}
+    };
+    
+    const filterInfo: Record<string, any> = {};
+    let count = 0;
+    
+    // Проверяем каждый тип фильтра
+    if (filters.query) {
+      filterInfo.query = filters.query;
+      count++;
+    }
+
+    if (filters.gender) {
+      filterInfo.gender = filters.gender;
+      count++;
+    }
+    
+    if (filters.responseTime) {
+      filterInfo.responseTime = filters.responseTime;
+      count++;
+    }
+    
+    if (filters.tags && Object.keys(filters.tags).length > 0) {
+      const tagCount = Object.values(filters.tags)
+        .reduce((sum, tags) => sum + tags.length, 0);
+      
+      filterInfo.tags = {
+        count: tagCount,
+        values: filters.tags
+      };
+      
+      if (tagCount > 0) count++;
+    }
+    
+    return {
+      hasActiveFilters: count > 0,
+      activeFilterCount: count,
+      filterInfo
+    };
+  }, [filters]);
+  
+  console.log('[DEBUG] Активные фильтры:', activeFilters);
+
+  return {
+    creators: finalData,
+    loading,
+    error,
+    refetch
   };
 }
 
