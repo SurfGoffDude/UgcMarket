@@ -338,7 +338,7 @@ const Dashboard = () => {
                 <CardTitle className="text-lg">Быстрые действия</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button variant="outline" className="w-full justify-start">
+                <Button variant="outline" className="w-full justify-start" onClick={() => navigate('/create-order')}>
                   <Plus className="w-4 h-4 mr-2" />
                   Создать заказ
                 </Button>
@@ -492,7 +492,7 @@ const Dashboard = () => {
                           <h3 className="mt-2 text-lg font-medium text-gray-900">Нет активных заказов</h3>
                           <p className="mt-1 text-gray-500">Создайте свой первый заказ, чтобы начать работу</p>
                           <div className="mt-6">
-                            <Button>
+                            <Button onClick={() => navigate('/create-order')}>
                               <Plus className="w-4 h-4 mr-2" />
                               Создать заказ
                             </Button>

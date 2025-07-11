@@ -122,7 +122,7 @@ const OrdersPage: React.FC = () => {
     <div className="container mx-auto py-8 px-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Мои заказы</h1>
-        <Button onClick={() => navigate('/services')}>
+        <Button onClick={() => navigate('/create-order')}>
           <Package className="h-4 w-4 mr-2" /> Создать заказ
         </Button>
       </div>

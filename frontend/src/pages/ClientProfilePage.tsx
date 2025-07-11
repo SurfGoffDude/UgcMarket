@@ -572,7 +572,7 @@ const ClientProfilePage: React.FC = () => {
                   className="bg-[#282D4E] hover:bg-[#363c68]"
                   asChild
                 >
-                  <Link to="/orders/create">
+                  <Link to="/create-order">
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Создать заказ
                   </Link>
@@ -666,7 +666,7 @@ const ClientProfilePage: React.FC = () => {
                           className="mt-4 bg-[#282D4E] hover:bg-[#363c68]"
                           asChild
                         >
-                          <Link to="/orders/create">
+                          <Link to="/create-order">
                             <PlusCircle className="mr-2 h-4 w-4" />
                             Создать заказ
                           </Link>

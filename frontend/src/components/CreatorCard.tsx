@@ -1,9 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Star, Heart, MessageSquare, Check, ExternalLink, Briefcase, MapPin, GraduationCap, Lock, Unlock, Phone, Mail, Calendar, Globe, Instagram, Twitter, Facebook, Youtube, Linkedin, Github } from 'lucide-react';
+import { Star, Heart, MessageSquare, Check, ExternalLink, Briefcase, MapPin, GraduationCap, Lock, Unlock, Phone, Mail, Calendar, Globe, Instagram, Twitter, Facebook, Youtube, Linkedin, Github, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Creator as MockCreator } from '@/data/creators';
+import { useChat } from '@/hooks/useChat';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Тип для вложенного объекта пользователя от API
 interface UserData {
@@ -62,6 +64,8 @@ interface CreatorCardProps {
 }
 
 const CreatorCard: React.FC<CreatorCardProps> = ({ creator, useLink, showDetailedProfile }) => {
+  const { openChatWithCreator, loading: chatLoading } = useChat();
+  const { user } = useAuth();
   // Адаптеры для получения данных из разных форматов
   const getNestedUser = () => {
     return 'user' in creator ? creator.user : null;
@@ -456,8 +460,24 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator, useLink, showDetaile
             </Link>
           </Button>
           <div className="flex space-x-2">
-            <Button variant="ghost" size="sm" className="text-gray-500 hover:text-primary">
-              <MessageSquare className="h-4 w-4" />
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-gray-500 hover:text-primary"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (creator) {
+                  openChatWithCreator(getId());
+                }
+              }}
+              disabled={!user || chatLoading}
+            >
+              {chatLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <MessageSquare className="h-4 w-4" />
+              )}
             </Button>
             <Button variant="ghost" size="sm" className="text-gray-500 hover:text-red-500">
               <Heart className="h-4 w-4" />

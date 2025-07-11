@@ -190,7 +190,12 @@ const Header = () => {
                     <Package className="mr-2 h-4 w-4" />
                     <span>Мои заказы</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/messages')} className="cursor-pointer">
+                  <DropdownMenuItem className="cursor-pointer" onClick={() => {
+                    console.log('Клик по кнопке Сообщения (десктоп)!');
+                    console.log('Текущий URL до перехода:', window.location.pathname);
+                    navigate('/chats');
+                    console.log('Переход на URL:', '/chats');
+                  }}>
                     <MessageSquare className="mr-2 h-4 w-4" />
                     <span>Сообщения</span>
                   </DropdownMenuItem>
@@ -290,7 +295,14 @@ const Header = () => {
                         Мои заказы
                       </Button>
                     </Link>
-                    <Link to="/messages" className="block" onClick={toggleMenu}>
+                    <Link to="/chats" className="block" onClick={(e) => {
+                      e.preventDefault();
+                      console.log('Клик по кнопке Сообщения (мобильная версия)!');
+                      console.log('Текущий URL до перехода:', window.location.pathname);
+                      toggleMenu();
+                      navigate('/chats');
+                      console.log('Переход на URL:', '/chats');
+                    }}>
                       <Button variant="outline" className="w-full justify-center">
                         <MessageSquare className="w-4 h-4 mr-2" />
                         Сообщения

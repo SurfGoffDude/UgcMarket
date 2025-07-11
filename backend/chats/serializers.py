@@ -81,6 +81,28 @@ class ChatListSerializer(serializers.ModelSerializer):
         return 0
 
 
+class ChatCreateSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для создания нового чата.
+    
+    Требует обязательного указания creator_id при создании.
+    client устанавливается автоматически из request.user в perform_create.
+    """
+    creator = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    
+    class Meta:
+        model = Chat
+        fields = ['creator', 'order', 'is_active']
+    
+    def validate_creator(self, value):
+        """
+        Проверка наличия и валидности creator_id.
+        """
+        if not value:
+            raise serializers.ValidationError("Необходимо указать ID креатора")
+        return value
+
+
 class ChatDetailSerializer(ChatListSerializer):
     """
     Сериализатор для детального отображения чата вместе с сообщениями.
@@ -111,7 +133,7 @@ class MessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
         fields = [
-            'id', 'chat', 'sender', 'sender_details', 'content', 'attachment',
+            'id', 'chat', 'sender', 'sender_details', 'content',
             'is_system_message', 'created_at', 'is_read'
         ]
         read_only_fields = ['sender', 'created_at', 'is_read']

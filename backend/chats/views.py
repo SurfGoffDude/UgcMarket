@@ -8,15 +8,15 @@ from rest_framework import viewsets, permissions, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Q, Max, F
+from django.http import Http404
 from django.utils import timezone
 
 from .models import Chat, Message, SystemMessageTemplate
 from .serializers import (
-    ChatListSerializer, ChatDetailSerializer, 
-    MessageSerializer, SystemMessageTemplateSerializer
+    ChatListSerializer, ChatDetailSerializer, MessageSerializer, 
+    SystemMessageTemplateSerializer, ChatCreateSerializer
 )
 from .permissions import IsChatParticipant, IsMessageSender
-from .serializers import ChatDetailSerializer  # Добавляем импорт ChatDetailSerializer в начале файла
 
 class ChatViewSet(viewsets.ModelViewSet):
     """
@@ -24,11 +24,62 @@ class ChatViewSet(viewsets.ModelViewSet):
     
     Поддерживает создание, просмотр, обновление и удаление чатов,
     а также получение списка своих чатов и чатов для конкретного заказа.
+    
+    Основной URL: /api/chats/
+    Доступ к конкретному чату: /api/chats/{creator_id}-{client_id}/
     """
     serializer_class = ChatListSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [filters.SearchFilter]
     search_fields = ['client__username', 'creator__username', 'order__title']
+    
+    def get_object(self):
+        """
+        Получение объекта чата по URL вида {creator_id}-{client_id}.
+        
+        Например: /api/chats/3-2/ - чат между креатором с ID 3 и клиентом с ID 2.
+        """
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        lookup = self.kwargs.get(lookup_url_kwarg)
+        
+        # Проверяем, соответствует ли lookup формату {creator_id}-{client_id}
+        if '-' in str(lookup):
+            try:
+                creator_id, client_id = map(int, lookup.split('-'))
+                queryset = self.filter_queryset(self.get_queryset())
+                chat = queryset.filter(
+                    creator__id=creator_id, 
+                    client__id=client_id
+                ).first()
+                
+                if not chat:
+                    raise Http404("Чат не найден")
+                    
+                # Проверка прав доступа
+                self.check_object_permissions(self.request, chat)
+                return chat
+            except (ValueError, TypeError):
+                raise Http404("Неверный формат URL для чата")
+        
+        # Если формат не соответствует {creator_id}-{client_id}, используем стандартное поведение
+        return super().get_object()
+    
+    def perform_create(self, serializer):
+        """
+        При создании чата автоматически назначаем текущего пользователя
+        как клиента всегда.
+        
+        Проверяем, что creator и client разные пользователи.
+        """
+        user = self.request.user
+        creator = serializer.validated_data.get('creator')
+        
+        # Проверяем, что creator и client (текущий пользователь) разные
+        if creator == user:
+            raise ValidationError("Вы не можете создать чат с самим собой")
+            
+        # Всегда устанавливаем текущего пользователя как client
+        serializer.save(client=user)
     
     def get_queryset(self):
         """
@@ -40,12 +91,80 @@ class ChatViewSet(viewsets.ModelViewSet):
         ).annotate(
             last_message_time=Max('messages__created_at')
         ).order_by('-last_message_time', '-updated_at')
+        
+    def list(self, request, *args, **kwargs):
+        """
+        Возвращает список доступных чатов для пользователя.
+        
+        Для клиентов - список креаторов, с которыми есть чаты.
+        Для креаторов - список клиентов, с которыми есть чаты.
+        """
+        user = self.request.user
+        
+        # Получаем все чаты, в которых пользователь участвует как клиент
+        chats_as_client = Chat.objects.filter(client=user).select_related('creator').prefetch_related('messages')
+        
+        # Получаем все чаты, в которых пользователь участвует как креатор
+        chats_as_creator = Chat.objects.filter(creator=user).select_related('client').prefetch_related('messages')
+        
+        chat_participants = []
+        participant_ids = set()
+        
+        # Обрабатываем чаты, где пользователь - клиент (показываем креаторов)
+        for chat in chats_as_client:
+            if chat.creator.id in participant_ids:
+                continue
+                
+            # Создаем ID чата в формате {creator_id}-{client_id}
+            chat_id = f"{chat.creator.id}-{user.id}"
+            
+            participant_data = {
+                'id': chat.creator.id,
+                'username': chat.creator.username,
+                'role': 'creator',
+                'chat_id': chat_id
+            }
+            
+            # Добавляем аватар, если есть
+            if hasattr(chat.creator, 'profile') and hasattr(chat.creator.profile, 'avatar'):
+                participant_data['avatar'] = chat.creator.profile.avatar.url if chat.creator.profile.avatar else None
+            
+            chat_participants.append(participant_data)
+            participant_ids.add(chat.creator.id)
+        
+        # Обрабатываем чаты, где пользователь - креатор (показываем клиентов)
+        for chat in chats_as_creator:
+            if chat.client.id in participant_ids:
+                continue
+                
+            # Создаем ID чата в формате {creator_id}-{client_id}
+            chat_id = f"{user.id}-{chat.client.id}"
+            
+            participant_data = {
+                'id': chat.client.id,
+                'username': chat.client.username,
+                'role': 'client',
+                'chat_id': chat_id
+            }
+            
+            # Добавляем аватар, если есть
+            if hasattr(chat.client, 'profile') and hasattr(chat.client.profile, 'avatar'):
+                participant_data['avatar'] = chat.client.profile.avatar.url if chat.client.profile.avatar else None
+            
+            chat_participants.append(participant_data)
+            participant_ids.add(chat.client.id)
+        
+        return Response({
+            'chat_participants': chat_participants
+        })
     
     def get_serializer_class(self):
         """
         Возвращает соответствующий сериализатор в зависимости от действия.
         """
-        if self.action == 'retrieve':
+        if self.action == 'create':
+            return ChatCreateSerializer
+        elif self.action == 'retrieve':
             return ChatDetailSerializer
         return ChatListSerializer
     

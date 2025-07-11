@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { CreatorProfile } from '@/types/user';
 import {
@@ -12,10 +12,11 @@ import { Card } from '@/components/ui/card';
 import { useCreatorProfile } from '@/hooks/useCreatorProfile';
 import { Star, MapPin, Pencil, Plus, Calendar, Briefcase, GraduationCap, Lock, Unlock, ExternalLink, Phone, Clock, UserIcon, Heart, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MessageSquare } from 'lucide-react';
 import PortfolioItem from '@/components/PortfolioItem';
 import ServiceCard from '@/components/ServiceCard';
 import SocialIcon from '@/components/SocialIcon';
+import { useChat } from '@/hooks/useChat';
 
 const CreatorProfilePage: React.FC = () => {
   const { id } = useParams();
@@ -23,6 +24,7 @@ const CreatorProfilePage: React.FC = () => {
   const { creator, loading, error } = useCreatorProfile(id);
   const { user: currentUser } = useAuth();
   const isOwner = currentUser?.id === creator?.user?.id;
+  const { openChatWithCreator, loading: chatLoading } = useChat();
 
   const ratingValue = creator && creator.rating !== undefined && creator.rating !== null ? Number(creator.rating) : null;
 
@@ -113,7 +115,18 @@ const CreatorProfilePage: React.FC = () => {
             {/* Кнопки действий (не для владельца) */}
             {!isOwner && (
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => creator.user?.id && navigate(`/chat/${creator.user.id}`)}>Написать</Button>
+                <Button 
+                  variant="default" 
+                  onClick={() => creator && openChatWithCreator(creator.id)}
+                  disabled={chatLoading}
+                >
+                  {chatLoading ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <MessageSquare className="h-4 w-4 mr-1" />
+                  )}
+                  Написать
+                </Button>
                 <Button onClick={() => navigate(`/creator/${creator.id}/order`)}>Заказать услугу</Button>
               </div>
             )}
@@ -171,19 +184,51 @@ const CreatorProfilePage: React.FC = () => {
         
         {/* Социальные сети */}
         {creator.social_links && creator.social_links.length > 0 && (
-          <div className="flex flex-wrap gap-3 pt-2">
-            {creator.social_links.map((link: any, idx: number) => (
-              <a 
-                key={idx} 
-                href={link.url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 text-primary hover:underline"
-                title={link.platform}
-              >
-                <SocialIcon platform={link.platform} className="h-5 w-5" />
-              </a>
-            ))}
+          <div className="pt-4">
+            <h3 className="font-medium text-lg mb-4 text-left">Социальные сети</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {creator.social_links.map((link: any, idx: number) => {
+                // Функция для получения понятного названия платформы
+                const getPlatformName = (platform: string): string => {
+                  const names: Record<string, string> = {
+                    facebook: "Facebook",
+                    youtube: "YouTube",
+                    twitter: "Twitter",
+                    instagram: "Instagram",
+                    whatsapp: "WhatsApp",
+                    tiktok: "TikTok",
+                    linkedin: "LinkedIn",
+                    telegram: "Telegram",
+                    pinterest: "Pinterest",
+                    reddit: "Reddit",
+                    vkontakte: "ВКонтакте",
+                    dzen: "Дзен",
+                    twitch: "Twitch"
+                  };
+                  return names[platform] || platform;
+                };
+                
+                return (
+                  <div key={idx} className="bg-white/60 p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-100">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="bg-[#E95C4B]/20 rounded-full p-2 shadow-sm">
+                        <SocialIcon platform={link.platform} className="h-5 w-5 text-[#E95C4B]" />
+                      </div>
+                      <h4 className="font-medium">{getPlatformName(link.platform)}</h4>
+                    </div>
+                    <a 
+                      href={link.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-600 hover:text-blue-800 hover:underline block truncate"
+                      title={link.url}
+                    >
+                      {link.url.replace(/^https?:\/\//i, '')}
+                    </a>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 

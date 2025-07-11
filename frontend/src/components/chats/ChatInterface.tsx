@@ -72,16 +72,19 @@ interface Chat {
 const ChatInterface: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [chat, setChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(true);
-  const [sendingMessage, setSendingMessage] = useState<boolean>(false);
+  const [loading, setLoading] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [loadingMoreMessages, setLoadingMoreMessages] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [page, setPage] = useState(1);
+  const [nextPageUrl, setNextPageUrl] = useState<string | null>(null);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [sendingMessage, setSendingMessage] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState<number>(1);
-  const [hasMoreMessages, setHasMoreMessages] = useState<boolean>(true);
-  const [loadingMoreMessages, setLoadingMoreMessages] = useState<boolean>(false);
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   const [processingStatus, setProcessingStatus] = useState<boolean>(false);
   
@@ -101,126 +104,145 @@ const ChatInterface: React.FC = () => {
   };
 
   // Загрузка информации о чате
-  useEffect(() => {
-    const fetchChatDetails = async () => {
-      if (!id) return;
-      
-      setLoading(true);
-      try {
-        const response = await axios.get(`/api/chats/${id}/`);
-        setChat(response.data);
-        setError(null);
-      } catch (err) {
-        console.error('Ошибка при загрузке данных чата:', err);
-        setError('Не удалось загрузить чат');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchChatDetails();
+  const fetchChatDetails = useCallback(async () => {
+    if (!id || !token) return;
     
-    // Очищаем интервал при размонтировании компонента
-    return () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-      }
-    };
-  }, [id]);
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // id теперь в формате {creator_id}-{client_id}
+      const response = await axios.get(`/api/chats/${id}/`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      setChat(response.data);
+    } catch (err) {
+      console.error('Ошибка при загрузке деталей чата:', err);
+      setError('Не удалось загрузить чат. Пожалуйста, попробуйте обновить страницу.');
+    } finally {
+      setLoading(false);
+    }
+  }, [id, token]);
 
-  // Загрузка сообщений чата
   useEffect(() => {
-    const fetchMessages = async () => {
-      if (!id) return;
-      
-      try {
-        const response = await axios.get(`/api/messages/chat_messages/`, {
-          params: {
-            chat_id: id,
-            page: page,
-            limit: 50
-          }
-        });
-        
-        if (page === 1) {
-          // Первая загрузка или обновление - устанавливаем сообщения
-          setMessages(response.data.results.reverse());
-        } else {
-          // Загрузка более старых сообщений - добавляем в начало списка
-          setMessages(prevMessages => [...response.data.results.reverse(), ...prevMessages]);
-        }
-        
-        setHasMoreMessages(!!response.data.next);
-        setError(null);
-      } catch (err) {
-        console.error('Ошибка при загрузке сообщений:', err);
-        if (page === 1) {
-          setError('Не удалось загрузить сообщения');
-        }
-      } finally {
-        setLoadingMoreMessages(false);
-      }
-    };
+    fetchChatDetails();
+  }, [fetchChatDetails]);
 
-    if (!loading && chat) {
-      fetchMessages();
+  // Загрузка сообщений для чата
+  const fetchMessages = useCallback(async (loadMore: boolean = false) => {
+    if (!chat?.id || !token) return;
+    
+    if (loadMore) {
+      setLoadingMoreMessages(true);
+    } else if (!refreshing) {
+      setLoadingMessages(true);
+    }
+    
+    try {
+      // Создаем URL с параметрами
+      let url = `/api/messages/?chat=${chat.id}`;
       
+      // Добавляем пагинацию, если загружаем больше сообщений
+      if (loadMore && nextPageUrl) {
+        url = nextPageUrl;
+      } else {
+        url += '&page=1&page_size=20';
+      }
+      
+      const response = await axios.get(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (loadMore) {
+        setMessages(prevMessages => [...prevMessages, ...response.data.results]);
+      } else {
+        setMessages(response.data.results);
+      }
+      
+      setHasMoreMessages(!!response.data.next);
+      setNextPageUrl(response.data.next);
+      setError(null);
+    } catch (err) {
+      console.error('Ошибка при загрузке сообщений:', err);
+      if (!loadMore) {
+        setError('Не удалось загрузить сообщения');
+      }
+    } finally {
+      if (loadMore) {
+        setLoadingMoreMessages(false);
+      } else if (!refreshing) {
+        setLoadingMessages(false);
+      }
+    }
+  }, [chat, token, nextPageUrl, refreshing]);
+
+  useEffect(() => {
+    if (chat) {
+      fetchMessages();
+    
       // Настраиваем периодическое обновление сообщений
       if (!pollingInterval) {
         const interval = setInterval(() => {
           fetchMessages();
         }, 10000); // Обновление каждые 10 секунд
         setPollingInterval(interval);
+        
+        // Очистка интервала при размонтировании компонента
+        return () => clearInterval(interval);
       }
     }
-  }, [id, loading, chat, page]);
+  }, [fetchMessages, pollingInterval, chat]);
 
   // Прокрутка до последнего сообщения при первой загрузке или отправке сообщения
   useEffect(() => {
-    if (messages.length > 0 && page === 1 && !loadingMoreMessages) {
+    if (messages.length > 0 && !loadingMoreMessages) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, page, loadingMoreMessages]);
+  }, [messages, loadingMoreMessages]);
 
   // Обработчик загрузки более старых сообщений
   const handleLoadMoreMessages = () => {
     if (hasMoreMessages && !loadingMoreMessages) {
       setLoadingMoreMessages(true);
-      setPage(prevPage => prevPage + 1);
+      fetchMessages(true);
     }
   };
 
   // Отправка нового сообщения
-  const handleSendMessage = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     
-    if (!newMessage.trim() || !chat || !id) return;
+    if (!newMessage.trim() || !chat || !token) {
+      return;
+    }
     
     setSendingMessage(true);
+    
     try {
-      const response = await axios.post('/api/messages/', {
-        chat: parseInt(id),
+      await axios.post('/api/messages/', {
+        chat: chat.id,
         content: newMessage.trim(),
-        is_system_message: false
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
       
-      // Добавляем отправленное сообщение в список
-      setMessages(prevMessages => [...prevMessages, {
-        ...response.data,
-        sender_details: user ? {
-          id: user.id,
-          username: user.username,
-          avatar: user.avatar
-        } : undefined
-      }]);
-      
+      // Очищаем поле ввода и обновляем сообщения
       setNewMessage('');
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
+      setRefreshing(true);
+      fetchMessages();
+      
     } catch (err) {
       console.error('Ошибка при отправке сообщения:', err);
-      alert('Не удалось отправить сообщение. Попробуйте еще раз.');
+      toast.error('Не удалось отправить сообщение. Пожалуйста, попробуйте еще раз.');
+      console.error('Ошибка при отправке сообщения:', error);
+      toast.error('Не удалось отправить сообщение');
     } finally {
       setSendingMessage(false);
     }

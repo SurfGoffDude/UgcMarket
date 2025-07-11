@@ -1,5 +1,5 @@
 import React from 'react';
-import ChatsList from '@/components/chats/ChatsList';
+import CreatorsList from '@/components/chats/CreatorsList';
 import { 
   Card, 
   CardContent, 
@@ -11,7 +11,7 @@ import {
 /**
  * Страница списка чатов
  * 
- * Отображает список всех чатов текущего пользователя
+ * Отображает список доступных креаторов, с которыми у пользователя есть чаты
  */
 const ChatsListPage: React.FC = () => {
   return (
@@ -22,11 +22,11 @@ const ChatsListPage: React.FC = () => {
           <CardHeader>
             <CardTitle>Мои чаты</CardTitle>
             <CardDescription>
-              Общайтесь с клиентами и креаторами в рамках заказов
+              Общайтесь с креаторами в рамках заказов или по другим вопросам
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ChatsList />
+            <CreatorsList />
           </CardContent>
         </Card>
       </div>

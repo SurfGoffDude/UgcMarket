@@ -41,15 +41,165 @@ const profileFormSchema = z.object({
     'up_to_30_days', 'up_to_60_days', 'more_than_60_days'
   ]).optional(),
   available_for_hire: z.boolean().default(true),
-  social_links: z.array(z.object({
-    platform: z.string().min(1, "Платформа не может быть пустой"),
-    url: z.string().url("Неверный формат URL"),
-  })).default([]),
+  social_links: z.array(
+    z.object({
+      platform: z.string().min(1, "Платформа не может быть пустой"),
+      url: z.string().superRefine(
+        (url, ctx) => {
+          if (!url) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "URL не может быть пустым"
+            });
+            return;
+          }
+          
+          // Получаем информацию о платформе из пути данных
+          // Сначала проверим, что ctx.path существует
+          if (!ctx.path) {
+            const isValidUrl = z.string().url().safeParse(url).success;
+            if (!isValidUrl) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Некорректный URL"
+              });
+            }
+            return;
+          }
+          
+          // Используем путь для определения платформы
+          let platform;
+          try {
+            // Извлекаем путь до текущего поля url
+            const pathStr = String(ctx.path);
+            
+            // Если путь содержит информацию о платформе, извлекаем её
+            // формат пути: social_links.0.url, social_links.1.url, и т.д.
+            const indexMatch = pathStr.match(/social_links\.(\d+)\.url/);
+            if (indexMatch && indexMatch[1]) {
+              // Получаем индекс текущего элемента в массиве
+              const index = parseInt(indexMatch[1]);
+              
+              // Платформу получаем из соседнего элемента массива
+              // В качестве временного решения мы можем использовать выбранную платформу
+              // из URL. Это не самое надежное решение, но позволит определить большинство платформ
+              
+              // Определяем платформу по URL
+              platform = getPlatformFromUrl(url);
+            }
+          } catch (e) {
+            console.error('Error extracting platform from validation context:', e);
+          }
+            
+          if (!platform) return z.string().url().safeParse(url).success;
+          
+          // Шаблоны URL для различных платформ
+          const urlPatterns = {
+            facebook: /^https?:\/\/(www\.)?facebook\.com\/[\w.]+$/i,
+            youtube: /^https?:\/\/(www\.)?youtube\.com\/(channel\/UC[\w-]+|@[\w.-]+)$/i,
+            twitter: /^https?:\/\/(www\.)?twitter\.com\/[\w]+$/i,
+            instagram: /^https?:\/\/(www\.)?instagram\.com\/[\w.]+$/i,
+            whatsapp: /^https?:\/\/(www\.)?wa\.me\/\d+$/i,
+            tiktok: /^https?:\/\/(www\.)?tiktok\.com\/@[\w.]+$/i,
+            linkedin: /^https?:\/\/(www\.)?linkedin\.com\/in\/[\w-]+$/i,
+            telegram: /^https?:\/\/(www\.)?t\.me\/[\w]+$/i,
+            pinterest: /^https?:\/\/(www\.)?pinterest\.com\/[\w]+$/i,
+            reddit: /^https?:\/\/(www\.)?reddit\.com\/user\/[\w]+$/i,
+            vkontakte: /^https?:\/\/(www\.)?vk\.com\/[\w.]+$/i,
+            dzen: /^https?:\/\/(www\.)?zen\.yandex\.ru\/id\/[\w\d]+$/i,
+            twitch: /^https?:\/\/(www\.)?twitch\.tv\/[\w]+$/i
+          };
+          
+          const pattern = urlPatterns[platform as keyof typeof urlPatterns];
+          if (!pattern) {
+            const isValidUrl = z.string().url().safeParse(url).success;
+            if (!isValidUrl) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Некорректный URL"
+              });
+            }
+            return;
+          }
+          
+          // Строгая проверка на соответствие шаблону
+          const isValid = pattern.test(url);
+          if (!isValid) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: `URL не соответствует формату для ${platform}. Правильный формат: ${getUrlPlaceholder(platform)}`
+            });
+          }
+        }
+      )
+    })
+  ).default([]),
   
   // Другие поля CreatorProfile, как rating и verified будут read-only
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
+
+// Функция для получения платформы по URL
+const getPlatformFromUrl = (url: string): string | undefined => {
+  try {
+    const urlLower = url.toLowerCase();
+    
+    if (urlLower.includes('facebook.com')) return 'facebook';
+    if (urlLower.includes('youtube.com')) return 'youtube';
+    if (urlLower.includes('twitter.com')) return 'twitter';
+    if (urlLower.includes('instagram.com')) return 'instagram';
+    if (urlLower.includes('wa.me')) return 'whatsapp';
+    if (urlLower.includes('tiktok.com')) return 'tiktok';
+    if (urlLower.includes('linkedin.com')) return 'linkedin';
+    if (urlLower.includes('t.me')) return 'telegram';
+    if (urlLower.includes('pinterest.com')) return 'pinterest';
+    if (urlLower.includes('reddit.com')) return 'reddit';
+    if (urlLower.includes('vk.com')) return 'vkontakte';
+    if (urlLower.includes('zen.yandex.ru') || urlLower.includes('dzen.ru')) return 'dzen';
+    if (urlLower.includes('twitch.tv')) return 'twitch';
+  } catch (e) {
+    console.error('Error determining platform from URL:', e);
+  }
+  
+  return undefined;
+};
+
+// Функция для получения подсказки URL в зависимости от выбранной платформы
+const getUrlPlaceholder = (platform: string | undefined): string => {
+  if (!platform) return "https://...";
+  
+  switch (platform) {
+    case 'facebook':
+      return "https://www.facebook.com/username";
+    case 'youtube':
+      return "https://www.youtube.com/channel/UCxxxxxxxxxxxx или https://www.youtube.com/@username";
+    case 'twitter':
+      return "https://twitter.com/username";
+    case 'instagram':
+      return "https://www.instagram.com/username";
+    case 'whatsapp':
+      return "https://wa.me/номер_в_международном_формате";
+    case 'tiktok':
+      return "https://www.tiktok.com/@username";
+    case 'linkedin':
+      return "https://www.linkedin.com/in/username";
+    case 'telegram':
+      return "https://t.me/username";
+    case 'pinterest':
+      return "https://www.pinterest.com/username";
+    case 'reddit':
+      return "https://www.reddit.com/user/username";
+    case 'vkontakte':
+      return "https://vk.com/username";
+    case 'dzen':
+      return "https://zen.yandex.ru/id/цифровой_идентификатор";
+    case 'twitch':
+      return "https://www.twitch.tv/username";
+    default:
+      return "https://...";
+  }
+};
 
 const CreatorProfileEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -711,7 +861,10 @@ const CreatorProfileEditPage: React.FC = () => {
                           render={({ field }) => (
                             <FormItem className="flex-1">
                               <FormControl>
-                                <Input placeholder="URL" {...field} />
+                                <Input 
+                                  placeholder={getUrlPlaceholder(form.watch(`social_links.${index}.platform`))} 
+                                  {...field} 
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
