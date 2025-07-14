@@ -83,6 +83,7 @@ class OrderViewSet(viewsets.ModelViewSet):
     Поддерживает создание, просмотр, обновление и удаление заказов.
     Поддерживает создание заказа на основе услуги с возможностью внесения правок.
     """
+
     queryset = Order.objects.all()
     permission_classes = [permissions.IsAuthenticated, IsClientOrReadOnly]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -711,6 +712,68 @@ class OrderResponseViewSet(viewsets.ModelViewSet):
                 chat=chat,
                 content=message_text,
                 is_system_message=True
+            )
+
+
+    @action(detail=False, methods=['get'], url_path='creator-client-orders')
+    def creator_client_orders(self, request):
+        """
+        Возвращает все заказы между клиентом и креатором со статусами 'in_progress', 'on_review' или 'completed'.
+        
+        Для фильтрации требуются параметры client и target_creator.
+        
+        Примеры запросов:
+        /api/orders/creator-client-orders/?client=1&target_creator=2
+        """
+        client_id = request.query_params.get('client')
+        target_creator_id = request.query_params.get('target_creator')
+        
+        if not client_id or not target_creator_id:
+            return Response(
+                {'error': 'Необходимо указать параметры client и target_creator'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Проверяем, что клиент и креатор существуют
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            
+            client_exists = User.objects.filter(id=client_id).exists()
+            creator_exists = User.objects.filter(id=target_creator_id).exists()
+            
+            if not client_exists:
+                return Response(
+                    {'error': f'Клиент с ID {client_id} не найден'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+                
+            if not creator_exists:
+                return Response(
+                    {'error': f'Креатор с ID {target_creator_id} не найден'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Получаем заказы между указанным клиентом и креатором со статусами in_progress, on_review или completed
+            queryset = Order.objects.filter(
+                client_id=client_id,
+                target_creator_id=target_creator_id,
+                status__in=['in_progress', 'on_review', 'completed']
+            ).distinct()
+            
+            serializer = OrderListSerializer(queryset, many=True, context={'request': request})
+            return Response(serializer.data)
+        except Order.DoesNotExist:
+            return Response(
+                {'error': 'Указанные заказы не найдены'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            # Логирование ошибки для отладки
+            logger.error(f"Ошибка при получении заказов между клиентом {client_id} и креатором {target_creator_id}: {str(e)}")
+            return Response(
+                {'error': 'Произошла ошибка при обработке запроса'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 

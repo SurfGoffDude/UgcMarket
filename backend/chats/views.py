@@ -4,6 +4,8 @@
 Модуль содержит представления для работы с чатами и сообщениями.
 """
 
+import logging
+
 from rest_framework import viewsets, permissions, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -17,6 +19,9 @@ from .serializers import (
     SystemMessageTemplateSerializer, ChatCreateSerializer
 )
 from .permissions import IsChatParticipant, IsMessageSender
+
+# Инициализация логгера для всего модуля
+logger = logging.getLogger(__name__)
 
 class ChatViewSet(viewsets.ModelViewSet):
     """
@@ -258,7 +263,7 @@ class ChatViewSet(viewsets.ModelViewSet):
         
         serializer = ChatDetailSerializer(chat, context={'request': request})
         return Response(serializer.data)
-        
+    
     @action(detail=False, methods=['post'], url_path='create-for-order/(?P<order_id>\d+)')
     def create_chat_for_order(self, request, order_id=None):
         """
@@ -266,6 +271,12 @@ class ChatViewSet(viewsets.ModelViewSet):
         Чат может быть создан только креатором (исполнителем) как отклик на заказ.
         Клиент не может создавать чат, он должен ждать отклика креатора.
         """
+        # Настраиваем уровень логирования для явного вывода в консоль
+        logging.getLogger().setLevel(logging.ERROR)
+        
+        # Проверка, что функция вызывается
+        logger.error("\n\n!!!!!!! ФУНКЦИЯ create_chat_for_order ВЫЗВАНА: order_id=%s, user=%s !!!!!!!", 
+                   order_id, request.user.username)
         if not order_id:
             return Response(
                 {'error': 'Не указан ID заказа'},
@@ -316,8 +327,36 @@ class ChatViewSet(viewsets.ModelViewSet):
             
         # Проверяем, существует ли уже чат для этого заказа
         existing_chat = Chat.objects.filter(order=order).first()
+        
+        # Важно! Добавляем логирование и изменение статуса независимо от существования чата
+        print(f"\n\n===== ДИАГНОСТИКА ИЗМЕНЕНИЯ СТАТУСА ЗАКАЗА =====\n")
+        print(f"0. ЧАТ {'СУЩЕСТВУЕТ' if existing_chat else 'НЕ СУЩЕСТВУЕТ'} для этого заказа")
+        
+        try:
+            # Выведем текущий статус в консоль
+            print(f"1. Текущий статус заказа {order.title} (ID: {order.id}): '{order.status}'")
+            
+            # Всегда пытаемся изменить статус на 'in_progress'
+            print(f"2. Пытаемся изменить статус заказа на 'in_progress'")
+            order.status = 'in_progress'
+            order.save()
+            
+            # Проверяем, что статус изменился
+            order.refresh_from_db()
+            print(f"3. Статус после изменения: '{order.status}'")
+            
+            # Финальная проверка через повторный запрос к БД
+            from orders.models import Order
+            db_order = Order.objects.get(id=order.id)
+            print(f"4. Финальная проверка статуса через новый запрос к БД: '{db_order.status}'")
+        
+        except Exception as e:
+            # Логируем ошибку при попытке изменить статус
+            print(f"ERROR: Не удалось изменить статус заказа: {str(e)}")
+        
+        # Если чат уже существует, возвращаем его (статус заказа уже изменен выше)
         if existing_chat:
-            # Если чат уже существует, возвращаем его
+            print(f"5. Возвращаем существующий чат ID={existing_chat.id}")
             serializer = ChatDetailSerializer(existing_chat, context={'request': request})
             return Response(serializer.data)
         
@@ -347,16 +386,88 @@ class ChatViewSet(viewsets.ModelViewSet):
             )
         except Exception as e:
             # Если возникла ошибка при создании чата
+            logger.error("Ошибка при создании чата: %s", str(e))
             return Response(
                 {'error': f'Ошибка при создании чата: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         
+        # Начинаем диагностику изменения статуса заказа
+        logger.error("\n\n!!!!!!! ДИАГНОСТИКА ИЗМЕНЕНИЯ СТАТУСА ЗАКАЗА !!!!!!")
+        logger.error("Текущий статус заказа %s (ID: %s): '%s'", order.title, order.id, order.status)
+        
+        print("\n\n===== ДИАГНОСТИКА ИЗМЕНЕНИЯ СТАТУСА ЗАКАЗА =====\n")
+        try:
+            # Выведем текущий статус в консоль
+            print(f"1. Текущий статус заказа {order.title} (ID: {order.id}): '{order.status}'")
+            
+            # Выведем допустимые переходы статусов из модели Order
+            valid_transitions = {
+                'draft': ['published', 'canceled'],
+                'published': ['awaiting_response', 'in_progress', 'canceled'],
+                'awaiting_response': ['in_progress', 'canceled'],
+                'in_progress': ['on_review', 'canceled'],
+                'on_review': ['in_progress', 'completed', 'canceled'],
+                'completed': [],  # Финальный статус
+                'canceled': ['draft']  # Можно восстановить только в черновик
+            }
+            print(f"2. Допустимые переходы из статуса '{order.status}': {valid_transitions.get(order.status, [])}")
+            print(f"3. Изменение на 'in_progress' допустимо: {'in_progress' in valid_transitions.get(order.status, [])}")
+            
+            # Меняем статус с помощью метода change_status() и явно выводим результат
+            print(f"4. Пытаемся изменить статус заказа на 'in_progress' через change_status()")
+            status_changed = order.change_status('in_progress')
+            print(f"5. Результат change_status(): {status_changed} (успешно: {status_changed})")
+            print(f"6. Статус после change_status() до сохранения: '{order.status}'")
+            
+            # Важно! Метод change_status не выполняет save(), поэтому нужно сохранить явно
+            print(f"7. Явно сохраняем объект order после change_status()")
+            order.save()
+            print(f"8. Объект order сохранен в БД")
+            
+            # Проверяем через БД - обновляем объект из БД
+            print(f"9. Проверяем изменения через refresh_from_db()")
+            order.refresh_from_db()
+            print(f"10. Статус после refresh_from_db: '{order.status}'")
+            
+            # Если статус не изменился, пробуем другой подход
+            if order.status != 'in_progress':
+                print(f"11. Статус не изменился. Пробуем прямое присваивание")
+                order.status = 'in_progress'
+                order.save()
+                order.refresh_from_db()
+                print(f"12. Статус после прямого присваивания и сохранения: '{order.status}'")
+            
+            # Выведем еще одну проверку через повторный запрос к БД
+            from orders.models import Order
+            db_order = Order.objects.get(id=order.id)
+            print(f"13. Финальная проверка статуса через новый запрос к БД: '{db_order.status}'")
+            
+            logger.error("Текущий статус заказа %s (ID: %s): '%s'", order.title, order.id, order.status)
+            
+            # Дополнительная проверка через повторный запрос к БД
+            from orders.models import Order
+            db_order = Order.objects.get(id=order.id)
+            logger.error("Проверка через новый запрос к БД: db_order.status = '%s'", db_order.status)
+            
+            # Если статус не изменился, пробуем прямое присваивание и сохранение
+            if db_order.status != 'in_progress':
+                logger.error("Статус не изменился. Пробуем прямое присваивание...")
+                db_order.status = 'in_progress'
+                db_order.save()
+                db_order.refresh_from_db()
+                logger.error("После прямого присваивания и save(): db_order.status = '%s'", db_order.status)
+            
+        except Exception as e:
+            logger.error("ОШИБКА при попытке изменить статус: %s", str(e))
+        
+        logger.error("!!!!!!! КОНЕЦ ДИАГНОСТИКИ ИЗМЕНЕНИЯ СТАТУСА !!!!!!")
+        
         # Добавляем системное сообщение о том, что креатор откликнулся на заказ
         from chats.models import Message
         Message.objects.create(
             chat=new_chat,
-            content='Исполнитель откликнулся на заказ и начал чат.',
+            content=f'Исполнитель откликнулся на заказ "{order.title}" и начал чат. Статус заказа изменен на "В работе".',
             is_system_message=True
         )
         
@@ -393,6 +504,8 @@ class MessageViewSet(viewsets.ModelViewSet):
     def chat_messages(self, request):
         """
         Возвращает сообщения для конкретного чата.
+        Поддерживает как числовой id, так и формат creator_id-client_id.
+        При использовании формата creator_id-client_id фильтрует сообщения напрямую по ID креатора и клиента.
         """
         chat_id = request.query_params.get('chat_id')
         if not chat_id:
@@ -402,18 +515,60 @@ class MessageViewSet(viewsets.ModelViewSet):
             )
         
         user = request.user
-        chat = Chat.objects.filter(id=chat_id).filter(
-            Q(client=user) | Q(creator=user)
-        ).first()
+        chat = None
+        messages = None
+        
+        try:
+            # Проверяем, содержит ли chat_id дефис (формат creator_id-client_id)
+            if '-' in chat_id:
+                # Получаем creator_id и client_id из строки
+                creator_id, client_id = map(int, chat_id.split('-'))
+                
+                # Вместо поиска чата сначала, напрямую фильтруем сообщения по участникам чата
+                messages = Message.objects.filter(
+                    (Q(chat__creator_id=creator_id, chat__client_id=client_id) | 
+                     Q(chat__creator_id=client_id, chat__client_id=creator_id)) &
+                    (Q(chat__client=user) | Q(chat__creator=user))
+                ).select_related('chat', 'sender').order_by('created_at')
+                
+                # Если есть сообщения, получаем чат из первого сообщения
+                if messages.exists():
+                    chat = messages.first().chat
+                else:
+                    # Если сообщений нет, попробуем найти чат по участникам
+                    chat = Chat.objects.filter(
+                        Q(creator_id=creator_id, client_id=client_id) | 
+                        Q(creator_id=client_id, client_id=creator_id)
+                    ).filter(
+                        Q(client=user) | Q(creator=user)
+                    ).first()
+                    
+                    if chat:
+                        messages = Message.objects.filter(chat=chat).order_by('created_at')
+            else:
+                # Иначе используем как обычный числовой ID
+                chat = Chat.objects.filter(id=int(chat_id)).filter(
+                    Q(client=user) | Q(creator=user)
+                ).first()
+                
+                if chat:
+                    messages = Message.objects.filter(chat=chat).order_by('created_at')
+                
+        except (ValueError, TypeError) as e:
+            # Обработка ошибок преобразования строки в число
+            return Response(
+                {'error': f'Некорректный формат chat_id: {str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         if not chat:
             return Response(
                 {'error': 'Чат не найден или у вас нет доступа'},
                 status=status.HTTP_404_NOT_FOUND
             )
-        
-        # Получаем сообщения
-        messages = Message.objects.filter(chat=chat).order_by('created_at')
+            
+        if not messages:
+            messages = Message.objects.filter(chat=chat).order_by('created_at')
         
         # Помечаем сообщения как прочитанные
         if user == chat.client:

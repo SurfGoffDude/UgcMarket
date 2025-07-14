@@ -1,5 +1,87 @@
 # API документация UgcMarket
 
+## Заказы
+
+### Получение заказов между клиентом и креатором
+
+**Запрос:**
+```
+GET /api/orders/creator-client-orders/
+```
+
+**Заголовки:**
+```
+Authorization: Bearer <token>
+```
+
+**Параметры запроса:**
+- `client` - идентификатор клиента (обязательный)
+- `target_creator` - идентификатор креатора (обязательный)
+
+**Примечания:**
+- Возвращает все заказы между указанным клиентом и креатором со статусами 'in_progress', 'on_review' или 'completed'
+- Используется для отображения заказов в интерфейсе чата
+
+**Пример запроса:**
+```
+GET /api/orders/creator-client-orders/?client=2&target_creator=3
+```
+
+**Пример ответа:**
+```json
+[
+  {
+    "id": 5,
+    "title": "Дизайн логотипа",
+    "description": "Нужен логотип для нового проекта",
+    "client": 2,
+    "budget": 5000,
+    "deadline": "2023-08-10",
+    "status": "in_progress",
+    "created_at": "2023-07-08T09:15:33Z",
+    "updated_at": "2023-07-09T18:22:54Z"
+  },
+  {
+    "id": 8,
+    "title": "Дизайн визитной карточки",
+    "description": "Разработать дизайн корпоративной визитки",
+    "client": 2,
+    "budget": 2500,
+    "deadline": "2023-07-25",
+    "status": "completed",
+    "created_at": "2023-07-01T10:22:15Z",
+    "updated_at": "2023-07-15T16:40:33Z"
+  }
+]
+```
+
+### Фильтрация заказов
+
+**Запрос:**
+```
+GET /api/orders/
+```
+
+**Заголовки:**
+```
+Authorization: Bearer <token>
+```
+
+**Параметры фильтрации:**
+- `client` - идентификатор клиента
+- `target_creator` - идентификатор креатора (важно: используйте target_creator вместо creator)
+- `status` - статус заказа (например, 'published', 'in_progress', 'completed')
+- `category` - слаг категории
+- `min_budget`, `max_budget` - минимальный и максимальный бюджет
+- `deadline_before`, `deadline_after` - фильтрация по дедлайну
+- `is_private` - приватность заказа (true/false)
+- `tags` - фильтрация по тегам (список slug через запятую)
+
+**Пример запроса:**
+```
+GET /api/orders/?client=2&target_creator=3&status=in_progress
+```
+
 ## Чаты и сообщения
 
 ### Получение списка доступных креаторов
@@ -203,6 +285,53 @@ Authorization: Bearer <token>
 }
 ```
 
+### Создание чата для заказа (отклик креатора)
+
+**Запрос:**
+```
+POST /api/chats/create-for-order/{order_id}/
+```
+
+**Заголовки:**
+```
+Authorization: Bearer <token>
+```
+
+**Параметры:**
+- `order_id` - идентификатор заказа
+
+**Описание:**
+- Этот эндпоинт используется креаторами для отклика на заказ и создания чата с клиентом
+- При успешном запросе статус заказа меняется на "in_progress" (В работе)
+- В чате автоматически создается системное сообщение об отклике на заказ
+- Только креаторы могут использовать этот эндпоинт, клиенты получат ошибку 403
+
+**Пример ответа:**
+```json
+{
+  "id": 5,
+  "client": {
+    "id": 2,
+    "username": "client1",
+    "avatar": "/media/avatars/client1.jpg"
+  },
+  "creator": {
+    "id": 3,
+    "username": "creator1",
+    "avatar": "/media/avatars/creator1.jpg"
+  },
+  "order": {
+    "id": 8,
+    "title": "Дизайн логотипа для стартапа",
+    "status": "in_progress",
+    "budget": 10000
+  },
+  "created_at": "2023-07-11T14:50:22Z",
+  "updated_at": "2023-07-11T14:50:22Z",
+  "is_active": true,
+  "unread_messages_count": 0
+}
+```
 ### Получение сообщений чата
 
 **Запрос:**
