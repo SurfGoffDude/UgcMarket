@@ -3,6 +3,7 @@ import { Search, MessageSquare, CheckCircle, Zap, ArrowRight } from 'lucide-reac
 import { Button } from './ui/button';
 import { motion, useAnimation } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
+import { useNavigate } from 'react-router-dom';
 
 const steps = [
   {
@@ -32,11 +33,16 @@ const steps = [
 ];
 
 const HowItWorks = () => {
+  const navigate = useNavigate();
   const controls = useAnimation();
   const [ref, inView] = useInView({
     triggerOnce: true,
     threshold: 0.1,
   });
+  
+  const handleStartSearch = () => {
+    navigate('/catalog');
+  };
 
   useEffect(() => {
     if (inView) {
@@ -144,6 +150,7 @@ const HowItWorks = () => {
           <Button 
             className="group bg-gradient-to-r from-[var(--primary-600)] to-[var(--accent-600)] hover:from-[var(--primary-700)] hover:to-[var(--accent-700)] px-8 py-6 text-lg rounded-full hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-300"
             size="lg"
+            onClick={handleStartSearch}
           >
             Начать поиск креаторов
             <ArrowRight className="w-5 h-5 ml-2 transition-transform duration-300 group-hover:translate-x-1" />

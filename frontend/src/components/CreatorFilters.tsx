@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Search, Filter, ChevronDown, ChevronUp } from 'lucide-react';
+import { useFilter } from '@/contexts/FilterContext';
 
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';

@@ -14,7 +14,7 @@ const HeroSection = () => {
   });
 
   const handleFindCreators = () => {
-    navigate('/catalog');
+    navigate('/catalog-creators');
   };
 
   const handleCreateOrder = () => {
@@ -56,9 +56,9 @@ const HeroSection = () => {
             <motion.div className="space-y-4" variants={item}>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white leading-tight">
                 Найдите идеального{' '}
-                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-[#E95C4B]">
+                <span className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-[#E95C4B]">
                   UGC-креатора
-                </h1>
+                </span>
                 {' '}для вашего бренда
               </h1>
               <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 leading-relaxed">

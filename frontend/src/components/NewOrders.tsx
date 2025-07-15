@@ -1,10 +1,14 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Clock, DollarSign, Calendar, MessageSquare, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
 import { Button } from './ui/button';
+import { useNavigate } from 'react-router-dom';
+import { fetchLatestPublicOrders } from '@/api/ordersApi';
+import { OrderWithDetails } from '@/types/orders';
 
-const orders = [
+// Моковые данные на случай ошибки
+const mockOrders = [
   {
     id: 1,
     title: 'Нужен обзор на фитнес-трекер',
@@ -48,105 +52,154 @@ const orders = [
 ];
 
 const NewOrders = () => {
+  const navigate = useNavigate();
   const [ref, inView] = useInView({
-    triggerOnce: true,
-    threshold: 0.1,
+    triggerOnce: false,
+    threshold: 0.1
   });
 
-  const container = {
+  const [orders, setOrders] = useState<OrderWithDetails[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Загружаем данные о последних публичных заказах при монтировании компонента
+  useEffect(() => {
+    const loadLatestOrders = async () => {
+      setIsLoading(true);
+      try {
+        const data = await fetchLatestPublicOrders(4); // Получаем 4 последних публичных заказа
+        setOrders(data.results.map(order => ({
+          ...order,
+          // Форматируем данные для отображения
+          budget: order.budget ? 
+            typeof order.budget === 'number' 
+              ? `${order.budget.toLocaleString()} ₽` 
+              : order.budget
+            : `${order.price?.toLocaleString() || '0'} ₽`,
+          deadline: order.delivery_date ? 
+            new Date(order.delivery_date) > new Date() ?
+              `${Math.ceil((new Date(order.delivery_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} дней` : 
+              'Срок истек'
+            : 'Не указан',
+          proposals: order.proposals?.length || 0,
+          category: order.tags?.length > 0 ? order.tags[0].name : 'Разное'
+        })));
+      } catch (error) {
+        console.error('Ошибка при загрузке последних заказов:', error);
+        // Используем моковые данные в случае ошибки
+        setOrders(mockOrders as unknown as OrderWithDetails[]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadLatestOrders();
+  }, []);
+  
+  // Переход на страницу всех заказов
+  const handleViewAllOrders = () => {
+    navigate('/orders');
+  };
+  
+  // Переход на страницу деталей заказа
+  const handleOrderDetails = (id: number) => {
+    navigate(`/orders/${id}`);
+  };
+
+  // Анимации
+  const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2,
-      },
-    },
-  };
-
-  const item = {
-    hidden: { opacity: 0, y: 30 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.6,
-        ease: [0.16, 1, 0.3, 1],
-      },
-    },
+        staggerChildren: 0.1
+      }
+    }
   };
 
   const fadeInUp = {
-    hidden: { opacity: 0, y: 30 },
+    hidden: { opacity: 0, y: 20 },
     visible: {
       opacity: 1,
       y: 0,
       transition: {
-        duration: 0.8,
-        ease: [0.16, 1, 0.3, 1],
-      },
-    },
+        duration: 0.6
+      }
+    }
   };
 
   return (
-    <section className="py-16 bg-gray-50 dark:bg-gray-800/30">
-      <div className="container mx-auto px-4">
-        <motion.div 
-          className="text-center mb-12"
-          initial="hidden"
-          animate={inView ? "visible" : "hidden"}
-          variants={fadeInUp}
-        >
-          <h2 className="text-4xl font-bold mb-4 text-[#E95C4B] dark:text-[#E95C4B]">
+    <section className="py-16 bg-white dark:bg-gray-950">
+      <div className="container mx-auto px-4" ref={ref}>
+        <div className="text-center mb-12">
+          <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
             Новые заказы
           </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            Свежие заказы от заказчиков, которые ищут таких креаторов, как вы
+          <p className="text-xl text-gray-600 dark:text-gray-300">
+            Последние опубликованные задания для креаторов
           </p>
-        </motion.div>
-        
+        </div>
+
         <motion.div 
-          className="grid md:grid-cols-2 lg:grid-cols-2 gap-6 mb-12"
-          ref={ref}
+          className="grid grid-cols-2 gap-4 md:gap-6 mb-12"
+          variants={containerVariants}
           initial="hidden"
           animate={inView ? "visible" : "hidden"}
-          variants={container}
         >
-          {orders.map((order) => (
-            <motion.div
-              key={order.id}
-              className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-shadow duration-300"
-              variants={item}
-            >
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-xl font-semibold text-primary dark:text-[var(--primary-400)] mb-4">
-                      {order.title}
-                    </h3>
-                    <div className="flex gap-2 mb-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--primary-100)] text-[var(--primary-800)] dark:bg-[var(--primary-900/50)] dark:text-[var(--primary-300)]">
-                        {order.category}
-                      </span>
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--secondary-100)] text-[var(--secondary-800)] dark:bg-[var(--secondary-900/50)] dark:text-[var(--secondary-300)]">
-                        {order.platform}
-                      </span>
-                    </div>
+          {isLoading ? (
+            // Отображаем скелетоны загрузки
+            Array.from({ length: 4 }).map((_, index) => (
+              <motion.div 
+                key={index}
+                variants={fadeInUp}
+                className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 animate-pulse border border-gray-100 dark:border-gray-700"
+              >
+                <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-4"></div>
+                <div className="flex space-x-4 mb-4">
+                  <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
+                  <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
+                </div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full mb-2"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full mb-2"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-6"></div>
+                <div className="flex justify-between mt-6">
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
                   </div>
-                  <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                    <MessageSquare className="w-4 h-4 mr-1" />
-                    <span>{order.proposals}</span>
+                  <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-28"></div>
+                </div>
+              </motion.div>
+            ))
+          ) : (
+            orders.map((order, index) => (
+              <motion.div
+                key={order.id}
+                variants={fadeInUp}
+                className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-100 dark:border-gray-700"
+              >
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+                  {order.title}
+                </h3>
+                
+                <div className="overflow-x-auto whitespace-nowrap flex gap-3 mb-4 pb-1 no-scrollbar">
+                  {order.tags && order.tags.length > 0 && order.tags.map((tag, index) => (
+                    <div key={index} className="flex items-center text-sm bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-3 py-1 rounded-full flex-shrink-0">
+                      <span>{tag.name}</span>
+                    </div>
+                  ))}
+                  <div className="flex items-center text-sm bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-3 py-1 rounded-full flex-shrink-0">
+                    <span>{order.proposals} предложений</span>
                   </div>
                 </div>
                 
                 <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
-                  {order.description}
+                  {order.description || order.requirements}
                 </p>
                 
                 <div className="flex flex-wrap items-center justify-between mt-6">
                   <div className="space-y-2">
                     <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                      <DollarSign className="w-4 h-4 mr-2" />
+                      <span className="mr-2">₽</span>
                       <span>{order.budget}</span>
                     </div>
                     <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
@@ -154,14 +207,18 @@ const NewOrders = () => {
                       <span>До {order.deadline}</span>
                     </div>
                   </div>
-                  <Button variant="outline" className="group">
+                  <Button 
+                    variant="outline" 
+                    className="group" 
+                    onClick={() => handleOrderDetails(order.id)}
+                  >
                     Подробнее
                     <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" />
                   </Button>
                 </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            ))
+          )}
         </motion.div>
         
         <motion.div 
@@ -170,7 +227,11 @@ const NewOrders = () => {
           animate={inView ? "visible" : "hidden"}
           variants={fadeInUp}
         >
-          <Button variant="outline" className="px-8 py-6 rounded-full text-base border-2 border-[var(--primary-600)] text-primary hover:bg-[var(--primary-50)] dark:border-[var(--primary-500)] dark:text-[var(--primary-400)] dark:hover:bg-gray-800/70">
+          <Button 
+            variant="outline" 
+            className="px-8 py-6 rounded-full text-base border-2 border-[var(--primary-600)] text-primary hover:bg-[var(--primary-50)] dark:border-[var(--primary-500)] dark:text-[var(--primary-400)] dark:hover:bg-gray-800/70"
+            onClick={handleViewAllOrders}
+          >
             Смотреть все заказы
           </Button>
         </motion.div>

@@ -4,6 +4,7 @@ import App from './App.tsx'
 import './index.css'
 import { AuthProvider } from './contexts/AuthContext'
 import { ApiProvider } from './contexts/ApiContext'
+import { FilterProvider } from './contexts/FilterContext'
 import { store } from './store'
 import { BrowserRouter } from 'react-router-dom'
 import { checkReactDevTools } from './utils/devtools'
@@ -24,7 +25,9 @@ if (!rootElement) {
       <BrowserRouter>
         <AuthProvider>
           <ApiProvider>
-            <App />
+            <FilterProvider>
+              <App />
+            </FilterProvider>
           </ApiProvider>
         </AuthProvider>
       </BrowserRouter>

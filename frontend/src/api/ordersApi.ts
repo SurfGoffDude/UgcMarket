@@ -279,3 +279,25 @@ export const getTags = async (): Promise<BackendTag[]> => {
   }
 };
 
+/**
+ * Получить список последних публичных заказов
+ * @param limit - Ограничение на количество возвращаемых заказов
+ * @returns Объект с результатами запроса, содержащий массив заказов
+ */
+export const fetchLatestPublicOrders = async (limit = 4): Promise<{ count: number; results: any[]; next: string | null; previous: string | null }> => {
+  try {
+    const response = await apiClient.get('orders/', {
+      params: {
+        is_private: false,
+        page_size: limit,
+        ordering: '-created_at'
+      }
+    });
+    
+    return response.data;
+  } catch (error: any) {
+    console.error('Ошибка при загрузке последних публичных заказов:', error);
+    throw error;
+  }
+};
+

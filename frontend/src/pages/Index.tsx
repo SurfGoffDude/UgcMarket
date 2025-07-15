@@ -13,39 +13,39 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
       <main>
-        {/* Hero Section */}
+        {/* 0. Первый блок */}
         <section id="hero">
           <HeroSection />
         </section>
         
-        {/* Features Section */}
-        <section id="features">
-          <FeaturesSection />
-        </section>
-        
-        {/* Popular Categories */}
-        <section id="categories" className="py-16 bg-gray-50 dark:bg-gray-900">
-          <PopularCategories />
-        </section>
-        
-        {/* How It Works */}
+        {/* 1. Как это работает */}
         <section id="how-it-works" className="py-16 bg-white dark:bg-gray-800">
           <HowItWorks />
         </section>
         
-        {/* Testimonials */}
-        <section id="testimonials">
-          <TestimonialsSection />
+        {/* 2. Популярные категории */}
+        <section id="categories" className="py-16 bg-gray-50 dark:bg-gray-900">
+          <PopularCategories />
         </section>
         
-        {/* Top Creators */}
-        <section id="top-creators" className="py-16 bg-gray-50 dark:bg-gray-900">
+        {/* 3. Популярные креаторы */}
+        <section id="top-creators" className="py-16 bg-white dark:bg-gray-800">
           <TopCreators />
         </section>
         
-        {/* New Orders */}
-        <section id="new-orders" className="py-16 bg-white dark:bg-gray-800">
+        {/* 4. Свежие заказы */}
+        <section id="new-orders" className="py-16 bg-gray-50 dark:bg-gray-900">
           <NewOrders />
+        </section>
+        
+        {/* 5. Почему выбирают нас */}
+        <section id="features">
+          <FeaturesSection />
+        </section>
+        
+        {/* 6. Отзывы клиентов */}
+        <section id="testimonials">
+          <TestimonialsSection />
         </section>
         
         {/* Call to Action */}
