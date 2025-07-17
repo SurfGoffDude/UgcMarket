@@ -186,10 +186,25 @@ const Header = () => {
                     <User className="mr-2 h-4 w-4" />
                     <span>Мой профиль</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/orders')} className="cursor-pointer">
-                    <Package className="mr-2 h-4 w-4" />
-                    <span>Мои заказы</span>
-                  </DropdownMenuItem>
+                  {/* Отображаем пункт меню заказов клиента только если у пользователя НЕТ профиля креатора */}
+                  {!user?.has_creator_profile && (
+                    <DropdownMenuItem 
+                      onClick={() => navigate('/orders')} 
+                      className="cursor-pointer">
+                      <Package className="mr-2 h-4 w-4" />
+                      <span>Мои заказы как клиента</span>
+                    </DropdownMenuItem>
+                  )}
+                  
+                  {/* Отображаем пункт меню заказов креатора только если у пользователя есть профиль креатора */}
+                  {user?.has_creator_profile && (
+                    <DropdownMenuItem 
+                      onClick={() => navigate('/creator-orders')} 
+                      className="cursor-pointer">
+                      <Package className="mr-2 h-4 w-4" />
+                      <span>Мои заказы как креатора</span>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem className="cursor-pointer" onClick={() => {
                     console.log('Клик по кнопке Сообщения (десктоп)!');
                     console.log('Текущий URL до перехода:', window.location.pathname);
@@ -320,6 +335,25 @@ const Header = () => {
                         Настройки уведомлений
                       </Button>
                     </Link>
+                    {/* Отображаем пункт меню заказов клиента только если у пользователя НЕТ профиля креатора */}
+                    {!user?.has_creator_profile && (
+                      <Link to="/orders" className="block" onClick={toggleMenu}>
+                        <Button variant="outline" className="w-full justify-center">
+                          <Package className="w-4 h-4 mr-2" />
+                          Мои заказы как клиента
+                        </Button>
+                      </Link>
+                    )}
+                    
+                    {/* Отображаем пункт меню заказов креатора только если у пользователя есть профиль креатора */}
+                    {user?.has_creator_profile && (
+                      <Link to="/creator-orders" className="block" onClick={toggleMenu}>
+                        <Button variant="outline" className="w-full justify-center">
+                          <Package className="w-4 h-4 mr-2" />
+                          Мои заказы как креатора
+                        </Button>
+                      </Link>
+                    )}
                     <Button 
                       onClick={() => { logout(); toggleMenu(); }}
                       variant="destructive" 

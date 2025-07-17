@@ -11,6 +11,9 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import F, Q
 from django.utils import timezone
 
+# Импортируем модели Chat и Message для создания чата при отклике
+from chats.models import Chat, Message
+
 from .models import (
     Category, Tag, Order, OrderAttachment, 
     OrderResponse, Delivery, Review
@@ -26,6 +29,13 @@ from .permissions import (
     IsOrderParticipant, IsReviewAuthor
 )
 from .filters import OrderFilter
+
+# Получаем модель пользователя динамически, чтобы не допустить циклических импортов
+from django.contrib.auth import get_user_model
+User = get_user_model()
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
@@ -262,22 +272,52 @@ class OrderViewSet(viewsets.ModelViewSet):
             
             # Обновляем заказ
             creator = User.objects.get(id=creator_id)
+            
+            # Логирование перед установкой значений
+            logger.info(f"ОТЛАДКА: перед обновлением заказа {order.id}: creator_id={creator_id}, creator={creator}, order.target_creator={getattr(order, 'target_creator', None)}")
+            
             order.creator = creator
+            order.target_creator = creator
             order.status = 'in_progress'
-            order.save()
+            
+            # Логирование перед сохранением
+            logger.info(f"ОТЛАДКА: перед сохранением заказа {order.id}: order.creator={order.creator}, order.target_creator={order.target_creator}")
+            
+            try:
+                # Сохраняем заказ и перехватываем возможные исключения
+                # Используем прямой SQL запрос для гарантированного обновления
+                from django.db import connection
+                with connection.cursor() as cursor:
+                    # Обновляем значения напрямую в БД
+                    cursor.execute(
+                        "UPDATE orders_order SET creator_id = %s, target_creator_id = %s, status = %s WHERE id = %s",
+                        [creator.id, creator.id, 'in_progress', order.id]
+                    )
+                    # Убеждаемся, что обновлено ровно одну запись
+                    rows_updated = cursor.rowcount
+                    logger.info(f"ОТЛАДКА: Обновлено записей: {rows_updated}, заказ {order.id}, креатор: {creator.id}")
+                
+                # После прямого SQL запроса обновляем объект в памяти
+                order.creator = creator
+                order.target_creator = creator
+                order.status = 'in_progress'
+                
+                logger.info(f"ОТЛАДКА: заказ {order.id} успешно обновлен в БД напрямую")
+            except Exception as e:
+                # Логируем ошибку, если она возникла при сохранении
+                logger.error(f"КРИТИЧЕСКАЯ ОШИБКА при сохранении заказа {order.id}: {str(e)}")
+                return Response(
+                    {'error': f'Ошибка при сохранении заказа: {str(e)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            
+            # Проверяем, что target_creator был действительно установлен после сохранения
+            order.refresh_from_db()  # Перезагружаем объект из БД
+            logger.info(f"ОТЛАДКА: после сохранения заказа {order.id}: order.creator_id={order.creator_id}, order.target_creator_id={order.target_creator_id}, target_creator установлен: {order.target_creator_id is not None}")
             
             # Отклоняем остальные отклики
             OrderResponse.objects.filter(order=order).exclude(id=response_id).update(status='rejected')
-            
-            # Создаём чат между клиентом и креатором
-            from chats.models import Chat, Message, SystemMessageTemplate
-            
-            # Проверяем, существует ли уже чат между клиентом и креатором для этого заказа
-            chat, chat_created = Chat.objects.get_or_create(
-                client=order.client,
-                creator=creator,
-                order=order
-            )
+  
             
             # Если чат только что создан или произошло изменение статуса, добавляем системное сообщение
             try:
@@ -293,13 +333,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             except (SystemMessageTemplate.DoesNotExist, KeyError):
                 # Используем стандартное сообщение
                 message_text = f"Креатор {creator.username} назначен исполнителем заказа '{order.title}'."                
-                
-            # Создаём системное сообщение
-            Message.objects.create(
-                chat=chat,
-                content=message_text,
-                is_system_message=True
-            )
+
             
             return Response(
                 {'message': 'Исполнитель выбран, заказ перешел в статус "В работе"'},
@@ -335,57 +369,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.status = 'on_review'
         order.save()
         
-        # Отправляем системное сообщение в чат
-        from chats.models import Chat, Message, SystemMessageTemplate
-        
-        # Получаем чат
-        chats = Chat.objects.filter(order=order)
-        
-        if chats.exists():
-            # Формируем сообщение об изменении статуса
-            try:
-                template = SystemMessageTemplate.objects.get(
-                    event_type=SystemMessageTemplate.EVENT_ORDER_STATUS_CHANGE,
-                    is_active=True
-                )
-                message_text = template.template.format(
-                    order_title=order.title,
-                    old_status=dict(Order.STATUS_CHOICES).get('in_progress', 'В работе'),
-                    new_status=dict(Order.STATUS_CHOICES).get('on_review', 'На проверке')
-                )
-            except (SystemMessageTemplate.DoesNotExist, KeyError):
-                # Используем стандартное сообщение
-                message_text = f"Статус заказа '{order.title}' изменён с 'В работе' на 'На проверке'."
-                
-            # Отправляем сообщение во все чаты, связанные с заказом
-            for chat in chats:
-                Message.objects.create(
-                    chat=chat,
-                    content=message_text,
-                    is_system_message=True
-                )
-                
-            # Отправляем напоминание клиенту
-            try:
-                template = SystemMessageTemplate.objects.get(
-                    event_type=SystemMessageTemplate.EVENT_ORDER_REMINDER,
-                    is_active=True
-                )
-                reminder_text = template.template.format(
-                    order_title=order.title,
-                    action="проверить работу и подтвердить завершение заказа"
-                )
-            except (SystemMessageTemplate.DoesNotExist, KeyError):
-                # Используем стандартное сообщение
-                reminder_text = f"Напоминание: заказ '{order.title}' ожидает проверки. Пожалуйста, проверьте работу и подтвердите завершение заказа."
-                
-            # Отправляем напоминание во все чаты, связанные с заказом
-            for chat in chats:
-                Message.objects.create(
-                    chat=chat,
-                    content=reminder_text,
-                    is_system_message=True
-                )
         
         return Response(
             {'message': 'Заказ отправлен на проверку клиенту'},
@@ -413,58 +396,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         
         # Увеличиваем счетчик выполненных заказов у креатора
         
-        # Отправляем системное сообщение в чат
-        from chats.models import Chat, Message, SystemMessageTemplate
-        
-        # Получаем чаты для этого заказа
-        chats = Chat.objects.filter(order=order)
-        
-        if chats.exists():
-            # Формируем сообщение об изменении статуса
-            try:
-                template = SystemMessageTemplate.objects.get(
-                    event_type=SystemMessageTemplate.EVENT_ORDER_STATUS_CHANGE,
-                    is_active=True
-                )
-                message_text = template.template.format(
-                    order_title=order.title,
-                    old_status=dict(Order.STATUS_CHOICES).get('on_review', 'На проверке'),
-                    new_status=dict(Order.STATUS_CHOICES).get('completed', 'Завершён')
-                )
-            except (SystemMessageTemplate.DoesNotExist, KeyError):
-                # Используем стандартное сообщение
-                message_text = f"Статус заказа '{order.title}' изменён с 'На проверке' на 'Завершён'."
-                
-            # Отправляем сообщение во все чаты, связанные с заказом
-            for chat in chats:
-                Message.objects.create(
-                    chat=chat,
-                    content=message_text,
-                    is_system_message=True
-                )
-                
-            # Формируем завершающее сообщение
-            try:
-                template = SystemMessageTemplate.objects.get(
-                    event_type=SystemMessageTemplate.EVENT_ORDER_COMPLETED,
-                    is_active=True
-                )
-                completion_text = template.template.format(
-                    order_title=order.title,
-                    client_name=order.client.username,
-                    creator_name=order.target_creator.username
-                )
-            except (SystemMessageTemplate.DoesNotExist, KeyError):
-                # Используем стандартное сообщение
-                completion_text = f"Заказ '{order.title}' успешно завершён! Клиент {order.client.username} подтвердил выполнение заказа. Приглашаем оставить отзыв о работе креатора {order.target_creator.username}."
-                
-            # Отправляем завершающее сообщение во все чаты
-            for chat in chats:
-                Message.objects.create(
-                    chat=chat,
-                    content=completion_text,
-                    is_system_message=True
-                )
         if order.target_creator and hasattr(order.target_creator, 'creator_profile'):
             creator_profile = order.target_creator.creator_profile
             creator_profile.completed_orders = F('completed_orders') + 1
@@ -504,15 +435,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.target_creator = user
         order.save()
         
-        # Создаём чат между клиентом и креатором
-        from chats.models import Chat, Message, SystemMessageTemplate
-        
-        # Проверяем, существует ли уже чат между клиентом и креатором для этого заказа
-        chat, chat_created = Chat.objects.get_or_create(
-            client=order.client,
-            creator=user,
-            order=order
-        )
+
         
         # Добавляем системное сообщение
         try:
@@ -528,13 +451,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         except (SystemMessageTemplate.DoesNotExist, KeyError):
             # Используем стандартное сообщение
             message_text = f"Статус заказа '{order.title}' изменён с 'Опубликован' на 'В работе'. Креатор {user.username} приступил к работе."
-        
-        # Создаём системное сообщение
-        Message.objects.create(
-            chat=chat,
-            content=message_text,
-            is_system_message=True
-        )
+
         
         return Response(
             {'message': 'Вы начали работу над заказом'},
@@ -623,6 +540,10 @@ class OrderResponseViewSet(viewsets.ModelViewSet):
         """
         Устанавливает текущего пользователя как создателя отклика и создает чат между клиентом и креатором.
         Использует бизнес-логику модели Order для проверки возможности отклика и изменения статуса.
+        
+        Особенности работы с чатом:
+        - Если чат между клиентом и креатором не существует, он будет создан.
+        - Если чат уже существует, но связан с другим заказом, создается связь с новым заказом.
         """
         # Получаем заказ
         order_id = serializer.validated_data.get('order').id
@@ -644,46 +565,39 @@ class OrderResponseViewSet(viewsets.ModelViewSet):
         client = order.client
         creator = user
         
+        # Проверяем, существует ли уже чат между клиентом и креатором
+        try:
+            # Ищем чат с этой парой клиент-креатор
+            chat = Chat.objects.get(client=client, creator=creator)
+            
+            # Если чат найден, но не связан с текущим заказом, добавляем связь с заказом
+            if chat.order != order:
+                # Создаем системное сообщение о новом заказе
+                Message.objects.create(
+                    chat=chat,
+                    content=f'Креатор {creator.username} откликнулся на заказ "{order.title}".',
+                    is_system_message=True
+                )
+        except Chat.DoesNotExist:
+            # Если чата не существует, создаем новый
+            chat = Chat.objects.create(
+                client=client,
+                creator=creator,
+                order=order,
+                is_active=True
+            )
+            
+            # Создаем приветственное системное сообщение
+            Message.objects.create(
+                chat=chat,
+                content=f'Создан чат между клиентом {client.username} и креатором {creator.username} по заказу "{order.title}".',
+                is_system_message=True
+            )
+        
         # Если это первый отклик на заказ и заказ в статусе 'published', меняем статус
         if order.responses.count() == 1 and order.status == 'published':
             order.change_status('awaiting_response')
             order.save()
-        
-        # Создаём чат между клиентом и креатором для обсуждения заказа
-        from chats.models import Chat, Message, SystemMessageTemplate
-        
-        # Проверяем, существует ли уже чат между клиентом и креатором для этого заказа
-        chat, chat_created = Chat.objects.get_or_create(
-            client=client,
-            creator=creator,
-            order=order
-        )
-        
-        # Если чат только что создан, добавляем системное сообщение об отклике
-        if chat_created:
-            # Пытаемся найти шаблон сообщения
-            try:
-                template = SystemMessageTemplate.objects.get(
-                    event_type=SystemMessageTemplate.EVENT_ORDER_CREATOR_RESPONDED,
-                    is_active=True
-                )
-                message_text = template.template.format(
-                    order_title=order.title,
-                    creator_name=creator.username,
-                    message=response.message
-                )
-            except (SystemMessageTemplate.DoesNotExist, KeyError):
-                # Используем стандартное сообщение
-                message_text = f"Креатор {creator.username} откликнулся на заказ '{order.title}'."
-                if response.message:
-                    message_text += f"\n\nСообщение: {response.message}"
-                    
-            # Создаём системное сообщение
-            Message.objects.create(
-                chat=chat,
-                content=message_text,
-                is_system_message=True
-            )
         
         # Для приватных заказов, автоматически назначаем креатора и меняем статус заказа
         if order.is_private and order.target_creator == creator and not order.creator:
@@ -693,21 +607,9 @@ class OrderResponseViewSet(viewsets.ModelViewSet):
             order.save()
             
             # Отправляем сообщение о назначении креатора
-            try:
-                template = SystemMessageTemplate.objects.get(
-                    event_type=SystemMessageTemplate.EVENT_ORDER_CREATOR_ASSIGNED,
-                    is_active=True
-                )
-                message_text = template.template.format(
-                    order_title=order.title,
-                    client_name=client.username,
-                    creator_name=creator.username
-                )
-            except (SystemMessageTemplate.DoesNotExist, KeyError):
-                # Используем стандартное сообщение
-                message_text = f"Креатор {creator.username} назначен исполнителем заказа '{order.title}'."
+            message_text = f"Креатор {creator.username} назначен исполнителем заказа '{order.title}'."
             
-            # Создаём ещё одно системное сообщение
+            # Добавляем системное сообщение в чат
             Message.objects.create(
                 chat=chat,
                 content=message_text,
@@ -721,60 +623,36 @@ class OrderResponseViewSet(viewsets.ModelViewSet):
         Возвращает все заказы между клиентом и креатором со статусами 'in_progress', 'on_review' или 'completed'.
         
         Для фильтрации требуются параметры client и target_creator.
+        Если параметр client пустой, то возвращаются все заказы для указанного креатора.
         
         Примеры запросов:
-        /api/orders/creator-client-orders/?client=1&target_creator=2
+        /api/orders/order-responses/creator-client-orders/?client=1&target_creator=2  - заказы между конкретным клиентом и креатором
+        /api/orders/order-responses/creator-client-orders/?client=&target_creator=2   - все заказы для креатора с ID=2
         """
         client_id = request.query_params.get('client')
         target_creator_id = request.query_params.get('target_creator')
         
-        if not client_id or not target_creator_id:
+        if not target_creator_id:
             return Response(
-                {'error': 'Необходимо указать параметры client и target_creator'},
+                {'error': 'Необходимо указать параметр target_creator'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        try:
-            # Проверяем, что клиент и креатор существуют
-            from django.contrib.auth import get_user_model
-            User = get_user_model()
-            
-            client_exists = User.objects.filter(id=client_id).exists()
-            creator_exists = User.objects.filter(id=target_creator_id).exists()
-            
-            if not client_exists:
-                return Response(
-                    {'error': f'Клиент с ID {client_id} не найден'},
-                    status=status.HTTP_404_NOT_FOUND
-                )
-                
-            if not creator_exists:
-                return Response(
-                    {'error': f'Креатор с ID {target_creator_id} не найден'},
-                    status=status.HTTP_404_NOT_FOUND
-                )
-            
-            # Получаем заказы между указанным клиентом и креатором со статусами in_progress, on_review или completed
-            queryset = Order.objects.filter(
-                client_id=client_id,
-                target_creator_id=target_creator_id,
-                status__in=['in_progress', 'on_review', 'completed']
-            ).distinct()
-            
-            serializer = OrderListSerializer(queryset, many=True, context={'request': request})
-            return Response(serializer.data)
-        except Order.DoesNotExist:
-            return Response(
-                {'error': 'Указанные заказы не найдены'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        except Exception as e:
-            # Логирование ошибки для отладки
-            logger.error(f"Ошибка при получении заказов между клиентом {client_id} и креатором {target_creator_id}: {str(e)}")
-            return Response(
-                {'error': 'Произошла ошибка при обработке запроса'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        # Базовый фильтр - все заказы для указанного креатора
+        filters = {
+            'target_creator_id': target_creator_id,
+            'status__in': ['in_progress', 'on_review', 'completed']
+        }
+        
+        # Если указан клиент, добавляем фильтрацию по клиенту
+        if client_id and client_id.strip():
+            filters['client_id'] = client_id
+        
+        # Получаем заказы согласно фильтрам
+        queryset = Order.objects.filter(**filters).distinct()
+        
+        serializer = OrderListSerializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data)
 
 
 class DeliveryViewSet(viewsets.ModelViewSet):

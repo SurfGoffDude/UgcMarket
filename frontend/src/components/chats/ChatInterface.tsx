@@ -107,83 +107,88 @@ const ChatInterface: React.FC = () => {
   * Использует специальный эндпоинт creator-client-orders для получения заказов
  * со статусами in_progress, on_review или completed
   */
-const fetchClientOrders = async (clientId: number, creatorId: number) => {
+const fetchClientOrders = useCallback(async (clientId: number, creatorId: number) => {
   if (!token || !user) return;
-  
+
   setLoadingOrders(true);
-  
+
   try {
-  // Используем эндпоинт для получения заказов между клиентом и креатором
-  // Для кастомного action в OrderResponseViewSet используем правильный URL
-  const response = await axios.get(`/api/order-responses/creator-client-orders/`, {
-    params: {
-    client: clientId,
-      target_creator: creatorId
-    },
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
-  
-  // Новый эндпоинт возвращает массив напрямую, без results
-  setClientOrders(response.data || []);
+    // Используем эндпоинт для получения заказов между клиентом и креатором
+    const response = await axios.get(`/api/order-responses/creator-client-orders/`, {
+      params: {
+        client: clientId,
+        target_creator: creatorId
+      },
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    // Новый эндпоинт возвращает массив напрямую, без results
+    setClientOrders(response.data || []);
   } catch (err) {
     console.error('Ошибка при загрузке заказов:', err);
-  setClientOrders([]); // Устанавливаем пустой массив при ошибке
+    setClientOrders([]); // Устанавливаем пустой массив при ошибке
   } finally {
-  setLoadingOrders(false);
+    setLoadingOrders(false);
   }  
-};
+}, [token, user]);
   
   /**
-   * Получение информации о чате
+   * Функция загрузки информации о чате
+   */
+  const fetchChatDetails = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      console.log('Формат ID чата из URL:', id);
+      console.log('Тип ID чата:', typeof id);
+      
+      const response = await axios.get(`/api/chats/${id}/`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log('Ответ API при загрузке чата:', response.data);
+      console.log('ID чата в БД:', response.data.id);
+      
+      setChat(response.data);
+    } catch (err) {
+      console.error('Ошибка при загрузке данных чата:', err);
+      toast.error('Не удалось загрузить данные чата');
+      setError('Не удалось загрузить данные чата. Пожалуйста, попробуйте обновить страницу.');
+    } finally {
+      setLoading(false);
+    }
+  }, [id, token]);
+  
+  /**
+   * Загрузка данных чата при монтировании компонента
    */
   useEffect(() => {
-    const fetchChatDetails = async () => {
-      setLoading(true);
-      setError(null);
-      
-      try {
-        console.log('Формат ID чата из URL:', id);
-        console.log('Тип ID чата:', typeof id);
-        
-        const response = await axios.get(`/api/chats/${id}/`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        console.log('Ответ API при загрузке чата:', response.data);
-        console.log('ID чата в БД:', response.data.id);
-        
-        setChat(response.data);
-        
-        // Определяем собеседника
-        if (user?.id === response.data.client.id) {
-          setInterlocutor(response.data.creator);
-        } else {
-          setInterlocutor(response.data.client);
-        }
-        
-        // Загружаем заказы между клиентом и креатором
-        if (response.data.client && response.data.creator) {
-          fetchClientOrders(response.data.client.id, response.data.creator.id);
-        }
-      } catch (err) {
-        console.error('Ошибка при загрузке данных чата:', err);
-        toast.error('Не удалось загрузить данные чата');
-        setError('Не удалось загрузить данные чата. Пожалуйста, попробуйте обновить страницу.');
-      }
-    };
-    
     if (token && id) {
       fetchChatDetails();
     }
-  }, [id, token, user]);
+  }, [id, token, fetchChatDetails]);
+  
+  useEffect(() => {
+    if (chat && chat.creator && chat.client) {
+      if (user?.id === chat.client.id) {
+        setInterlocutor(chat.creator);
+      } else {
+        setInterlocutor(chat.client);
+      }
+      
+      // Загружаем заказы между клиентом и креатором
+      fetchClientOrders(chat.client.id, chat.creator.id);
+    }
+  }, [chat, user, fetchClientOrders]);
   
   /**
    * Загрузка сообщений
    */
   const fetchMessages = useCallback(async (pageNum = 1, append = false) => {
-    if (!token || !id) return;
+    if (!token || !id || !chat) return;
     
     const isInitialLoad = pageNum === 1 && !append;
     
@@ -193,10 +198,15 @@ const fetchClientOrders = async (clientId: number, creatorId: number) => {
       setLoadingMoreMessages(true);
     }
     
+    // Формируем составной идентификатор для чата в формате creator_id-client_id
+    const compositeId = chat && chat.creator && chat.client ? 
+      `${chat.creator.id}-${chat.client.id}` : id;
+      
     try {
-      const response = await axios.get('/api/messages/chat_messages/', {
+      console.log(`Запрашиваем сообщения для чата с составным ID: ${compositeId}`);
+      // Получаем сообщения чата по эндпоинту с составным ID
+      const response = await axios.get(`/api/chats/${compositeId}/messages/`, {
         params: { 
-          chat_id: id,
           page: pageNum 
         },
         headers: {
@@ -204,40 +214,60 @@ const fetchClientOrders = async (clientId: number, creatorId: number) => {
         }
       });
       
-      console.log('API ответ сообщений:', response.data);
-      console.log('ID чата для запроса:', id);
+      // Проверяем формат ответа (пагинированный или непагинированный)
+      let newMessages = [];
+      let hasNext = false;
       
-      const newMessages = response.data.results || [];
-      
-      if (append) {
-        setMessages(prev => [...newMessages, ...prev]);
+      if (response.data) {
+        if (Array.isArray(response.data)) {
+          // Непагинированный ответ - простой массив сообщений
+          newMessages = response.data;
+          hasNext = false; // В непагинированном ответе нет следующей страницы
+          console.log('Получен непагинированный ответ с сообщениями:', newMessages.length);
+        } else if (response.data.results) {
+          // Пагинированный ответ - объект с полями results, next и т.д.
+          newMessages = response.data.results;
+          hasNext = !!response.data.next;
+          console.log('Получен пагинированный ответ с сообщениями:', newMessages.length);
+        } else {
+          console.error('API вернул данные в неожиданном формате:', response.data);
+        }
+        
+        if (append) {
+          // При подгрузке более старых сообщений добавляем их в начало списка
+          setMessages(prev => [...newMessages, ...prev]);
+        } else {
+          // При первичной загрузке или обновлении заменяем список целиком
+          setMessages(newMessages);
+        }
+        
+        // Обновляем состояние пагинации
+        setHasMoreMessages(hasNext);
+        setPage(pageNum);
       } else {
-        setMessages(newMessages);
+        // Если API вернул пустой ответ
+        console.error('API вернул пустой ответ');
+        if (isInitialLoad) {
+          setMessages([]);
+        }
       }
-      
-      // Проверяем, есть ли еще сообщения
-      if (response.data.next) {
-        setHasMoreMessages(true);
-      } else {
-        setHasMoreMessages(false);
-      }
-      
-      // Обновляем страницу
-      setPage(pageNum);
-      
     } catch (err) {
       console.error('Ошибка при загрузке сообщений:', err);
       toast.error('Не удалось загрузить сообщения');
       
       // Не устанавливаем главную ошибку, чтобы не мешать пользователю продолжать общаться
+      if (isInitialLoad) {
+        setMessages([]); // При ошибке инициализируем пустой массив сообщений
+      }
     } finally {
+      // Сбрасываем состояние загрузки
       if (isInitialLoad) {
         setLoading(false);
       } else if (append) {
         setLoadingMoreMessages(false);
       }
     }
-  }, [id, token]);
+  }, [token, id, chat]);
   
   /**
    * Отправка сообщения
@@ -245,30 +275,86 @@ const fetchClientOrders = async (clientId: number, creatorId: number) => {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newMessage.trim() || !token || !id) return;
+    // Проверка валидности данных
+    if (!newMessage.trim()) {
+      toast.error('Введите текст сообщения');
+      return;
+    }
+    
+    if (!token || !id) {
+      toast.error('Ошибка авторизации');
+      return;
+    }
+    
+    // Запоминаем текст сообщения до очистки поля ввода
+    const messageText = newMessage.trim();
+    
+    // Очищаем поле ввода сразу для лучшего UX
+    setNewMessage('');
     
     setSendingMessage(true);
     
+    // Формируем составной идентификатор для чата в формате creator_id-client_id
+    const compositeId = chat && chat.creator && chat.client ? 
+      `${chat.creator.id}-${chat.client.id}` : id;
+      
     try {
-      const response = await axios.post(`/api/chats/${id}/messages/`, {
-        content: newMessage
+      console.log(`Отправляем сообщение в чат с составным ID: ${compositeId}`);
+      // Теперь отправляем сообщение по URL с составным ID чата
+      const response = await axios.post(`/api/chats/${compositeId}/messages/`, {
+        content: messageText
       }, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
-      // Добавляем новое сообщение в список
-      setMessages(prev => [...prev, response.data]);
+      // Проверяем успешный ответ от API
+      if (response.data && response.data.id) {
+        // Временно добавляем новое сообщение в список для немедленного отображения
+        setMessages(prev => [...prev, response.data]);
+        
+        // Задержка перед обновлением списка, чтобы сообщение точно успело сохраниться в БД
+        setTimeout(() => {
+          // После успешной отправки заново загружаем все сообщения с сервера
+          // Это обеспечит синхронизацию с бэкендом и корректное отображение после обновления
+          fetchMessages();
+          
+          // Прокручиваем к последнему сообщению
+          scrollToBottom();
+        }, 300);
+      } else {
+        throw new Error('Некорректный ответ от API при отправке сообщения');
+      }
+    } catch (error) {
+      console.error('Ошибка при отправке сообщения:', error);
       
-      // Очищаем поле ввода
-      setNewMessage('');
+      // Возвращаем текст в поле ввода, чтобы пользователь мог повторить попытку
+      setNewMessage(messageText);
       
-      // Прокручиваем к последнему сообщению
-      scrollToBottom();
-    } catch (err) {
-      console.error('Ошибка при отправке сообщения:', err);
-      toast.error('Не удалось отправить сообщение');
+      // Обрабатываем ошибки axios
+      if (axios.isAxiosError(error)) {
+        // Ошибка с ответом от сервера
+        if (error.response) {
+          if (error.response.status === 401 || error.response.status === 403) {
+            toast.error('Нет доступа для отправки сообщения');
+          } else {
+            toast.error(`Ошибка при отправке сообщения: ${error.response.status}`);
+          }
+        } else if (error.request) {
+          // Ошибка сети - запрос был отправлен, но ответ не получен
+          toast.error('Не удалось отправить сообщение: проверьте соединение');
+        } else {
+          // Ошибка при настройке запроса
+          toast.error(`Ошибка при отправке сообщения: ${error.message}`);
+        }
+      } else if (error instanceof Error) {
+        // Другие ошибки JavaScript
+        toast.error(`Не удалось отправить сообщение: ${error.message}`);
+      } else {
+        // Неизвестная ошибка
+        toast.error('Не удалось отправить сообщение');
+      }
     } finally {
       setSendingMessage(false);
     }
@@ -285,18 +371,19 @@ const fetchClientOrders = async (clientId: number, creatorId: number) => {
   /**
    * Прокрутка к последнему сообщению
    */
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  }, [messagesEndRef]);
   
   /**
-   * Загрузка сообщений после успешной загрузки данных чата
+   * Загрузка сообщений при монтировании компонента
    */
   useEffect(() => {
-    if (chat && id && token) {
+    if (token && id) {
+      // Загружаем сообщения при монтировании компонента
       fetchMessages();
     }
-  }, [chat, id, token, fetchMessages]);
+  }, [id, token, fetchMessages]);
   
   /**
    * Прокрутка к последнему сообщению при загрузке
@@ -305,7 +392,7 @@ const fetchClientOrders = async (clientId: number, creatorId: number) => {
     if (!loading && messages.length > 0) {
       scrollToBottom();
     }
-  }, [loading]);
+  }, [loading, scrollToBottom, messages.length]);
   
   /**
    * Проверка, является ли текущий пользователь отправителем сообщения

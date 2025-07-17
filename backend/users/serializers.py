@@ -25,6 +25,29 @@ User = get_user_model()
 
 
 # ──────────────────────────────── USER ────────────────────────────────
+class UserBriefSerializer(serializers.ModelSerializer):
+    """
+    Краткий сериализатор пользователя.
+    
+    Используется для вложенного представления пользователей в других сериализаторах,
+    где требуется только основная информация о пользователе.
+    """
+    full_name = serializers.CharField(read_only=True)
+    
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "full_name",
+            "avatar",
+        ]
+        read_only_fields = fields
+
+
 class UserSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(read_only=True)
     user_type = serializers.CharField(read_only=True)

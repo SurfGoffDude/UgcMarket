@@ -301,3 +301,48 @@ export const fetchLatestPublicOrders = async (limit = 4): Promise<{ count: numbe
   }
 };
 
+/**
+ * Получить заказы текущего пользователя как креатора
+ * @param creatorId - ID профиля креатора (если не указан, будет запрошены все заказы, где пользователь - креатор)
+ * @returns Массив заказов, где пользователь является креатором
+ */
+export const getCreatorOrders = async (userId?: number): Promise<Order[]> => {
+  if (!userId) {
+    // Получаем ID пользователя из локального хранилища, если не передан
+    const userDataStr = localStorage.getItem('user_data');
+    if (userDataStr) {
+      try {
+        const userData = JSON.parse(userDataStr);
+        userId = userData.id;
+      } catch (e) {
+        console.error('Ошибка при получении ID пользователя из localStorage:', e);
+      }
+    }
+    
+    if (!userId) {
+      throw new Error('Невозможно получить ID пользователя');
+    }
+  }
+  
+  try {
+    // Используем корректный URL и параметры для получения заказов креатора
+    // API требует параметры client и target_creator
+    
+    // Получаем все заказы, где текущий пользователь является креатором (target_creator),
+    // а в качестве client передаем пустую строку, что на бэкенде должно восприниматься как запрос всех клиентов
+    // Бэкенд требует, чтобы оба параметра были заполнены
+    const response = await apiClient.get<Order[]>('order-responses/creator-client-orders/', {
+      params: {
+        target_creator: userId,
+        // Здесь не должно быть фильтрации по client_id, чтобы получить все заказы, где текущий пользователь - креатор
+        client: ''  // Пустая строка должна восприниматься бэкендом как отсутствие фильтра
+      }
+    });
+    
+    return response.data || [];
+  } catch (error: any) {
+    console.error('Ошибка при загрузке заказов креатора:', error);
+    throw error;
+  }
+};
+

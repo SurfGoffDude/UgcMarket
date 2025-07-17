@@ -13,6 +13,9 @@ from django.core.validators import MinValueValidator
 from users.models import Service
 from core.models import Tag  # Импортируем единую модель Tag
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class Category(models.Model):
     """
@@ -116,6 +119,15 @@ class Order(models.Model):
         max_length=20,
         choices=STATUS_CHOICES,
         default='draft'
+    )
+    # Исполнитель заказа (назначается после выбора креатора)
+    creator = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name='assigned_orders',
+        null=True,
+        blank=True,
+        verbose_name=_('исполнитель')
     )
     is_private = models.BooleanField(_('приватный'), default=False)
     target_creator = models.ForeignKey(
@@ -331,11 +343,15 @@ class OrderResponse(models.Model):
         return f"Отклик {self.creator.username} на {self.order.title}"
         
     def accept_response(self):
+        logger.info("[ACCEPT_RESPONSE] вызван для отклика %s (order %s)", self.id, self.order_id)
         """Принять отклик креатора и назначить его исполнителем заказа."""
         self.status = 'accepted'
+        # Назначаем исполнителем
         self.order.creator = self.creator
-        
-        # Если заказ в статусе published/awaiting_response, переводим в in_progress
+        # ОБЯЗАТЕЛЬНО устанавливаем target_creator, чтобы заказ был связан с выбранным креатором
+        self.order.target_creator = self.creator
+    
+    # Если заказ в статусе published/awaiting_response, переводим в in_progress
         if self.order.status in ['published', 'awaiting_response']:
             self.order.status = 'in_progress'
         

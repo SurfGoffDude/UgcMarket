@@ -1,185 +1,214 @@
 """
 Сериализаторы для приложения chats.
 
-Модуль содержит сериализаторы для преобразования моделей чатов и сообщений
-между объектами Python и форматом JSON.
+В данном модуле описаны сериализаторы для моделей чатов и сообщений,
+используемые для REST API.
 """
 
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from users.serializers import UserSerializer
-from orders.serializers import OrderListSerializer
-from .models import Chat, Message, SystemMessageTemplate
+from django.utils import timezone
+
+from .models import Chat, Message
+from orders.models import Order
+from users.serializers import UserBriefSerializer
 
 User = get_user_model()
 
 
-# Импортируем сериализатор заказа
-# Создаем простой сериализатор заказа для использования в чатах
-class OrderMinSerializer(serializers.Serializer):
+class MessageSerializer(serializers.ModelSerializer):
     """
-    Упрощенный сериализатор заказа для использования в чатах.
-    Включает только основную информацию о заказе.
+    Сериализатор для модели сообщений.
+    
+    Используется для преобразования объектов Message в JSON и обратно.
+    Включает вложенный сериализатор для отправителя.
     """
-    id = serializers.IntegerField()
-    title = serializers.CharField()
-    status = serializers.CharField()
+    sender_details = UserBriefSerializer(source='sender', read_only=True)
+    
+    class Meta:
+        model = Message
+        fields = [
+            'id', 'chat', 'sender', 'sender_details', 'content', 'attachment',
+            'is_system_message', 'read_by_client', 'read_by_creator', 'created_at'
+        ]
+        read_only_fields = [
+            'id', 'sender_details', 'is_system_message', 'read_by_client',
+            'read_by_creator', 'created_at'
+        ]
+    
+    def create(self, validated_data):
+        """
+        Переопределяем метод create для установки отправителя и
+        статусов прочтения.
+        """
+        request = self.context.get('request')
+        chat = validated_data.get('chat')
+        
+        # Устанавливаем текущего пользователя как отправителя, если не указано иначе
+        if not validated_data.get('sender') and request and hasattr(request, 'user'):
+            validated_data['sender'] = request.user
+        
+        # Устанавливаем флаги прочтения в зависимости от отправителя
+        if validated_data.get('sender') == chat.client:
+            validated_data['read_by_client'] = True
+        elif validated_data.get('sender') == chat.creator:
+            validated_data['read_by_creator'] = True
+        
+        return super().create(validated_data)
+
+
+class ChatOrderSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для заказа в контексте чата.
+    
+    Представляет минимальную информацию о заказе, связанном с чатом.
+    """
+    class Meta:
+        model = Order
+        fields = ['id', 'title', 'status', 'budget']
+
+
+class LastMessageSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для последнего сообщения в чате.
+    
+    Используется для отображения превью последнего сообщения в списке чатов.
+    """
+    sender_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Message
+        fields = ['id', 'content', 'sender_name', 'is_system_message', 'created_at']
+    
+    def get_sender_name(self, obj):
+        """
+        Возвращает имя отправителя сообщения.
+        
+        Для системных сообщений возвращает "Система".
+        
+        Args:
+            obj (Message): Объект сообщения.
+            
+        Returns:
+            str: Имя отправителя или "Система".
+        """
+        if obj.is_system_message:
+            return "Система"
+        elif obj.sender:
+            return obj.sender.username
+        return None
+
 
 class ChatListSerializer(serializers.ModelSerializer):
     """
-    Сериализатор для вывода списка чатов.
+    Сериализатор для списка чатов.
     
-    Включает основную информацию о чате, включая последнее сообщение и участников.
+    Используется для отображения чатов в списке с минимальной информацией.
     """
-    client = UserSerializer(read_only=True)
-    creator = UserSerializer(read_only=True)
-    order = serializers.SerializerMethodField()
+    client = UserBriefSerializer(read_only=True)
+    creator = UserBriefSerializer(read_only=True)
+    order = ChatOrderSerializer(read_only=True)
     last_message = serializers.SerializerMethodField()
     unread_count = serializers.SerializerMethodField()
     
     class Meta:
         model = Chat
         fields = [
-            'id', 'client', 'creator', 'order', 'created_at', 
-            'updated_at', 'is_active', 'last_message', 'unread_count'
+            'id', 'client', 'creator', 'order', 'last_message', 
+            'unread_count', 'is_active', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['client', 'creator', 'created_at', 'updated_at']
     
     def get_last_message(self, obj):
-        """Возвращает последнее сообщение в чате."""
-        message = obj.messages.order_by('-created_at').first()
-        if message:
-            return {
-                'id': message.id,
-                'content': message.content,
-                'sender': message.sender.username if message.sender else None,
-                'is_system_message': message.is_system_message,
-                'created_at': message.created_at
-            }
-        return None
-    
-    def get_order(self, obj):
-        """Возвращает информацию о заказе, если он связан с чатом."""
-        if obj.order:
-            # Возвращаем основную информацию о заказе
-            return {
-                'id': obj.order.id,
-                'title': obj.order.title,
-                'status': obj.order.status
-            }
+        """
+        Возвращает последнее сообщение в чате.
+        
+        Args:
+            obj (Chat): Объект чата.
+            
+        Returns:
+            dict: Сериализованное последнее сообщение или None, если сообщений нет.
+        """
+        last_message = obj.get_last_message()
+        if last_message:
+            return LastMessageSerializer(last_message).data
         return None
     
     def get_unread_count(self, obj):
-        """Возвращает количество непрочитанных сообщений для текущего пользователя."""
-        user = self.context['request'].user
-        if user == obj.client:
-            # Подсчет непрочитанных сообщений для клиента (от креатора)
-            return obj.messages.filter(sender=obj.creator, is_read=False).count()
-        elif user == obj.creator:
-            # Подсчет непрочитанных сообщений для креатора (от клиента)
-            return obj.messages.filter(sender=obj.client, is_read=False).count()
+        """
+        Возвращает количество непрочитанных сообщений для текущего пользователя.
+        
+        Args:
+            obj (Chat): Объект чата.
+            
+        Returns:
+            int: Количество непрочитанных сообщений.
+        """
+        request = self.context.get('request')
+        if request and hasattr(request, 'user'):
+            return obj.get_unread_count_for_user(request.user)
         return 0
+
+
+class ChatDetailSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для детальной информации о чате.
+    
+    Включает полную информацию о чате, включая сообщения.
+    """
+    client = UserBriefSerializer(read_only=True)
+    creator = UserBriefSerializer(read_only=True)
+    order = ChatOrderSerializer(read_only=True)
+    messages = MessageSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = Chat
+        fields = [
+            'id', 'client', 'creator', 'order', 'messages', 
+            'is_active', 'created_at', 'updated_at'
+        ]
 
 
 class ChatCreateSerializer(serializers.ModelSerializer):
     """
-    Сериализатор для создания нового чата.
+    Сериализатор для создания чата.
     
-    Требует обязательного указания creator_id при создании.
-    client устанавливается автоматически из request.user в perform_create.
+    Используется для создания нового чата.
     """
-    creator = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
-    
     class Meta:
         model = Chat
-        fields = ['creator', 'order', 'is_active']
+        fields = ['client', 'creator', 'order']
     
-    def validate_creator(self, value):
+    def validate(self, data):
         """
-        Проверка наличия и валидности creator_id.
+        Проверяет, что пользователь не создает чат с самим собой и
+        что такой чат еще не существует.
         """
-        if not value:
-            raise serializers.ValidationError("Необходимо указать ID креатора")
-        return value
-
-
-class ChatDetailSerializer(ChatListSerializer):
-    """
-    Сериализатор для детального отображения чата вместе с сообщениями.
-    """
-    order_details = serializers.SerializerMethodField()
-    
-    class Meta(ChatListSerializer.Meta):
-        fields = ChatListSerializer.Meta.fields + ['order_details']
-    
-    def get_order_details(self, obj):
-        """Возвращает детали заказа, если он связан с чатом."""
-        if obj.order:
-            return {
-                'id': obj.order.id,
-                'title': obj.order.title,
-                'status': obj.order.status,
-                'budget': obj.order.budget
-            }
-        return None
-
-
-class MessageSerializer(serializers.ModelSerializer):
-    """
-    Сериализатор для сообщений чата.
-    """
-    sender_details = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Message
-        fields = [
-            'id', 'chat', 'sender', 'sender_details', 'content',
-            'is_system_message', 'created_at', 'is_read'
-        ]
-        read_only_fields = ['sender', 'created_at', 'is_read']
-    
-    def get_sender_details(self, obj):
-        """Возвращает детали отправителя, если это не системное сообщение."""
-        if obj.sender:
-            return {
-                'id': obj.sender.id,
-                'username': obj.sender.username,
-                'avatar': obj.sender.profile.avatar.url if hasattr(obj.sender, 'profile') and obj.sender.profile.avatar else None
-            }
-        return None
+        client = data.get('client')
+        creator = data.get('creator')
+        
+        # Проверяем, что клиент и креатор - разные пользователи
+        if client == creator:
+            raise serializers.ValidationError("Клиент и креатор должны быть разными пользователями")
+        
+        # Проверяем, что такой чат еще не существует
+        if Chat.objects.filter(client=client, creator=creator).exists():
+            raise serializers.ValidationError("Чат между этими пользователями уже существует")
+        
+        return data
     
     def create(self, validated_data):
         """
-        Создает новое сообщение и устанавливает отправителя.
-        Проверяет права доступа к чату.
+        Создаем новый чат и добавляем системное сообщение о создании чата.
         """
-        user = self.context['request'].user
-        chat = validated_data['chat']
+        chat = super().create(validated_data)
         
-        # Проверяем, является ли пользователь участником чата
-        if user != chat.client and user != chat.creator:
-            raise serializers.ValidationError("Вы не являетесь участником этого чата")
+        # Создаем системное сообщение о создании чата
+        Message.objects.create(
+            chat=chat,
+            content="Чат создан",
+            is_system_message=True,
+            read_by_client=False,
+            read_by_creator=False
+        )
         
-        # Устанавливаем отправителя
-        validated_data['sender'] = user
-        
-        # Для обычных пользовательских сообщений нельзя установить is_system_message=True
-        validated_data['is_system_message'] = False
-        
-        # Создаем сообщение
-        message = Message.objects.create(**validated_data)
-        
-        # Обновляем дату последнего сообщения в чате
-        chat.updated_at = message.created_at
-        chat.save(update_fields=['updated_at'])
-        
-        return message
-
-
-class SystemMessageTemplateSerializer(serializers.ModelSerializer):
-    """
-    Сериализатор для шаблонов системных сообщений.
-    """
-    class Meta:
-        model = SystemMessageTemplate
-        fields = ['id', 'event_type', 'template', 'is_active']
+        return chat

@@ -81,6 +81,7 @@ const OrderDetails: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('details');
   const [statusUpdateLoading, setStatusUpdateLoading] = useState<boolean>(false);
+  const [respondingToOrder, setRespondingToOrder] = useState<boolean>(false);
 
   // Функция для получения статусов заказов на русском языке
   const getStatusText = (status: string): string => {
@@ -132,7 +133,45 @@ const OrderDetails: React.FC = () => {
   
   // Проверка, является ли текущий пользователь креатором этого заказа
   const isCreator = user && order && order.creator && user.id === order.creator.id;
+  
+  // Проверка, может ли пользователь откликнуться на заказ (является креатором, но не клиентом заказа и не назначенным исполнителем)
+  const canRespond = user && order && !isClient && (!order.creator || order.creator.id !== user.id) && order.status === 'awaiting_response';
 
+  // Функция для создания отклика на заказ и переходу к чату
+  const createResponseAndChat = async () => {
+    if (!order || !user) return;
+    
+    setRespondingToOrder(true);
+    try {
+      // Создаем отклик на заказ
+      await axios.post('/api/orders/order-responses/', {
+        order: order.id,
+        price: order.budget,  // Предлагаем цену, равную бюджету заказа
+        message: 'Я заинтересован в выполнении вашего заказа. Давайте обсудим детали.'
+      });
+      
+      // После успешного создания отклика переходим к чату
+      navigate(`/chats/${user.id}-${order.client.id}`);
+      
+    } catch (error) {
+      console.error('Ошибка при создании отклика:', error);
+      setError('Не удалось создать отклик на заказ');
+    } finally {
+      setRespondingToOrder(false);
+    }
+  };
+  
+  // Функция для перехода в чат
+  const goToChat = () => {
+    if (!order || !user) return;
+    
+    const creatorId = order.creator?.id || user.id;
+    const clientId = order.client.id;
+    
+    // Формируем URL для чата в формате /chats/{creatorId}-{clientId}
+    navigate(`/chats/${creatorId}-${clientId}`);
+  };
+  
   // Функция для изменения статуса заказа
   const updateOrderStatus = async (newStatus: string) => {
     if (!order) return;
@@ -369,7 +408,7 @@ const OrderDetails: React.FC = () => {
               {isClient && (
                 <CreatorResponsesList 
                   orderId={order.id}
-                  canSelectCreator={order.status === 'awaiting_response'} 
+                  canSelectCreator={['awaiting_response', 'published'].includes(order.status)} 
                 />
               )}
               {isCreator && (
@@ -404,6 +443,7 @@ const OrderDetails: React.FC = () => {
             </Button>
           )}
 
+          {/* Кнопка "Откликнуться на заказ" */}
           {!order.creator && !isClient && order.status === 'awaiting_response' && !order.is_private && (
             <Button 
               onClick={() => navigate(`/orders/${order.id}/respond`)}
@@ -413,6 +453,20 @@ const OrderDetails: React.FC = () => {
             </Button>
           )}
           
+          {/* Новая кнопка "Сообщения" для быстрого отклика и создания чата */}
+          {!isClient && canRespond && !order.is_private && (
+            <Button 
+              variant="secondary" 
+              onClick={createResponseAndChat}
+              disabled={respondingToOrder}
+              className="w-full sm:w-auto"
+            >
+              <MessageSquare size={16} className="mr-2" />
+              {respondingToOrder ? 'Создание чата...' : 'Сообщения'}
+            </Button>
+          )}
+          
+          {/* Кнопка "Перейти к чату" */}
           {(isClient || isCreator) && order.creator && (
             <Button 
               variant="outline" 

@@ -52,6 +52,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { getOrder, acceptOrder, deliverOrder, requestRevision, completeOrder, cancelOrder, openDispute } from '@/api/ordersApi';
 import { User as UserType } from '@/types/user';
+import { Order, OrderStatus } from '@/types/orders';
 
 // Импортируем наш новый компонент для отображения заказа
 import OrderDetailView from '@/components/OrderDetailView';
@@ -85,11 +86,17 @@ const OrderDetailPage = () => {
   const [deliveryMessage, setDeliveryMessage] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   
+  const [isLoading, setIsLoading] = useState(true);
+  const [order, setOrder] = useState<Order | null>(null);
+  const [isCreator, setIsCreator] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  
   /* ------------------------------ Загрузка данных -------------------------- */
   const {
-    data: order,
-    isLoading,
-    error,
+    data: orderData,
+    isLoading: isLoadingOrder,
+    error: errorOrder,
   } = useQuery({
     queryKey: ['order', id],
     queryFn: () => getOrder(orderId),
@@ -296,104 +303,236 @@ const OrderDetailPage = () => {
   };
 
   // Переход к чату заказа
-const goToMessages = async () => {
-  // Проверка orderId
-  if (!orderId) {
-    console.error("ID заказа отсутствует или некорректный");
-    toast({
-      title: "Ошибка перехода в чат",
-      description: "Не указан ID заказа",
-      variant: "destructive"
-    });
-    return;
-  }
-
-  // Получаем токен из локального хранилища
-  const token = localStorage.getItem('authToken') || localStorage.getItem('access_token');
-
-  if (!token) {
-    console.error("Токен авторизации отсутствует");
-    toast({
-      title: "Необходима авторизация",
-      description: "Пожалуйста, войдите в систему для доступа к чатам",
-      variant: "destructive"
-    });
-    navigate('/login');
-    return;
-  }
-  
-  try {
-    // ИЗМЕНЕНО: Всегда сначала выполняем POST запрос для отклика на заказ
-    console.log(`Выполняем запрос к API для отклика на заказ: /api/chats/create-for-order/${orderId}/`);
-    
-    try {
-      // Всегда пытаемся сначала создать чат (откликнуться на заказ)
-      const createChatResponse = await axios.post(
-        `/api/chats/create-for-order/${orderId}/`, 
-        {}, // пустое тело запроса
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      
-      console.log("Ответ API после отклика на заказ:", createChatResponse.data);
-      
-      if (createChatResponse.data && createChatResponse.data.creator && createChatResponse.data.client) {
-        toast({
-          title: "Успешно",
-          description: "Вы откликнулись на заказ и статус заказа изменен на 'В работе'",
-          variant: "default"
-        });
-        // Переходим в чат с использованием формата creator_id-client_id
-        navigate(`/chats/${createChatResponse.data.creator.id}-${createChatResponse.data.client.id}`);
-        return;
-      }
-    } catch (createError: any) {
-      console.log("Результат отклика на заказ:", createError);
-      
-      // Если ошибка не связана с тем, что чат уже существует, показываем ее
-      const errorStatus = createError.response?.status;
-      const errorMessage = createError.response?.data?.error || "";
-      
-      // Только если это не 400 ошибка о том, что чат уже существует, показываем уведомление
-      if (!(errorStatus === 400 && errorMessage.includes("уже существует"))) {
-        toast({
-          title: "Информация",
-          description: errorMessage || "Не удалось откликнуться на заказ",
-          variant: errorStatus === 403 ? "destructive" : "default"
-        });
-      }
-    }
-    
-    // Если не получилось создать чат или произошла ошибка о существующем чате,
-    // пробуем получить информацию о существующем чате
-    console.log(`Выполняем запрос к API для получения информации о чате: /api/chats/by-order/${orderId}/`);
-    
-    const response = await axios.get(`/api/chats/by-order/${orderId}/`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    
-    console.log("Ответ API о существующем чате:", response.data);
-    
-    if (response.data && response.data.creator && response.data.client) {
-      // Переходим на существующий чат
-      navigate(`/chats/${response.data.creator.id}-${response.data.client.id}`);
-    } else {
+  const goToMessages = async () => {
+    // Проверка orderId
+    if (!orderId) {
+      console.error("ID заказа отсутствует или некорректный");
       toast({
-        title: "Чат не найден",
-        description: "Чат для этого заказа не создан и не может быть создан автоматически",
+        title: "Ошибка перехода в чат",
+        description: "Не указан ID заказа",
         variant: "destructive"
       });
+      return;
     }
-  } catch (error) {
-    // Обработка всех остальных ошибок
-    console.error("Ошибка при работе с чатом:", error);
-    
-    if (axios.isAxiosError(error)) {
-      const statusCode = error.response?.status;
-      const errorMessage = error.response?.data?.error || error.message;
+
+    // Получаем токен из локального хранилища
+    const token = localStorage.getItem('authToken') || localStorage.getItem('access_token');
+
+    if (!token) {
+      console.error("Токен авторизации отсутствует");
+      toast({
+        title: "Необходима авторизация",
+        description: "Пожалуйста, войдите в систему для доступа к чатам",
+        variant: "destructive"
+      });
+      navigate('/login');
+      return;
+    }
+
+    try {
+      // Логирование для диагностики проблемы
+      console.log("Объект заказа:", order);
+      console.log("target_creator:", order?.target_creator);
+      console.log("buyer:", order?.buyer);
+      console.log("Текущий пользователь:", user);
       
-      console.log(`Статус код ошибки: ${statusCode}, сообщение: ${errorMessage}`);
+      // Проверяем, кто текущий пользователь и являемся ли мы креатором
+      const isCreator = user?.user_type === 'Креатор';
+      
+      // Если у нас нет информации о заказе
+      if (!order) {
+        toast({
+          title: "Ошибка",
+          description: "Не удалось получить информацию о заказе",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Если пользователь креатор, создаем отклик
+      if (isCreator && orderId) {
+        try {
+          console.log(`Креатор: создаем отклик на заказ через новый эндпоинт: /api/chats/create-for-order-by-id/${orderId}/`);
+          console.log("Токен авторизации:", token?.substring(0, 10) + "..." + (token?.length ?? 0)); // Логирование части токена для безопасности
+          
+          // Получаем тип токена из localStorage, чтобы проверить используем ли мы правильный
+          const authToken = localStorage.getItem('authToken');
+          const accessToken = localStorage.getItem('access_token');
+          console.log("authToken в localStorage:", authToken ? "присутствует" : "отсутствует");
+          console.log("access_token в localStorage:", accessToken ? "присутствует" : "отсутствует");
+          console.log("Какой токен используется:", token === authToken ? "authToken" : token === accessToken ? "access_token" : "другой источник");
+          
+          // Смотрим полные данные запроса для диагностики
+          const requestData = {
+            price: order.price,
+            message: "Я заинтересован в выполнении этого заказа",
+            timeframe: 7
+          };
+          console.log("Данные запроса:", requestData);
+          
+          const requestHeaders = { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          };
+          console.log("Заголовки запроса:", requestHeaders);
+          
+          try {
+            // Попробуем использовать формат Bearer вместо Bearer, если возникнет 401
+            const createResponse = await axios.post(`/api/chats/create-for-order-by-id/${orderId}/`, 
+              requestData, 
+              { 
+                headers: {
+                  Authorization: `Bearer ${token}`,  // Меняем Bearer на Bearer
+                  'Content-Type': 'application/json'
+                },
+                validateStatus: function (status) {
+                  console.log("Статус ответа:", status); 
+                  return true; // Не отклоняем запрос при 401
+                }
+              }
+            );
+            
+            console.log("Результат создания отклика:", createResponse);
+            console.log("Статус ответа:", createResponse.status);
+            console.log("Данные ответа:", createResponse.data);
+            
+            if (createResponse.status === 401) {
+              console.error("Ошибка авторизации (401): Проверьте токен");
+              setError("Ошибка авторизации. Пожалуйста, попробуйте выйти и войти снова.");
+              return;
+            }
+            
+            if (createResponse.data && createResponse.data.chat_id) {
+              // Здесь мы получаем идентификаторы из ответа API
+              const responseClientId = createResponse.data.client_id;
+              const responseCreatorId = createResponse.data.creator_id;
+              const chatId = createResponse.data.chat_id;
+              console.log("Отклик уже существует, получаем информацию о чате");
+              
+              // Переходим в чат
+              navigate(`/chats/${responseCreatorId}-${responseClientId}`);
+              return;
+            } else {
+              const errorMessage = "Не удалось создать отклик на заказ";
+              toast({
+                title: "Ошибка",
+                description: errorMessage,
+                variant: "destructive"
+              });
+              return;
+            }
+          } catch (error: any) {
+            console.error("Ошибка при создании отклика на заказ:", error);
+            
+            // Если есть данные о существующем отклике в ответе
+            if (error?.response?.data?.response) {
+              const existingResponse = error.response.data.response;
+              console.log("Существующий отклик:", existingResponse);
+              
+              // Если в ответе есть данные о чате
+              if (error?.response?.data?.chat_id && error?.response?.data?.client_id && error?.response?.data?.creator_id) {
+                navigate(`/chats/${error.response.data.creator_id}-${error.response.data.client_id}`);
+                return;
+              }
+              
+              // Пробуем получить существующий заказ для получения ID участников
+              try {
+                const orderResponse = await axios.get(`/api/orders/${existingResponse.order}/`, {
+                  headers: { Authorization: `Bearer ${token}` }
+                });
+                
+                if (orderResponse.data && orderResponse.data.buyer) {
+            toast({
+              title: "Ошибка",
+              description: errorMessage,
+              variant: "destructive"
+            });
+            return;
+          }
+        } catch (error: any) {
+          console.error("Ошибка при создании отклика на заказ:", error);
+          
+          // Если есть данные о существующем отклике в ответе
+          if (error?.response?.data?.response) {
+            const existingResponse = error.response.data.response;
+            console.log("Существующий отклик:", existingResponse);
+            
+            // Если в ответе есть данные о чате
+            if (error?.response?.data?.chat_id && error?.response?.data?.client_id && error?.response?.data?.creator_id) {
+              navigate(`/chats/${error.response.data.creator_id}-${error.response.data.client_id}`);
+              return;
+            }
+            
+            // Пробуем получить существующий заказ для получения ID участников
+            try {
+              const orderResponse = await axios.get(`/api/orders/${existingResponse.order}/`, {
+                headers: { Authorization: `Bearer ${token}` }
+              });
+              
+              if (orderResponse.data && orderResponse.data.buyer) {
+                // Используем ID текущего пользователя и ID клиента из заказа
+                navigate(`/chats/${user.id}-${orderResponse.data.buyer.id}`);
+                return;
+              }
+            } catch (innerError) {
+              console.error("Ошибка при получении информации о заказе:", innerError);
+            }
+          }
+        }
+      } catch (outerError) {
+        console.error("Ошибка при обработке отклика на заказ:", outerError);
+        toast({
+          title: "Ошибка",
+          description: "Не удалось создать отклик на заказ",
+          variant: "destructive"
+        });
+      }
+      
+      // Если пользователь клиент
+      if (user && order.buyer && user.id === order.buyer.id) {
+        // Клиент обращается к своему заказу, пробуем получить чаты
+        try {
+          // Для клиента мы можем попробовать получить отклики на этот заказ
+          const responsesResponse = await axios.get(`/api/orders/order-responses/?order=${orderId}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          console.log("Отклики на заказ:", responsesResponse.data);
+          
+          if (responsesResponse.data && responsesResponse.data.length > 0) {
+            // Берем первый отклик
+            const firstResponse = responsesResponse.data[0];
+            const creatorId = firstResponse.creator.id;
+            const clientId = order.buyer.id;
+            
+            navigate(`/chats/${creatorId}-${clientId}`);
+            return;
+          } else {
+            toast({
+              title: "Информация",
+              description: "На ваш заказ пока нет откликов от креаторов",
+              variant: "default"
+            });
+            return;
+          }
+        } catch (responsesError) {
+          console.error("Ошибка при получении откликов:", responsesError);
+        }
+      }
+      
+      // Если мы дошли до этого места, значит нужно больше информации
+      toast({
+        title: "Ошибка",
+        description: "Недостаточно информации для перехода в чат. Пожалуйста, попробуйте позже.",
+        variant: "destructive"
+      });
+      
+    } catch (error: any) {
+      console.error("Ошибка при работе с API чата:", error);
+      
+      // Обработка ошибок
+      const statusCode = error.response?.status || 500;
+      const errorMessage = error.response?.data?.error || error.message || "Неизвестная ошибка";
       
       if (statusCode === 401) {
         toast({
@@ -409,15 +548,10 @@ const goToMessages = async () => {
           variant: "destructive"
         });
       }
-    } else {
-      toast({
-        title: "Неизвестная ошибка",
-        description: "Проверьте консоль для получения дополнительной информации",
-        variant: "destructive"
-      });
     }
-  }
-};// Возврат к списку заказов
+  };
+  
+  // Возврат к списку заказов
   const goBackToOrders = () => {
     navigate('/orders');
   };

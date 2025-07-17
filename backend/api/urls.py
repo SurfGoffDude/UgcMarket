@@ -56,7 +56,8 @@ nonversion_urlpatterns = [
     path('', include('orders.urls')),
     
     # Маршруты для чатов
-    path('', include('chats.urls')),
+    path('chats/', include('chats.urls')),    
+
 ]
 
 # Добавляем маршруты для Swagger UI и ReDoc

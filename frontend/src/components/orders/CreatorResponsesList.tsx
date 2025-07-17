@@ -32,6 +32,7 @@ import {
   AlertDescription,
   AlertTitle
 } from '@/components/ui/alert';
+import apiClient from '@/api/client';
 import axios from 'axios';
 import { formatDistanceToNow } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -113,9 +114,12 @@ const CreatorResponsesList: React.FC<CreatorResponsesListProps> = ({ orderId, ca
     
     setProcessingSelect(true);
     try {
-      await axios.post(`/api/orders/${orderId}/select-creator/`, {
-        creator_id: selectedCreatorId
-      });
+      // Используем корректный URL с snake_case как на бэкенде
+      // Добавляем токен авторизации к запросу
+      await apiClient.post(
+        `orders/${orderId}/select_creator/`,
+        { creator_id: selectedCreatorId }
+      );
       
       // Обновляем статус откликов
       setResponses(prevResponses => 

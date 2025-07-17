@@ -70,21 +70,16 @@ Authorization: Bearer <token>
 **Параметры фильтрации:**
 - `client` - идентификатор клиента
 - `target_creator` - идентификатор креатора (важно: используйте target_creator вместо creator)
-- `status` - статус заказа (например, 'published', 'in_progress', 'completed')
-- `category` - слаг категории
-- `min_budget`, `max_budget` - минимальный и максимальный бюджет
-- `deadline_before`, `deadline_after` - фильтрация по дедлайну
-- `is_private` - приватность заказа (true/false)
-- `tags` - фильтрация по тегам (список slug через запятую)
+- `status` - статус заказа (awaiting_response, in_progress, on_review, completed, cancelled)
 
 **Пример запроса:**
 ```
-GET /api/orders/?client=2&target_creator=3&status=in_progress
+GET /api/orders/?target_creator=3&status=completed
 ```
 
-## Чаты и сообщения
+## Чаты
 
-### Получение списка доступных креаторов
+### Получение списка чатов
 
 **Запрос:**
 ```
@@ -96,220 +91,58 @@ GET /api/chats/
 Authorization: Bearer <token>
 ```
 
-**Параметры:**
-- Нет обязательных параметров
-
 **Пример ответа:**
 ```json
-{
-  "creators": [
-    {
+[
+  {
+    "id": 1,
+    "client": {
+      "id": 2,
+      "username": "client1",
+      "avatar": "/media/avatars/client1.jpg"
+    },
+    "creator": {
       "id": 3,
       "username": "creator1",
-      "avatar": "/media/avatars/creator1.jpg",
-      "chat_id": "3-2"
+      "avatar": "/media/avatars/creator1.jpg"
     },
-    {
-      "id": 4,
-      "username": "creator2",
-      "avatar": "/media/avatars/creator2.jpg",
-      "chat_id": "4-2"
-    }
-  ]
-}
+    "order": {
+      "id": 5,
+      "title": "Дизайн логотипа"
+    },
+    "last_message": {
+      "content": "Отправляю предварительный макет логотипа",
+      "created_at": "2023-07-11T10:22:15Z",
+      "sender_username": "creator1"
+    },
+    "unread_count": 2,
+    "created_at": "2023-07-01T09:30:00Z",
+    "updated_at": "2023-07-11T10:22:15Z"
+  }
+]
 ```
 
-### Получение чата по ID формата {creator_id}-{client_id}
+### Получение чата по ID участников
 
 **Запрос:**
 ```
 GET /api/chats/{creator_id}-{client_id}/
 ```
 
-Например: `/api/chats/3-2/` - получение чата между креатором с ID 3 и клиентом с ID 2.
-
 **Заголовки:**
 ```
 Authorization: Bearer <token>
 ```
 
-**Параметры:**
-- Нет обязательных параметров
+**Пример запроса:**
+```
+GET /api/chats/3-2/
+```
 
 **Пример ответа:**
 ```json
 {
   "id": 1,
-  "client": {
-    "id": 2,
-    "username": "client1",
-    "avatar": "/media/avatars/client1.jpg"
-  },
-  "creator": {        "id": 3,
-        "username": "creator1",
-        "avatar": "/media/avatars/creator1.jpg"
-      },
-      "order": null,
-      "created_at": "2023-07-10T14:30:22Z",
-      "updated_at": "2023-07-10T15:40:12Z",
-      "is_active": true,
-      "unread_messages_count": 0
-    },
-    {
-      "id": 2,
-      "client": {
-        "id": 2,
-        "username": "client1",
-        "avatar": "/media/avatars/client1.jpg"
-      },
-      "creator": {
-        "id": 4,
-        "username": "creator2",
-        "avatar": "/media/avatars/creator2.jpg"
-      },
-      "order": {
-        "id": 5,
-        "title": "Дизайн логотипа",
-        "status": "in_progress",
-        "budget": 5000
-      },
-      "created_at": "2023-07-08T09:15:33Z",
-      "updated_at": "2023-07-09T18:22:54Z",
-      "is_active": true,
-      "unread_messages_count": 3
-    }
-  ]
-}
-```
-
-### Создание нового чата
-
-**Запрос:**
-```
-POST /api/chats/
-```
-
-**Заголовки:**
-```
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-**Тело запроса:**
-```json
-{
-  "creator": 3,
-  "client": 2
-}
-```
-
-**Пример ответа:**
-```json
-{
-  "id": 3,
-  "client": {
-    "id": 2,
-    "username": "client1",
-    "avatar": "/media/avatars/client1.jpg"
-  },
-  "creator": {
-    "id": 3,
-    "username": "creator1",
-    "avatar": "/media/avatars/creator1.jpg"
-  },
-  "order": null,
-  "created_at": "2023-07-10T16:45:22Z",
-  "updated_at": "2023-07-10T16:45:22Z",
-  "is_active": true,
-  "unread_messages_count": 0
-}
-```
-
-### Получение информации о чате
-
-**Запрос:**
-```
-GET /api/chats/{id}/
-```
-
-**Заголовки:**
-```
-Authorization: Bearer <token>
-```
-
-**Параметры:**
-- `id` - идентификатор чата
-
-**Пример ответа:**
-```json
-{
-  "id": 1,
-  "client": {
-    "id": 2,
-    "username": "client1",
-    "avatar": "/media/avatars/client1.jpg"
-  },
-  "creator": {
-    "id": 3,
-    "username": "creator1",
-    "avatar": "/media/avatars/creator1.jpg"
-  },
-  "order": null,
-  "created_at": "2023-07-10T14:30:22Z",
-  "updated_at": "2023-07-10T15:40:12Z",
-  "is_active": true,
-  "unread_messages_count": 0
-}
-```
-
-### Отметка чата как прочитанного
-
-**Запрос:**
-```
-POST /api/chats/{id}/mark_read/
-```
-
-**Заголовки:**
-```
-Authorization: Bearer <token>
-```
-
-**Параметры:**
-- `id` - идентификатор чата
-
-**Пример ответа:**
-```json
-{
-  "status": "success",
-  "message": "Все сообщения в чате отмечены как прочитанные"
-}
-```
-
-### Создание чата для заказа (отклик креатора)
-
-**Запрос:**
-```
-POST /api/chats/create-for-order/{order_id}/
-```
-
-**Заголовки:**
-```
-Authorization: Bearer <token>
-```
-
-**Параметры:**
-- `order_id` - идентификатор заказа
-
-**Описание:**
-- Этот эндпоинт используется креаторами для отклика на заказ и создания чата с клиентом
-- При успешном запросе статус заказа меняется на "in_progress" (В работе)
-- В чате автоматически создается системное сообщение об отклике на заказ
-- Только креаторы могут использовать этот эндпоинт, клиенты получат ошибку 403
-
-**Пример ответа:**
-```json
-{
-  "id": 5,
   "client": {
     "id": 2,
     "username": "client1",
@@ -321,22 +154,51 @@ Authorization: Bearer <token>
     "avatar": "/media/avatars/creator1.jpg"
   },
   "order": {
-    "id": 8,
-    "title": "Дизайн логотипа для стартапа",
-    "status": "in_progress",
-    "budget": 10000
+    "id": 5,
+    "title": "Дизайн логотипа"
   },
-  "created_at": "2023-07-11T14:50:22Z",
-  "updated_at": "2023-07-11T14:50:22Z",
-  "is_active": true,
-  "unread_messages_count": 0
+  "messages": [
+    {
+      "id": 1,
+      "sender": 2,
+      "sender_details": {
+        "id": 2,
+        "username": "client1",
+        "avatar": "/media/avatars/client1.jpg"
+      },
+      "content": "Здравствуйте! Интересует разработка логотипа.",
+      "attachment": null,
+      "is_system_message": false,
+      "created_at": "2023-07-01T09:35:22Z",
+      "read_by_client": true,
+      "read_by_creator": true
+    },
+    {
+      "id": 2,
+      "sender": 3,
+      "sender_details": {
+        "id": 3,
+        "username": "creator1",
+        "avatar": "/media/avatars/creator1.jpg"
+      },
+      "content": "Здравствуйте! Да, готов обсудить детали.",
+      "attachment": null,
+      "is_system_message": false,
+      "created_at": "2023-07-01T10:15:45Z",
+      "read_by_client": true,
+      "read_by_creator": true
+    }
+  ],
+  "created_at": "2023-07-01T09:30:00Z",
+  "updated_at": "2023-07-11T10:22:15Z"
 }
 ```
-### Получение сообщений чата
+
+### Получение сообщений чата по ID участников
 
 **Запрос:**
 ```
-GET /api/messages/
+GET /api/chats/{creator_id}-{client_id}/messages/
 ```
 
 **Заголовки:**
@@ -344,76 +206,54 @@ GET /api/messages/
 Authorization: Bearer <token>
 ```
 
-**Параметры запроса:**
-- `chat` - идентификатор чата (обязательный)
-- `page` - номер страницы для пагинации (опционально)
-- `limit` - количество сообщений на странице (опционально)
-
 **Пример запроса:**
 ```
-GET /api/messages/?chat=1&page=1&limit=50
+GET /api/chats/3-2/messages/
 ```
 
 **Пример ответа:**
 ```json
-{
-  "count": 3,
-  "next": null,
-  "previous": null,
-  "results": [
-    {
-      "id": 1,
-      "chat": 1,
-      "sender": 2,
-      "sender_details": {
-        "id": 2,
-        "username": "client1",
-        "avatar": "/media/avatars/client1.jpg"
-      },
-      "content": "Здравствуйте! Хочу обсудить сотрудничество.",
-      "attachment": null,
-      "is_system_message": false,
-      "created_at": "2023-07-10T14:30:22Z",
-      "read_by_client": true,
-      "read_by_creator": true
-    },
-    {
+[
+  {
+    "id": 1,
+    "chat": 1,
+    "sender": 2,
+    "sender_details": {
       "id": 2,
-      "chat": 1,
-      "sender": 3,
-      "sender_details": {
-        "id": 3,
-        "username": "creator1",
-        "avatar": "/media/avatars/creator1.jpg"
-      },
-      "content": "Добрый день! С удовольствием обсудим. Чем могу помочь?",
-      "attachment": null,
-      "is_system_message": false,
-      "created_at": "2023-07-10T14:35:10Z",
-      "read_by_client": true,
-      "read_by_creator": true
+      "username": "client1",
+      "avatar": "/media/avatars/client1.jpg"
     },
-    {
+    "content": "Здравствуйте! Интересует разработка логотипа.",
+    "attachment": null,
+    "is_system_message": false,
+    "created_at": "2023-07-01T09:35:22Z",
+    "read_by_client": true,
+    "read_by_creator": true
+  },
+  {
+    "id": 2,
+    "chat": 1,
+    "sender": 3,
+    "sender_details": {
       "id": 3,
-      "chat": 1,
-      "sender": null,
-      "sender_details": null,
-      "content": "Системное сообщение: Участники присоединились к чату",
-      "attachment": null,
-      "is_system_message": true,
-      "created_at": "2023-07-10T14:30:22Z",
-      "read_by_client": true,
-      "read_by_creator": true
-    }
-  ]
-}
+      "username": "creator1",
+      "avatar": "/media/avatars/creator1.jpg"
+    },
+    "content": "Здравствуйте! Да, готов обсудить детали.",
+    "attachment": null,
+    "is_system_message": false,
+    "created_at": "2023-07-01T10:15:45Z",
+    "read_by_client": true,
+    "read_by_creator": true
+  }
+]
 ```
 
-### Отправка сообщения
+### Отправка сообщения через ID участников
 
 **Запрос:**
 ```
-POST /api/messages/
+POST /api/chats/{creator_id}-{client_id}/messages/
 ```
 
 **Заголовки:**
@@ -425,9 +265,13 @@ Content-Type: application/json
 **Тело запроса:**
 ```json
 {
-  "chat": 1,
   "content": "Меня интересует разработка логотипа для моего проекта"
 }
+```
+
+**Пример запроса:**
+```
+POST /api/chats/3-2/messages/
 ```
 
 **Пример ответа:**
@@ -447,5 +291,151 @@ Content-Type: application/json
   "created_at": "2023-07-10T16:50:22Z",
   "read_by_client": true,
   "read_by_creator": false
+}
+```
+
+### Отправка сообщения через стандартный API
+
+**Запрос:**
+```
+POST /api/chats/{chat_id}/messages/
+```
+
+**Описание:**  
+Отправляет новое сообщение в указанный чат.
+
+**Заголовки:**
+```
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+**Тело запроса:**
+```json
+{
+  "content": "Меня интересует разработка логотипа для моего проекта"
+}
+```
+
+**Пример запроса:**
+```
+POST /api/chats/1/messages/
+```
+
+**Пример ответа:**
+```json
+{
+  "id": 4,
+  "chat": 1,
+  "sender": 2,
+  "sender_details": {
+    "id": 2,
+    "username": "client1",
+    "avatar": "/media/avatars/client1.jpg"
+  },
+  "content": "Меня интересует разработка логотипа для моего проекта",
+  "attachment": null,
+  "is_system_message": false,
+  "created_at": "2023-07-10T16:50:22Z",
+  "read_by_client": true,
+  "read_by_creator": false
+}
+```
+
+### Отправка сообщения с вложением
+
+**Запрос:**
+```
+POST /api/chats/{chat_id}/messages/
+```
+
+**Заголовки:**
+```
+Authorization: Bearer <token>
+Content-Type: multipart/form-data
+```
+
+**Параметры формы:**
+- `content` - текст сообщения
+- `attachment` - прикрепляемый файл
+
+**Пример ответа:**
+```json
+{
+  "id": 5,
+  "chat": 1,
+  "sender": 2,
+  "sender_details": {
+    "id": 2,
+    "username": "client1",
+    "avatar": "/media/avatars/client1.jpg"
+  },
+  "content": "Вот референс для логотипа",
+  "attachment": "/media/chat_attachments/reference.jpg",
+  "is_system_message": false,
+  "created_at": "2023-07-10T16:55:30Z",
+  "read_by_client": true,
+  "read_by_creator": false
+}
+```
+
+### Создание отклика на заказ через чат
+
+**Запрос:**
+```
+POST /api/chats/create-for-order/{chat_id}/
+```
+
+**Описание:**  
+Создает отклик на указанный заказ от имени креатора, участвующего в чате. Если такой отклик уже существует, возвращает информацию о существующем отклике. Автоматически связывает чат с заказом, если он еще не связан, и добавляет системное сообщение об отклике в чат.
+
+**Заголовки:**
+```
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+**Тело запроса:**
+```json
+{
+  "order": 15,
+  "price": 5000,
+  "message": "Я заинтересован в выполнении этого заказа"
+}
+```
+
+**Параметры запроса:**
+- `order` (обязательный) - идентификатор заказа, на который создается отклик
+- `price` (необязательный) - предлагаемая цена за выполнение заказа (по умолчанию равна бюджету заказа)
+- `message` (необязательный) - текст сообщения в отклике
+
+**Пример запроса:**
+```
+POST /api/chats/create-for-order/5/
+```
+
+**Пример ответа (новый отклик):**
+```json
+{
+  "id": 12,
+  "order": 15,
+  "creator": 3,
+  "price": 5000,
+  "message": "Я заинтересован в выполнении этого заказа",
+  "created_at": "2023-07-15T13:45:22Z",
+  "status": "pending"
+}
+```
+
+**Пример ответа (существующий отклик):**
+```json
+{
+  "id": 10,
+  "order": 15,
+  "creator": 3,
+  "price": 4500,
+  "message": "Готов выполнить ваш заказ",
+  "created_at": "2023-07-10T09:30:15Z",
+  "status": "pending"
 }
 ```

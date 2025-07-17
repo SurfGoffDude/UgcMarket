@@ -42,6 +42,7 @@ import PortfolioDetailPage from "@/pages/PortfolioDetailPage";
 import ServiceDetailPage from "@/pages/ServiceDetailPage";
 import CatalogOrdersPage from "@/pages/CatalogOrdersPage";
 import OrderResponsePage from "@/pages/OrderResponsePage";
+import CreatorOrdersPage from "@/pages/CreatorOrdersPage";
 
 // Новые страницы для уведомлений и чатов
 import NotificationsPage from "@/pages/NotificationsPage";
@@ -111,6 +112,7 @@ const App = () => {
                 {/* Страницы заказов */}
                 <Route path="/catalog-orders" element={<CatalogOrdersPage />} />
                 <Route path="/orders" element={<OrdersPage />} />
+                <Route path="/creator-orders" element={<CreatorOrdersPage />} />
                 <Route path="/orders/:id" element={<OrderDetailPage />} />
                 <Route path="/orders/:id/delivery" element={<OrderDeliveryPage />} />
                 <Route path="/orders/:id/respond" element={<OrderResponsePage />} />
