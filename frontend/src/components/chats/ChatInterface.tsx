@@ -73,7 +73,6 @@ interface Chat {
   id: number;
   client: ChatParticipant;
   creator: ChatParticipant;
-  order?: ChatOrder;
   created_at: string;
   updated_at: string;
   is_active: boolean;
@@ -96,6 +95,7 @@ const ChatInterface: React.FC = () => {
   const [page, setPage] = useState(1);
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
   const [loadingMoreMessages, setLoadingMoreMessages] = useState(false);
+  const [chatOrder, setChatOrder] = useState<ClientOrder | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   
@@ -126,6 +126,26 @@ const ChatInterface: React.FC = () => {
       setLoadingOrders(false);
     }
   }, [user, token]);
+
+  /**
+   * Функция для поиска заказов, связанных с текущим чатом
+   */
+  const findChatOrder = useCallback(async () => {
+    if (!chat || !id) return;
+    
+    try {
+      const response = await getClientOrders();
+      const orders = response.orders || [];
+      
+      // Ищем заказы, у которых chat_id совпадает с ID текущего чата
+      const chatOrders = orders.filter(order => order.chat_id === parseInt(id));
+      // Пока берем последний заказ для отображения в заголовке
+      const latestOrder = chatOrders.length > 0 ? chatOrders[chatOrders.length - 1] : null;
+      setChatOrder(latestOrder);
+    } catch (error) {
+      console.error('Ошибка при поиске заказов для чата:', error);
+    }
+  }, [chat, id]);
 
 
   
@@ -176,8 +196,9 @@ const ChatInterface: React.FC = () => {
         setInterlocutor(chat.client);
       }
       
-      // Загружаем заказы клиента
+      // Загружаем заказы клиента и ищем заказ для текущего чата
       fetchClientOrders();
+      findChatOrder();
     }
   }, [chat, user, fetchClientOrders]);
   
@@ -700,10 +721,10 @@ const ChatInterface: React.FC = () => {
                     <CardTitle className="text-md">
                       {interlocutor.username}
                     </CardTitle>
-                    {chat.order && (
+                    {chatOrder && (
                       <div className="text-xs text-gray-500 flex items-center mt-1">
                         <Package size={12} className="mr-1" />
-                        Заказ: {chat.order.title}
+                        Заказ: {chatOrder.title}
                       </div>
                     )}
                   </div>
@@ -784,36 +805,36 @@ const ChatInterface: React.FC = () => {
                         <p className="text-gray-800 dark:text-gray-200">{message.content}</p>
                       
                         {/* Показываем название заказа, если это сообщение об отклике */}
-                        {message.content.includes("откликнулся на заказ") && chat?.order && (
+                        {message.content.includes("откликнулся на заказ") && chatOrder && (
                           <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-sm">
-                            <p className="font-medium">Заказ: {chat.order.title}</p>
-                            <p className="text-xs text-gray-500">Статус: {getOrderStatusText(chat.order.status)}</p>
+                            <p className="font-medium">Заказ: {chatOrder.title}</p>
+                            <p className="text-xs text-gray-500">Статус: {getOrderStatusText(chatOrder.status)}</p>
                           </div>
                         )}
                         
                         {/* Кнопки для клиента (принять/отклонить) если это системное сообщение об отклике и пользователь - клиент */}
                         {message.content.includes("откликнулся на заказ") && 
-                         chat?.order &&
-                         user?.id === chat.client.id &&
-                         chat.order.status === "in_progress" && (
-                          <div className="mt-3 flex justify-center space-x-2">
-                            <Button 
-                              variant="default" 
-                              size="sm"
-                              className="bg-green-500 hover:bg-green-600"
-                              onClick={() => chat?.order && handleOrderStatusChange(chat.order.id, "on_review")}
-                              disabled={processingStatus}
-                            >
-                              Принять отклик
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              className="text-red-500 hover:bg-red-100 hover:text-red-600"
-                              onClick={() => chat?.order && handleOrderStatusChange(chat.order.id, "published")}
-                              disabled={processingStatus}
-                            >
-                              Отклонить
+                        chatOrder &&
+                        user?.id === chat.client.id &&
+                        chatOrder.status === "in_progress" && (
+                        <div className="mt-3 flex justify-center space-x-2">
+                        <Button 
+                        variant="default" 
+                        size="sm"
+                        className="bg-green-500 hover:bg-green-600"
+                        onClick={() => chatOrder && handleOrderStatusChange(chatOrder.id, "on_review")}
+                        disabled={processingStatus}
+                        >
+                        Принять отклик
+                        </Button>
+                        <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="text-red-500 hover:bg-red-100 hover:text-red-600"
+                        onClick={() => chatOrder && handleOrderStatusChange(chatOrder.id, "published")}
+                        disabled={processingStatus}
+                        >
+                        Отклонить
                             </Button>
                           </div>
                         )}

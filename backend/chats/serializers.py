@@ -107,16 +107,31 @@ class ChatListSerializer(serializers.ModelSerializer):
     """
     client = UserBriefSerializer(read_only=True)
     creator = UserBriefSerializer(read_only=True)
-    order = ChatOrderSerializer(read_only=True)
+    last_order = serializers.SerializerMethodField()
     last_message = serializers.SerializerMethodField()
     unread_count = serializers.SerializerMethodField()
     
     class Meta:
         model = Chat
         fields = [
-            'id', 'client', 'creator', 'order', 'last_message', 
+            'id', 'client', 'creator', 'last_order', 'last_message', 
             'unread_count', 'created_at', 'updated_at'
         ]
+    
+    def get_last_order(self, obj):
+        """
+        Возвращает последний заказ в чате.
+        
+        Args:
+            obj (Chat): Объект чата.
+            
+        Returns:
+            dict: Сериализованный последний заказ или None, если заказов нет.
+        """
+        last_order = obj.orders.order_by('-created_at').first()
+        if last_order:
+            return ChatOrderSerializer(last_order).data
+        return None
     
     def get_last_message(self, obj):
         """
@@ -157,13 +172,12 @@ class ChatDetailSerializer(serializers.ModelSerializer):
     """
     client = UserBriefSerializer(read_only=True)
     creator = UserBriefSerializer(read_only=True)
-    order = ChatOrderSerializer(read_only=True)
     messages = MessageSerializer(many=True, read_only=True)
     
     class Meta:
         model = Chat
         fields = [
-            'id', 'client', 'creator', 'order', 'messages', 
+            'id', 'client', 'creator', 'messages', 
             'created_at', 'updated_at'
         ]
 
@@ -176,7 +190,7 @@ class ChatCreateSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Chat
-        fields = ['client', 'creator', 'order']
+        fields = ['client', 'creator']
     
     def validate(self, data):
         """

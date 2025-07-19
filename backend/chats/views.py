@@ -43,7 +43,7 @@ class ChatViewSet(viewsets.ModelViewSet):
         user = self.request.user
         return Chat.objects.filter(
             Q(client=user) | Q(creator=user)
-        ).select_related('client', 'creator', 'order')
+        ).select_related('client', 'creator').prefetch_related('orders')
     
     def get_serializer_class(self):
         """
@@ -125,26 +125,49 @@ class ChatViewSet(viewsets.ModelViewSet):
         """
         user = request.user
         
-        # Получаем чаты, где пользователь является клиентом и есть заказ
-        chats = Chat.objects.filter(
-            client=user,
-            order__isnull=False
-        ).select_related('order', 'creator').prefetch_related('order__target_creator')
+        # Получаем заказы, где пользователь является клиентом или назначенным креатором
+        from orders.models import Order
+        from django.db.models import Q
+        orders = Order.objects.filter(
+            Q(client=user) | Q(creator=user),
+            chat__isnull=False
+        ).select_related('chat', 'creator', 'target_creator')
         
         orders_data = []
-        for chat in chats:
-            order = chat.order
+        for order in orders:
+            chat = order.chat
             
-            # Определяем доступные действия для клиента в зависимости от статуса заказа
-            allowed_actions = {
-            'draft': ['cancel'],
-            'published': ['cancel', 'complete'],
-            'awaiting_response': ['cancel'],
-            'in_progress': ['cancel', 'complete'],
-            'on_review': ['cancel', 'complete', 'request_revision'],
-            'completed': [],  # Финальный статус
-            'canceled': []  # Финальный статус
-            }
+            # Определяем доступные действия в зависимости от роли пользователя и статуса заказа
+            is_client = (user == order.client)
+            is_creator = (user == order.creator)
+            
+            if is_client:
+                # Действия для клиента
+                allowed_actions = {
+                    'draft': ['cancel'],
+                    'published': ['cancel', 'complete'],
+                    'awaiting_response': ['cancel'],
+                    'in_progress': ['cancel', 'complete'],
+                    'on_review': ['cancel', 'complete', 'request_revision'],
+                    'completed': [],
+                    'canceled': []
+                }
+            elif is_creator:
+                # Действия для креатора
+                allowed_actions = {
+                    'draft': [],
+                    'published': [],
+                    'awaiting_response': [],
+                    'in_progress': ['deliver'],  # Креатор может сдать работу
+                    'on_review': [],
+                    'completed': [],
+                    'canceled': []
+                }
+            else:
+                allowed_actions = {
+                    'draft': [], 'published': [], 'awaiting_response': [],
+                    'in_progress': [], 'on_review': [], 'completed': [], 'canceled': []
+                }
             
             # Получаем статус заказа на русском языке
             status_labels = {
@@ -159,10 +182,11 @@ class ChatViewSet(viewsets.ModelViewSet):
             
             # Получаем названия действий на русском языке
             action_labels = {
-                'cancel': 'Отменить',
-                'complete': 'Принять работу',
-                'request_revision': 'Вернуть на доработку'
-            }
+            'cancel': 'Отменить',
+            'complete': 'Принять работу',
+            'request_revision': 'Вернуть на доработку',
+                'deliver': 'Сдать работу'
+        }
             
             order_data = {
                 'id': order.id,

@@ -129,6 +129,14 @@ class Order(models.Model):
         blank=True,
         verbose_name=_('исполнитель')
     )
+    chat = models.ForeignKey(
+        'chats.Chat',
+        on_delete=models.SET_NULL,
+        related_name='orders',
+        null=True,
+        blank=True,
+        verbose_name=_('чат')
+    )
     is_private = models.BooleanField(_('приватный'), default=False)
     target_creator = models.ForeignKey(
         settings.AUTH_USER_MODEL,

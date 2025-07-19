@@ -30,14 +30,7 @@ class Chat(models.Model):
         related_name='creator_chats',
         verbose_name=_('креатор')
     )
-    order = models.ForeignKey(
-        'orders.Order',
-        on_delete=models.SET_NULL,
-        related_name='chats',
-        null=True,
-        blank=True,
-        verbose_name=_('заказ')
-    )
+
     created_at = models.DateTimeField(
         _('дата создания'),
         auto_now_add=True
@@ -64,7 +57,9 @@ class Chat(models.Model):
         Returns:
             str: Строковое представление чата.
         """
-        order_info = f" ({self.order.title})" if self.order else ""
+        # Получаем информацию о последнем заказе для отображения
+        last_order = self.orders.order_by('-created_at').first()
+        order_info = f" ({last_order.title})" if last_order else ""
         return f"Чат между {self.client.username} и {self.creator.username}{order_info}"
 
     def get_last_message(self):

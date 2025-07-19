@@ -747,8 +747,11 @@ class OrderResponseViewSet(viewsets.ModelViewSet):
             # Ищем чат с этой парой клиент-креатор
             chat = Chat.objects.get(client=client, creator=creator)
             
-            # Если чат найден, но не связан с текущим заказом, добавляем связь с заказом
-            if chat.order != order:
+            # Если чат найден, но заказ не связан с чатом, добавляем связь
+            if order.chat != chat:
+                # Связываем заказ с чатом
+                order.chat = chat
+                order.save()
                 # Создаем системное сообщение о новом заказе
                 Message.objects.create(
                     chat=chat,
@@ -760,9 +763,11 @@ class OrderResponseViewSet(viewsets.ModelViewSet):
             chat = Chat.objects.create(
                 client=client,
                 creator=creator,
-                order=order,
                 is_active=True
             )
+            # Связываем заказ с чатом
+            order.chat = chat
+            order.save()
             
             # Создаем приветственное системное сообщение
             Message.objects.create(

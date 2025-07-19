@@ -223,7 +223,7 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'description', 'client', 'target_creator', 'tags', 'service', 'budget', 'deadline', 
             'status', 'days_left', 'is_overdue', 'views_count', 'created_at', 'updated_at',
-            'attachments', 'responses', 'deliveries', 'reviews', 'is_private', 'references', 'can_view', 'can_respond'
+            'attachments', 'responses', 'deliveries', 'reviews', 'is_private', 'references', 'can_view', 'can_respond', 'chat'
         ]
         
     def get_can_view(self, obj):

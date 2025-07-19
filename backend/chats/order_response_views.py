@@ -96,9 +96,12 @@ class CreateOrderResponseByChatView(APIView):
         # Получаем ID заказа из запроса или из связанного с чатом заказа
         order_id = request.data.get('order')
         
-        # Если ID заказа не передан в запросе, но чат связан с заказом, используем его
-        if not order_id and chat.order:
-            order_id = chat.order.id
+        # Если ID заказа не передан в запросе, но есть заказы связанные с чатом, используем последний
+        if not order_id:
+            # Получаем последний заказ из чата
+            last_order = chat.orders.order_by('-created_at').first()
+            if last_order:
+                order_id = last_order.id
             
         # Если ID заказа все еще не определен, возвращаем ошибку
         if not order_id:
@@ -187,10 +190,10 @@ class CreateOrderResponseByChatView(APIView):
             logger.error(f"Ошибка при создании системного сообщения: {str(e)}")
             # Не прерываем процесс создания отклика
         
-        # Связываем чат с заказом, если он еще не связан
-        if not chat.order:
-            chat.order = order
-            chat.save()
+        # Связываем заказ с чатом, если он еще не связан
+        if not order.chat:
+            order.chat = chat
+            order.save()
         
         # Возвращаем информацию о созданном отклике
         serializer = OrderResponseSerializer(order_response)
@@ -344,20 +347,18 @@ class CreateOrderResponseByOrderView(APIView):
             
             # Проверяем, существует ли уже чат между этими пользователями для этого заказа
             logger.info("Поиск существующего чата между клиентом %s и креатором %s для заказа %s", client.id, creator.id, order.id)
-            # Сначала ищем чат для этого заказа
+            # Сначала ищем чат между этими пользователями
+            # Поскольку теперь заказы связаны с чатом через ForeignKey, ищем чат по пользователям
             chat = Chat.objects.filter(
                 client=client,
-                creator=creator,
-                order=order
+                creator=creator
             ).first()
             
-            # Если не нашли, ищем любой чат между этими пользователями
-            if not chat:
-                logger.info("Чат для этого заказа не найден, ищем любой чат между пользователями")
-                chat = Chat.objects.filter(
-                    client=client,
-                    creator=creator
-                ).first()
+            # Логируем результат поиска
+            if chat:
+                logger.info("Найден существующий чат между пользователями, ID: %s", chat.id)
+            else:
+                logger.info("Чат между пользователями не найден")
             
             # Если чата нет, создаем его
             if not chat:
@@ -365,17 +366,19 @@ class CreateOrderResponseByOrderView(APIView):
                 try:
                     chat = Chat.objects.create(
                         client=client,
-                        creator=creator,
-                        order=order  # Сразу связываем с заказом
+                        creator=creator
                     )
+                    # Связываем заказ с чатом
+                    order.chat = chat
+                    order.save()
                     logger.info("Чат успешно создан, ID: %s", chat.id)
                 except Exception as e:
                     logger.error("Ошибка при создании чата: %s", str(e))
                     return Response({"error": f"Не удалось создать чат: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            # Если чат есть, но не связан с заказом, связываем
-            elif not chat.order:
-                chat.order = order
-                chat.save()
+            # Если чат есть, но заказ не связан с чатом, связываем
+            elif not order.chat:
+                order.chat = chat
+                order.save()
             
             # Создаем отклик
             price = request.data.get('price', order.budget)  # По умолчанию цена равна бюджету заказа

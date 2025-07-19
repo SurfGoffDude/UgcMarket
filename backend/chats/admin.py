@@ -14,10 +14,10 @@ class ChatAdmin(admin.ModelAdmin):
     """
     Административный интерфейс для модели Chat.
     """
-    list_display = ('id', 'client', 'creator', 'order', 'created_at', 'updated_at')
+    list_display = ('id', 'client', 'creator', 'created_at', 'updated_at')
     list_filter = ('created_at',)
-    search_fields = ('client__username', 'creator__username', 'order__title')
-    raw_id_fields = ('client', 'creator', 'order')
+    search_fields = ('client__username', 'creator__username')
+    raw_id_fields = ('client', 'creator')
     date_hierarchy = 'created_at'
 
 
