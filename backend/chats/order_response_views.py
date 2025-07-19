@@ -151,8 +151,8 @@ class CreateOrderResponseByChatView(APIView):
         order_response = OrderResponse.objects.create(
             order=order,
             creator=chat.creator,
-            price=price,
             message=message,
+            price=price,
             timeframe=timeframe
         )
         
@@ -160,17 +160,25 @@ class CreateOrderResponseByChatView(APIView):
         logger.info("Автоматическое назначение креатора %s на заказ %s", chat.creator.id, order.id)
         order.creator = chat.creator
         order.target_creator = chat.creator
-        if order.status in ['published', 'awaiting_response']:
+        # Проверяем статус заказа и меняем на 'in_progress', если он еще не в работе
+        if order.status in ['draft', 'published', 'awaiting_response']:
             order.status = 'in_progress'
             logger.info("Обновление статуса заказа на 'in_progress'")
         order.save()
+        
+        # Принимаем отклик автоматически
+        order_response.status = 'accepted'
+        order_response.save()
+        
+        # Отклоняем остальные отклики на этот заказ
+        OrderResponse.objects.filter(order=order).exclude(id=order_response.id).update(status='rejected')
         logger.info("Креатор успешно назначен на заказ")
         
         # Добавляем системное сообщение в чат
         try:
             system_message = Message.objects.create(
                 chat=chat,
-                content=f"Создан отклик на заказ '{order.title}'",
+                content=f"Креатор {chat.creator.username} назначен исполнителем заказа '{order.title}'. Заказ перешел в статус 'В работе'.",
                 is_system_message=True,
                 sender=None  # Системное сообщение не имеет отправителя
             )
@@ -215,6 +223,17 @@ class CreateOrderResponseByOrderView(APIView):
         """
         # Добавляем явное логирование для определения вызванного метода
         print("!!! ВЫЗВАН CreateOrderResponseByOrderView.post для order_id =", order_id, "!!!")
+        
+        # Добавляем подробное логирование для диагностики
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info("=" * 80)
+        logger.info("НАЧАЛО ВЫПОЛНЕНИЯ CreateOrderResponseByOrderView.post")
+        logger.info("Order ID: %s", order_id)
+        logger.info("User: %s (ID: %s)", request.user.username if hasattr(request.user, 'username') else 'Анонимный', 
+                   request.user.id if hasattr(request.user, 'id') else 'Нет ID')
+        logger.info("Request data: %s", request.data)
+        logger.info("=" * 80)
         # Добавляем подробное логирование для диагностики
         import logging
         logger = logging.getLogger(__name__)
@@ -312,11 +331,16 @@ class CreateOrderResponseByOrderView(APIView):
                 )
             
             # Проверяем, существует ли уже отклик от этого креатора
+            logger.info("Проверка существующих откликов от креатора %s на заказ %s", creator.id, order.id)
             existing_response = OrderResponse.objects.filter(order=order, creator=creator).first()
             if existing_response:
                 # Если отклик уже существует, возвращаем информацию о нём
+                logger.info("Отклик уже существует! ID: %s, статус: %s", existing_response.id, existing_response.status)
+                logger.info("Возвращаем существующий отклик без создания нового")
                 serializer = OrderResponseSerializer(existing_response)
                 return Response(serializer.data)
+            else:
+                logger.info("Отклик от этого креатора не найден, продолжаем создание нового")
             
             # Проверяем, существует ли уже чат между этими пользователями для этого заказа
             logger.info("Поиск существующего чата между клиентом %s и креатором %s для заказа %s", client.id, creator.id, order.id)
@@ -358,27 +382,75 @@ class CreateOrderResponseByOrderView(APIView):
             message = request.data.get('message', 'Я заинтересован в выполнении этого заказа')
             timeframe = request.data.get('timeframe', 7)  # По умолчанию срок выполнения 7 дней
             
+            logger.info("Параметры отклика: price=%s, message='%s', timeframe=%s", price, message[:50] + '...' if len(message) > 50 else message, timeframe)
+            
             # Создаем отклик
+            logger.info("=== НАЧАЛО СОЗДАНИЯ ОТКЛИКА ===")
             logger.info("Создание отклика на заказ: %s", order.id)
             try:
                 order_response = OrderResponse.objects.create(
                     order=order,
                     creator=creator,
-                    price=price,
                     message=message,
+                    price=price,
                     timeframe=timeframe
                 )
                 logger.info("Отклик успешно создан, ID: %s", order_response.id)
                 
                 # Автоматически назначаем креатора на заказ
+                logger.info("=== НАЧАЛО НАЗНАЧЕНИЯ КРЕАТОРА ===")
                 logger.info("Автоматическое назначение креатора %s на заказ %s", creator.id, order.id)
+                logger.info("Текущий статус заказа: %s", order.status)
+                logger.info("Текущий order.creator: %s", order.creator)
+                logger.info("Текущий order.target_creator: %s", order.target_creator)
+                
+                # Сохраняем старые значения для сравнения
+                old_creator = order.creator
+                old_target_creator = order.target_creator
+                old_status = order.status
+                
                 order.creator = creator
                 order.target_creator = creator
-                if order.status in ['published', 'awaiting_response']:
+                logger.info("Установлены новые значения: creator=%s, target_creator=%s", creator, creator)
+                
+                # Проверяем статус заказа и меняем на 'in_progress', если он еще не в работе
+                if order.status in ['draft', 'published', 'awaiting_response']:
                     order.status = 'in_progress'
-                    logger.info("Обновление статуса заказа на 'in_progress'")
-                order.save()
-                logger.info("Креатор успешно назначен на заказ")
+                    logger.info("Обновление статуса заказа с '%s' на 'in_progress'", old_status)
+                else:
+                    logger.info("Статус заказа не изменен, текущий статус: %s", order.status)
+                
+                try:
+                    order.save()
+                    logger.info("Заказ успешно сохранен")
+                    
+                    # Перезагружаем заказ из БД для проверки
+                    order.refresh_from_db()
+                    logger.info("После сохранения и перезагрузки:")
+                    logger.info("  order.creator: %s (ID: %s)", order.creator, order.creator.id if order.creator else None)
+                    logger.info("  order.target_creator: %s (ID: %s)", order.target_creator, order.target_creator.id if order.target_creator else None)
+                    logger.info("  order.status: %s", order.status)
+                    
+                    if order.creator != creator:
+                        logger.error("ОШИБКА: order.creator не установлен правильно!")
+                    if order.target_creator != creator:
+                        logger.error("ОШИБКА: order.target_creator не установлен правильно!")
+                        
+                except Exception as save_error:
+                    logger.error("ОШИБКА при сохранении заказа: %s", str(save_error))
+                    raise save_error
+                
+                # Принимаем отклик автоматически
+                logger.info("Принятие отклика автоматически")
+                order_response.status = 'accepted'
+                order_response.save()
+                logger.info("Отклик принят, статус: %s", order_response.status)
+                
+                # Отклоняем остальные отклики на этот заказ
+                rejected_count = OrderResponse.objects.filter(order=order).exclude(id=order_response.id).update(status='rejected')
+                logger.info("Отклонено других откликов: %s", rejected_count)
+                
+                logger.info("=== ЗАВЕРШЕНИЕ НАЗНАЧЕНИЯ КРЕАТОРА ===")
             except Exception as e:
                 logger.error("Ошибка при создании отклика на заказ: %s", str(e))
                 return Response({"error": f"Не удалось создать отклик: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -395,7 +467,7 @@ class CreateOrderResponseByOrderView(APIView):
                 
                 system_message = Message.objects.create(
                     chat=chat,
-                    content=f"Создан отклик на заказ '{order.title}'",
+                    content=f"Креатор {creator.username} назначен исполнителем заказа '{order.title}'. Заказ перешел в статус 'В работе'.",
                     is_system_message=True,
                     sender=None  # Системное сообщение не имеет отправителя
                 )
