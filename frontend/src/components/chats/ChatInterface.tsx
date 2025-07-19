@@ -25,7 +25,7 @@ import {
   CheckCheck,
   RotateCcw
 } from 'lucide-react';
-import { getClientOrders, changeOrderStatus, type ClientOrder, type OrderAction } from '@/api/chatsApi';
+import { getClientOrders, changeOrderStatus, submitOrderForReview, type ClientOrder, type OrderAction } from '@/api/chatsApi';
 
 /**
  * Интерфейсы для типов данных чата
@@ -101,6 +101,15 @@ const ChatInterface: React.FC = () => {
   
   // Для заказов
   const [clientOrders, setClientOrders] = useState<ClientOrder[]>([]);
+  
+  // Отладка изменений clientOrders
+  useEffect(() => {
+    console.log('=== clientOrders изменился ===', {
+      length: clientOrders.length,
+      orders: clientOrders.map(o => ({ id: o.id, title: o.title, status: o.status, creator: o.creator, client: o.client }))
+    });
+    console.log('Полные объекты заказов:', clientOrders);
+  }, [clientOrders]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [updatingOrderStatus, setUpdatingOrderStatus] = useState<number | null>(null);
   
@@ -113,14 +122,30 @@ const ChatInterface: React.FC = () => {
  * со статусами in_progress, on_review или completed
   */
   const fetchClientOrders = useCallback(async () => {
-    if (!user || !token) return;
+    console.log('=== fetchClientOrders вызван ===');
+    console.trace('Stack trace for fetchClientOrders call');
+    
+    if (!user || !token) {
+      console.log('fetchClientOrders: нет user или token', { user: !!user, token: !!token });
+      return;
+    }
     
     try {
+      console.log('fetchClientOrders: начинаем загрузку заказов для пользователя:', user.id);
       setLoadingOrders(true);
       const response = await getClientOrders();
+      console.log('fetchClientOrders: получен ответ от API:', response);
+      console.log('fetchClientOrders: устанавливаем заказы:', response.orders);
       setClientOrders(response.orders || []);
+      console.log('fetchClientOrders: установлено заказов:', response.orders?.length || 0);
     } catch (error) {
       console.error('Ошибка при загрузке заказов:', error);
+      console.error('Полная информация об ошибке:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        headers: error.response?.headers
+      });
       toast.error('Не удалось загрузить заказы');
     } finally {
       setLoadingOrders(false);
@@ -288,12 +313,42 @@ const ChatInterface: React.FC = () => {
   }, [token, id, chat]);
   
   /**
-   * Обрабатывает изменение статуса заказа клиентом
+   * Обрабатывает изменение статуса заказа
    */
   const handleOrderStatusChange = useCallback(async (orderId: number, action: string) => {
     try {
       setUpdatingOrderStatus(orderId);
-      const response = await changeOrderStatus(orderId, { action: action as 'cancel' | 'complete' | 'request_revision' });
+      
+      // Отладочная информация
+      console.log('=== DEBUG: handleOrderStatusChange ===');
+      console.log('orderId:', orderId, 'type:', typeof orderId);
+      console.log('clientOrders:', clientOrders);
+      console.log('clientOrders IDs:', clientOrders.map(order => ({ id: order.id, type: typeof order.id })));
+      
+      // Находим конкретный заказ для определения роли пользователя
+      const currentOrder = clientOrders.find(order => order.id === orderId);
+      console.log('currentOrder found:', currentOrder);
+      
+      if (!currentOrder) {
+        console.error('Заказ не найден! orderId:', orderId, 'clientOrders:', clientOrders);
+        throw new Error(`Заказ не найден. orderId: ${orderId}, доступные ID: ${clientOrders.map(o => o.id).join(', ')}`);
+      }
+      
+      // Определяем роль пользователя для конкретного заказа
+      const isOrderClient = user && currentOrder.client && user.id === currentOrder.client.id;
+      const isOrderCreator = user && currentOrder.creator && user.id === currentOrder.creator.id;
+      
+      let response;
+      
+      // Для креаторов заказа действие "deliver" означает отправку на проверку
+      if (isOrderCreator && action === 'deliver') {
+        response = await submitOrderForReview(orderId);
+      } else if (isOrderClient) {
+        // Для клиентов заказа используем стандартный эндпоинт
+        response = await changeOrderStatus(orderId, { action: action as 'cancel' | 'complete' | 'request_revision' });
+      } else {
+        throw new Error(`Недостаточно прав для выполнения данного действия. Пользователь: ${user?.id}, Клиент заказа: ${currentOrder.client?.id}, Креатор заказа: ${currentOrder.creator?.id}`);
+      }
       
       toast.success(response.message);
       
@@ -314,7 +369,7 @@ const ChatInterface: React.FC = () => {
     } finally {
       setUpdatingOrderStatus(null);
     }
-  }, [fetchClientOrders, chat, fetchMessages]);
+  }, [clientOrders, fetchClientOrders, chat, fetchMessages]);
   
   /**
    * Отправка сообщения

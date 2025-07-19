@@ -67,6 +67,15 @@ export const changeOrderStatus = async (
 };
 
 /**
+ * Отправляет заказ на проверку (для креаторов)
+ * @param orderId - ID заказа
+ */
+export const submitOrderForReview = async (orderId: number): Promise<ChangeStatusResponse> => {
+  const response = await api.post(`/api/orders/${orderId}/submit-for-review/`);
+  return response.data;
+};
+
+/**
  * Получает список чатов
  */
 export const getChats = async () => {

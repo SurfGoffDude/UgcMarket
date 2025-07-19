@@ -375,7 +375,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
     
-    @action(detail=True, methods=['post'], permission_classes=[IsOrderCreator])
+    @action(detail=True, methods=['post'], permission_classes=[IsOrderCreator], url_path='submit-for-review')
     def submit_for_review(self, request, pk=None):
         """
         Отправляет заказ на проверку клиенту.
@@ -385,13 +385,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         if order.status != 'in_progress':
             return Response(
                 {'error': 'Заказ должен быть в статусе "В работе"'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Проверяем, что есть хотя бы одна финальная сдача
-        if not order.deliveries.filter(is_final=True).exists():
-            return Response(
-                {'error': 'Необходимо добавить финальную сдачу работы'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         

@@ -7,7 +7,7 @@ import axios from 'axios';
  * @property {object} headers - Стандартные заголовки, отправляемые с каждым запросом.
  */
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:8000', // Убедитесь, что этот URL соответствует адресу вашего бэкенда
+  baseURL: 'http://127.0.0.1:8000', // Правильный порт для бэкенда
   headers: {
     'Content-Type': 'application/json',
   },
