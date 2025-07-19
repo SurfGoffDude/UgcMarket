@@ -19,6 +19,9 @@ const API_BASE_URL = '/api/notifications';
 
 /**
  * RTK Query API для работы с уведомлениями
+ * 
+ * Примечание: В данный момент функционал уведомлений не реализован на бэкенде,
+ * поэтому здесь используются заглушки вместо реальных запросов к API.
  */
 export const notificationsApi = createApi({
   reducerPath: 'notificationsApi',
@@ -35,9 +38,61 @@ export const notificationsApi = createApi({
       return headers;
     }
   }),
+  // Определение базового обработчика ошибок, который перехватывает 404 и возвращает заглушки
+  // для API уведомлений, которые пока не реализованы на бэкенде
+  baseQueryWithErrorHandler: ((args, api, extraOptions) => {
+    // Оборачиваем оригинальный baseQuery и перехватываем ошибки
+    const baseQueryFn = fetchBaseQuery({ 
+      baseUrl: API_BASE_URL,
+      credentials: 'include',
+      prepareHeaders: (headers) => {
+        const token = localStorage.getItem('authToken');
+        if (token) {
+          headers.set('Authorization', `Bearer ${token}`);
+        }
+        return headers;
+      }
+    });
+
+    return baseQueryFn(args, api, extraOptions).then(result => {
+      // Если произошла ошибка 404, возвращаем заглушки для определенных эндпоинтов
+      if (result.error && 'status' in result.error && result.error.status === 404) {
+        const url = typeof args === 'string' ? args : args.url;
+
+        // Заглушка для эндпоинта notifications/
+        if (url.includes('/notifications/') && !url.includes('/unread-count/')) {
+          return { data: { results: [], count: 0, next: null, previous: null } };
+        }
+
+        // Заглушка для эндпоинта unread-count/
+        if (url.includes('/unread-count/')) {
+          return { data: { unread_count: 0 } };
+        }
+
+        // Заглушка для эндпоинта settings/
+        if (url.includes('/settings/')) {
+          return { data: [{
+            id: 1,
+            email_notifications: true,
+            push_notifications: false,
+            order_status_changes: true,
+            new_messages: true,
+            promotions: false,
+            system_notifications: true
+          }] };
+        }
+      }
+      return result;
+    });
+  }) as BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError>,
+
   endpoints: (builder: any) => ({
     /**
      * Получение списка уведомлений с фильтрацией и пагинацией
+     */
+    /**
+     * Получение списка уведомлений с фильтрацией и пагинацией
+     * Примечание: Временно возвращает пустой список, так как API не реализовано
      */
     getNotifications: builder.query({
       query: (params) => ({
@@ -55,6 +110,10 @@ export const notificationsApi = createApi({
 
     /**
      * Получение количества непрочитанных уведомлений
+     */
+    /**
+     * Получение количества непрочитанных уведомлений
+     * Примечание: Временно возвращает 0, так как API не реализовано
      */
     getUnreadCount: builder.query({
       query: () => '/notifications/unread-count/',

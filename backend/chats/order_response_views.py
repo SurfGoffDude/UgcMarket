@@ -156,6 +156,16 @@ class CreateOrderResponseByChatView(APIView):
             timeframe=timeframe
         )
         
+        # Автоматически назначаем креатора на заказ
+        logger.info("Автоматическое назначение креатора %s на заказ %s", chat.creator.id, order.id)
+        order.creator = chat.creator
+        order.target_creator = chat.creator
+        if order.status in ['published', 'awaiting_response']:
+            order.status = 'in_progress'
+            logger.info("Обновление статуса заказа на 'in_progress'")
+        order.save()
+        logger.info("Креатор успешно назначен на заказ")
+        
         # Добавляем системное сообщение в чат
         try:
             system_message = Message.objects.create(
@@ -203,6 +213,8 @@ class CreateOrderResponseByOrderView(APIView):
         Returns:
             Response: Объект ответа с данными созданного отклика или ошибкой.
         """
+        # Добавляем явное логирование для определения вызванного метода
+        print("!!! ВЫЗВАН CreateOrderResponseByOrderView.post для order_id =", order_id, "!!!")
         # Добавляем подробное логирование для диагностики
         import logging
         logger = logging.getLogger(__name__)
@@ -357,6 +369,16 @@ class CreateOrderResponseByOrderView(APIView):
                     timeframe=timeframe
                 )
                 logger.info("Отклик успешно создан, ID: %s", order_response.id)
+                
+                # Автоматически назначаем креатора на заказ
+                logger.info("Автоматическое назначение креатора %s на заказ %s", creator.id, order.id)
+                order.creator = creator
+                order.target_creator = creator
+                if order.status in ['published', 'awaiting_response']:
+                    order.status = 'in_progress'
+                    logger.info("Обновление статуса заказа на 'in_progress'")
+                order.save()
+                logger.info("Креатор успешно назначен на заказ")
             except Exception as e:
                 logger.error("Ошибка при создании отклика на заказ: %s", str(e))
                 return Response({"error": f"Не удалось создать отклик: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
