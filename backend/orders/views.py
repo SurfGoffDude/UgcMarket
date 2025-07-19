@@ -501,6 +501,131 @@ class OrderViewSet(viewsets.ModelViewSet):
             {'message': 'Заказ отменен'},
             status=status.HTTP_200_OK
         )
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsOrderClient], url_path='client-change-status')
+    def client_change_status(self, request, pk=None):
+        """
+        Изменяет статус заказа клиентом.
+        
+        Доступные действия для клиента:
+        - cancel: отменить заказ (из любого статуса кроме completed/canceled)
+        - complete: принять работу (из статуса on_review)
+        - request_revision: вернуть на доработку (из статуса on_review)
+        
+        Параметры:
+        - action (str): действие (cancel, complete, request_revision)
+        - comment (str, optional): комментарий к изменению статуса
+        """
+        logger.info(f"client_change_status вызван для заказа {pk} пользователем {request.user.id if request.user.is_authenticated else 'анонимный'}")
+        logger.info(f"Данные запроса: {request.data}")
+        
+        try:
+            order = self.get_object()
+            logger.info(f"Заказ найден: ID={order.id}, статус={order.status}, клиент={order.client.id if order.client else 'None'}")
+        except Exception as e:
+            logger.error(f"Ошибка при получении заказа {pk}: {str(e)}")
+            return Response(
+                {'error': f'Заказ не найден: {str(e)}'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        action = request.data.get('action')
+        comment = request.data.get('comment', '')
+        
+        logger.info(f"Действие: {action}, комментарий: {comment}")
+        
+        if not action:
+            logger.warning("Параметр action не предоставлен")
+            return Response(
+                {'error': 'Параметр action обязателен'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Определяем доступные действия для клиента в зависимости от статуса заказа
+        logger.info(f"Проверяем доступные действия для статуса {order.status}")
+        allowed_actions = {
+            'draft': ['cancel'],
+            'published': ['cancel', 'complete'],  # Клиент может принять опубликованный заказ
+            'awaiting_response': ['cancel'],
+            'in_progress': ['cancel', 'complete'],  # Клиент может принять работу в процессе
+            'on_review': ['cancel', 'complete', 'request_revision'],
+            'completed': [],  # Финальный статус
+            'canceled': []  # Финальный статус
+        }
+        
+        current_status = order.status
+        if action not in allowed_actions.get(current_status, []):
+            return Response(
+                {
+                    'error': f'Действие "{action}" недоступно для заказа в статусе "{current_status}"',
+                    'allowed_actions': allowed_actions.get(current_status, [])
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Выполняем действие
+        try:
+            if action == 'cancel':
+                if not order.change_status('canceled'):
+                    return Response(
+                        {'error': 'Не удалось отменить заказ'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                message = 'Заказ отменен'
+                system_message = f"Заказ отменен клиентом"
+                
+            elif action == 'complete':
+                if not order.change_status('completed'):
+                    return Response(
+                        {'error': 'Не удалось завершить заказ'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                message = 'Заказ завершен'
+                system_message = f"Заказ принят клиентом"
+                
+            elif action == 'request_revision':
+                if not order.change_status('in_progress'):
+                    return Response(
+                        {'error': 'Не удалось вернуть заказ на доработку'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                message = 'Заказ возвращен на доработку'
+                system_message = f"Заказ возвращен на доработку клиентом"
+            
+            # Сохраняем изменения
+            order.save()
+            
+            # Добавляем комментарий к системному сообщению, если он есть
+            if comment:
+                system_message += f". Комментарий: {comment}"
+            
+            # Отправляем системное сообщение в чат, если он существует
+            try:
+                chat = Chat.objects.get(order=order)
+                Message.objects.create(
+                    chat=chat,
+                    content=system_message,
+                    is_system_message=True
+                )
+            except Chat.DoesNotExist:
+                # Чат может не существовать для некоторых заказов
+                pass
+            
+            return Response(
+                {
+                    'message': message,
+                    'new_status': order.status,
+                    'comment': comment
+                },
+                status=status.HTTP_200_OK
+            )
+            
+        except Exception as e:
+            logger.error(f"Ошибка при изменении статуса заказа {order.id}: {str(e)}")
+            return Response(
+                {'error': 'Произошла ошибка при изменении статуса заказа'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class OrderAttachmentViewSet(viewsets.ModelViewSet):

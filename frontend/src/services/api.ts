@@ -22,7 +22,7 @@ const api = axios.create({
  */
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token'); // Предполагается, что токен хранится под ключом 'token'
+    const token = localStorage.getItem('access_token'); // Токен хранится под ключом 'access_token'
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

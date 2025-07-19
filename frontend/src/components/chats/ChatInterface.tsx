@@ -20,8 +20,12 @@ import {
   MessageSquare,
   Paperclip,
   Loader2,
-  Info
+  Info,
+  XCircle,
+  CheckCheck,
+  RotateCcw
 } from 'lucide-react';
+import { getClientOrders, changeOrderStatus, type ClientOrder, type OrderAction } from '@/api/chatsApi';
 
 /**
  * Интерфейсы для типов данных чата
@@ -96,8 +100,9 @@ const ChatInterface: React.FC = () => {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   
   // Для заказов
-  const [clientOrders, setClientOrders] = useState<OrderListItem[]>([]);
+  const [clientOrders, setClientOrders] = useState<ClientOrder[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  const [updatingOrderStatus, setUpdatingOrderStatus] = useState<number | null>(null);
   
   // Для управления заказами
   const [processingStatus, setProcessingStatus] = useState(false);
@@ -107,30 +112,22 @@ const ChatInterface: React.FC = () => {
   * Использует специальный эндпоинт creator-client-orders для получения заказов
  * со статусами in_progress, on_review или completed
   */
-const fetchClientOrders = useCallback(async (clientId: number, creatorId: number) => {
-  if (!token || !user) return;
+  const fetchClientOrders = useCallback(async () => {
+    if (!user || !token) return;
+    
+    try {
+      setLoadingOrders(true);
+      const response = await getClientOrders();
+      setClientOrders(response.orders || []);
+    } catch (error) {
+      console.error('Ошибка при загрузке заказов:', error);
+      toast.error('Не удалось загрузить заказы');
+    } finally {
+      setLoadingOrders(false);
+    }
+  }, [user, token]);
 
-  setLoadingOrders(true);
 
-  try {
-    // Используем эндпоинт для получения заказов между клиентом и креатором
-    const response = await axios.get(`/api/order-responses/creator-client-orders/`, {
-      params: {
-        client: clientId,
-        target_creator: creatorId
-      },
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-
-    // Новый эндпоинт возвращает массив напрямую, без results
-    setClientOrders(response.data || []);
-  } catch (err) {
-    console.error('Ошибка при загрузке заказов:', err);
-    setClientOrders([]); // Устанавливаем пустой массив при ошибке
-  } finally {
-    setLoadingOrders(false);
-  }  
-}, [token, user]);
   
   /**
    * Функция загрузки информации о чате
@@ -179,8 +176,8 @@ const fetchClientOrders = useCallback(async (clientId: number, creatorId: number
         setInterlocutor(chat.client);
       }
       
-      // Загружаем заказы между клиентом и креатором
-      fetchClientOrders(chat.client.id, chat.creator.id);
+      // Загружаем заказы клиента
+      fetchClientOrders();
     }
   }, [chat, user, fetchClientOrders]);
   
@@ -268,6 +265,35 @@ const fetchClientOrders = useCallback(async (clientId: number, creatorId: number
       }
     }
   }, [token, id, chat]);
+  
+  /**
+   * Обрабатывает изменение статуса заказа клиентом
+   */
+  const handleOrderStatusChange = useCallback(async (orderId: number, action: string) => {
+    try {
+      setUpdatingOrderStatus(orderId);
+      const response = await changeOrderStatus(orderId, { action: action as 'cancel' | 'complete' | 'request_revision' });
+      
+      toast.success(response.message);
+      
+      // Обновляем список заказов
+      await fetchClientOrders();
+      
+      // Обновляем сообщения чата, чтобы показать системное сообщение
+      if (chat) {
+        await fetchMessages();
+      }
+      
+    } catch (error: unknown) {
+      console.error('Ошибка при изменении статуса заказа:', error);
+      console.error('Полный response:', (error as any)?.response);
+      console.error('Response data:', (error as any)?.response?.data);
+      const errorMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Не удалось изменить статус заказа';
+      toast.error(errorMessage);
+    } finally {
+      setUpdatingOrderStatus(null);
+    }
+  }, [fetchClientOrders, chat, fetchMessages]);
   
   /**
    * Отправка сообщения
@@ -449,47 +475,7 @@ const fetchClientOrders = useCallback(async (clientId: number, creatorId: number
     );
   };
   
-  /**
-   * Обработка изменения статуса заказа
-   */
-  const handleOrderStatusChange = async (status: string) => {
-    if (!token || !chat?.order || processingStatus) return;
-    
-    setProcessingStatus(true);
-    
-    try {
-      const response = await axios.patch(
-        `/api/orders/${chat.order.id}/`, 
-        { status }, 
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
-      
-      // Обновляем информацию о чате
-      setChat(prev => prev ? {
-        ...prev,
-        order: {
-          ...prev.order!,
-          status: response.data.status
-        }
-      } : null);
-      
-      // Обновляем список заказов
-      if (chat.client && chat.creator) {
-        fetchClientOrders(chat.client.id, chat.creator.id);
-      }
-      
-      toast.success('Статус заказа успешно изменен');
-    } catch (err) {
-      console.error('Ошибка при изменении статуса заказа:', err);
-      toast.error('Не удалось изменить статус заказа');
-    } finally {
-      setProcessingStatus(false);
-    }
-  };
+
   
   /**
    * Переход на страницу деталей заказа
@@ -613,22 +599,68 @@ const fetchClientOrders = useCallback(async (clientId: number, creatorId: number
                   {clientOrders.map((order) => (
                     <div 
                       key={order.id} 
-                      className="p-3 rounded border hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
-                      onClick={() => goToOrderDetails(order.id)}
+                      className="p-3 rounded border hover:bg-gray-50 dark:hover:bg-gray-800"
                     >
-                      <p className="font-medium truncate">{order.title}</p>
-                      <div className="flex justify-between items-center mt-1">
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                          order.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                          order.status === 'on_review' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' :
-                          'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-                        }`}>
-                          {getOrderStatusText(order.status)}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          {formatDistanceToNow(new Date(order.created_at), { locale: ru, addSuffix: true })}
-                        </span>
+                      <div 
+                        className="cursor-pointer"
+                        onClick={() => goToOrderDetails(order.id)}
+                      >
+                        <p className="font-medium truncate">{order.title}</p>
+                        <div className="flex justify-between items-center mt-1">
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                            order.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                            order.status === 'on_review' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' :
+                            order.status === 'in_progress' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
+                            order.status === 'canceled' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                            'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
+                          }`}>
+                            {order.status_label}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {formatDistanceToNow(new Date(order.created_at), { locale: ru, addSuffix: true })}
+                          </span>
+                        </div>
                       </div>
+                      
+                      {/* Кнопки управления статусом заказа */}
+                      {order.allowed_actions && order.allowed_actions.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {order.allowed_actions.map((action) => {
+                            const isUpdating = updatingOrderStatus === order.id;
+                            const actionLabel = order.action_labels[action] || action;
+                            
+                            return (
+                              <Button
+                                key={action}
+                                size="sm"
+                                variant={action === 'cancel' ? 'destructive' : 
+                                        action === 'complete' ? 'default' : 'outline'}
+                                className={`text-xs h-6 px-2 ${
+                                  action === 'cancel' ? 'bg-red-500 hover:bg-red-600' :
+                                  action === 'complete' ? 'bg-green-500 hover:bg-green-600' :
+                                  'border-blue-500 text-blue-600 hover:bg-blue-50'
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOrderStatusChange(order.id, action);
+                                }}
+                                disabled={isUpdating}
+                              >
+                                {isUpdating ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <>
+                                    {action === 'cancel' && <XCircle className="h-3 w-3 mr-1" />}
+                                    {action === 'complete' && <CheckCheck className="h-3 w-3 mr-1" />}
+                                    {action === 'request_revision' && <RotateCcw className="h-3 w-3 mr-1" />}
+                                    {actionLabel}
+                                  </>
+                                )}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -769,7 +801,7 @@ const fetchClientOrders = useCallback(async (clientId: number, creatorId: number
                               variant="default" 
                               size="sm"
                               className="bg-green-500 hover:bg-green-600"
-                              onClick={() => handleOrderStatusChange("on_review")}
+                              onClick={() => chat?.order && handleOrderStatusChange(chat.order.id, "on_review")}
                               disabled={processingStatus}
                             >
                               Принять отклик
@@ -778,7 +810,7 @@ const fetchClientOrders = useCallback(async (clientId: number, creatorId: number
                               variant="outline" 
                               size="sm"
                               className="text-red-500 hover:bg-red-100 hover:text-red-600"
-                              onClick={() => handleOrderStatusChange("published")}
+                              onClick={() => chat?.order && handleOrderStatusChange(chat.order.id, "published")}
                               disabled={processingStatus}
                             >
                               Отклонить

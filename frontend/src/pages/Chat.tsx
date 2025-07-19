@@ -13,7 +13,10 @@ import {
   MoreVertical,
   Download,
   Trash2,
-  X
+  X,
+  XCircle,
+  RotateCcw,
+  CheckCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +26,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import api from '@/lib/api';
+import { getClientOrders, changeOrderStatus, type ClientOrder, type OrderAction } from '@/api/chatsApi';
 
 // Types
 type Message = {
@@ -66,35 +70,23 @@ type User = {
   lastSeen?: string;
 };
 
-type Order = {
-  id: string;
-  title: string;
-  status: 'in_progress' | 'review' | 'completed' | 'disputed';
-  deadline: string;
-  price: number;
-};
+// Используем тип из API
+type Order = ClientOrder;
 
 // Mock data
 const currentUser: User = {
   id: 'user1',
-  name: 'Алексей Иванов',
-  avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+  name: 'Вы',
+  avatar: '/placeholder.svg?height=40&width=40',
   isOnline: true
 };
 
 const otherUser: User = {
   id: 'user2',
-  name: 'Мария Видеографова',
-  avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b47c?w=150&h=150&fit=crop&crop=face',
-  isOnline: true
-};
-
-const orderDetails: Order = {
-  id: 'ORD-12345',
-  title: 'Монтаж видео о путешествии на Бали',
-  status: 'in_progress',
-  deadline: '2023-12-15',
-  price: 15000
+  name: 'Анна Смирнова',
+  avatar: '/placeholder.svg?height=40&width=40',
+  isOnline: true,
+  lastSeen: '2 минуты назад'
 };
 
 const Chat = () => {
@@ -106,12 +98,56 @@ const Chat = () => {
   const [error, setError] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [order, setOrder] = useState<Order>(orderDetails);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [otherUserData] = useState<User>(otherUser);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // Функция для загрузки заказов клиента
+  const fetchOrders = useCallback(async () => {
+    try {
+      setIsLoadingOrders(true);
+      const response = await getClientOrders();
+      setOrders(response.orders);
+    } catch (error) {
+      console.error('Ошибка при загрузке заказов:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось загрузить заказы",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingOrders(false);
+    }
+  }, [toast]);
+
+  // Функция для изменения статуса заказа
+  const handleOrderStatusChange = useCallback(async (orderId: number, action: OrderAction) => {
+    try {
+      const response = await changeOrderStatus(orderId, action);
+      
+      toast({
+        title: "Успешно",
+        description: response.message,
+        variant: "default"
+      });
+      
+      // Обновляем список заказов
+      await fetchOrders();
+      
+    } catch (error: unknown) {
+      console.error('Ошибка при изменении статуса заказа:', error);
+      const errorMessage = (error as any)?.response?.data?.error || 'Не удалось изменить статус заказа';
+      toast({
+        title: "Ошибка",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    }
+  }, [fetchOrders, toast]);
 
   // Функция для загрузки сообщений через API
   const fetchMessages = useCallback(async () => {
@@ -253,45 +289,36 @@ const Chat = () => {
     setSelectedFile(null);
   };
 
-  const handleStatusUpdate = (newStatus: Order['status']) => {
-    setOrder(prev => ({
-      ...prev,
-      status: newStatus
-    }));
-    
-    // Add status update message
-    const statusMessage: Message = {
-      id: `status-${Date.now()}`,
-      senderId: 'system',
-      content: `Статус заказа изменен на: ${getStatusText(newStatus)}`,
-      created_at: new Date().toISOString(),
-      status: 'read',
-      type: 'status'
-    };
-    
-    setMessages(prev => [...prev, statusMessage]);
-    toast({
-      title: "Статус обновлен",
-      description: `Статус заказа изменен на: ${getStatusText(newStatus)}`
-    });
-  };
+  // Инициализация компонента
+  useEffect(() => {
+    fetchOrders();
+    if (id) {
+      fetchMessages();
+    }
+  }, [id, fetchOrders, fetchMessages]);
 
-  const getStatusText = (status: Order['status']) => {
+  const getStatusText = (status: string) => {
     switch (status) {
+      case 'draft': return 'Черновик';
+      case 'published': return 'Опубликован';
+      case 'awaiting_response': return 'Ожидает отклика';
       case 'in_progress': return 'В работе';
-      case 'review': return 'На проверке';
+      case 'on_review': return 'На проверке';
       case 'completed': return 'Завершен';
-      case 'disputed': return 'Спор';
+      case 'canceled': return 'Отменен';
       default: return status;
     }
   };
 
-  const getStatusColor = (status: Order['status']) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
+      case 'draft': return 'bg-gray-100 text-gray-800';
+      case 'published': return 'bg-blue-100 text-blue-800';
+      case 'awaiting_response': return 'bg-purple-100 text-purple-800';
       case 'in_progress': return 'bg-blue-100 text-blue-800';
-      case 'review': return 'bg-yellow-100 text-yellow-800';
+      case 'on_review': return 'bg-yellow-100 text-yellow-800';
       case 'completed': return 'bg-green-100 text-green-800';
-      case 'disputed': return 'bg-red-100 text-red-800';
+      case 'canceled': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -466,48 +493,107 @@ const Chat = () => {
           </div>
         </div>
 
-        {/* Order Status Bar */}
-        <div className="bg-blue-50 border-b border-blue-100 p-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-medium text-sm text-gray-900">{order.title}</h3>
-              <div className="flex items-center space-x-2 mt-1">
-                <Badge className={`${getStatusColor(order.status)} text-xs`}>
-                  {getStatusText(order.status)}
-                </Badge>
-                <span className="text-xs text-gray-500">
-                  Срок: {new Date(order.deadline).toLocaleDateString('ru-RU')}
-                </span>
-              </div>
-            </div>
-            <div className="flex space-x-2">
-              <Button variant="outline" size="sm" onClick={() => navigate(`/orders/${order.id}`)}>
-                Просмотреть заказ
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    Действия
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleStatusUpdate('review')}>
-                    <CheckCircle className="w-4 h-4 mr-2 text-yellow-500" />
-                    На проверку
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleStatusUpdate('completed')}>
-                    <Check className="w-4 h-4 mr-2 text-green-500" />
-                    Завершить заказ
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleStatusUpdate('disputed')} className="text-red-600">
-                    <AlertCircle className="w-4 h-4 mr-2" />
-                    Открыть спор
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+        {/* Orders List */}
+        {isLoadingOrders ? (
+          <div className="bg-blue-50 border-b border-blue-100 p-3">
+            <div className="text-sm text-gray-500">Загрузка заказов...</div>
           </div>
-        </div>
+        ) : orders.length > 0 ? (
+          <div className="bg-blue-50 border-b border-blue-100">
+            {/* Отладочная информация */}
+            <div className="p-2 bg-yellow-100 text-xs text-yellow-800">
+              Найдено заказов: {orders.length}
+            </div>
+            {orders.map((order) => (
+              <div key={order.id} className="p-3 border-b border-blue-100 last:border-b-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <h3 className="font-medium text-sm text-gray-900">{order.title}</h3>
+                    <div className="flex items-center space-x-2 mt-1">
+                      <Badge className={`${getStatusColor(order.status)} text-xs`}>
+                        {order.status_label}
+                      </Badge>
+                      <span className="text-xs text-gray-500">
+                        Срок: {new Date(order.deadline).toLocaleDateString('ru-RU')}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {order.budget} ₽
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col space-y-2 ml-4">
+                    <Button variant="outline" size="sm" onClick={() => navigate(`/orders/${order.id}`)}>
+                      Просмотреть
+                    </Button>
+                    
+                    {/* Отображаем кнопки действий */}
+                    {order.allowed_actions && order.allowed_actions.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {order.allowed_actions.map((action) => {
+                          const getActionConfig = (action: string) => {
+                            switch (action) {
+                              case 'cancel':
+                                return {
+                                  icon: <XCircle className="w-3 h-3 mr-1" />,
+                                  label: order.action_labels?.[action] || 'Отменить',
+                                  variant: 'destructive' as const,
+                                  size: 'sm' as const
+                                };
+                              case 'complete':
+                                return {
+                                  icon: <CheckCheck className="w-3 h-3 mr-1" />,
+                                  label: order.action_labels?.[action] || 'Принять',
+                                  variant: 'default' as const,
+                                  size: 'sm' as const
+                                };
+                              case 'request_revision':
+                                return {
+                                  icon: <RotateCcw className="w-3 h-3 mr-1" />,
+                                  label: order.action_labels?.[action] || 'На доработку',
+                                  variant: 'secondary' as const,
+                                  size: 'sm' as const
+                                };
+                              default:
+                                return {
+                                  icon: <Check className="w-3 h-3 mr-1" />,
+                                  label: order.action_labels?.[action] || action,
+                                  variant: 'outline' as const,
+                                  size: 'sm' as const
+                                };
+                            }
+                          };
+                          
+                          const config = getActionConfig(action);
+                          
+                          return (
+                            <Button
+                              key={action}
+                              variant={config.variant}
+                              size={config.size}
+                              className="text-xs h-7"
+                              onClick={() => handleOrderStatusChange(order.id, { action: action as 'cancel' | 'complete' | 'request_revision' })}
+                            >
+                              {config.icon}
+                              {config.label}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-gray-400">
+                        Нет доступных действий
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-blue-50 border-b border-blue-100 p-3">
+            <div className="text-sm text-gray-500">Нет активных заказов</div>
+          </div>
+        )}
 
         {/* Messages */}
         <ScrollArea className="flex-1 p-4 overflow-y-auto">

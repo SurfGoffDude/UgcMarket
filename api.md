@@ -1,441 +1,156 @@
-# API документация UgcMarket
+# API Документация
 
-## Заказы
+## Эндпоинты для управления заказами клиентом в чате
 
-### Получение заказов между клиентом и креатором
+### 1. Получение заказов клиента в чатах
 
-**Запрос:**
-```
-GET /api/orders/creator-client-orders/
-```
+**GET** `/api/chats/client-orders/`
 
-**Заголовки:**
-```
-Authorization: Bearer <token>
-```
+Возвращает список заказов клиента в чатах с информацией о доступных действиях для управления статусом.
 
-**Параметры запроса:**
-- `client` - идентификатор клиента (обязательный)
-- `target_creator` - идентификатор креатора (обязательный)
+**Требования:**
+- Аутентификация: обязательна
+- Роль: клиент
 
-**Примечания:**
-- Возвращает все заказы между указанным клиентом и креатором со статусами 'in_progress', 'on_review' или 'completed'
-- Используется для отображения заказов в интерфейсе чата
-
-**Пример запроса:**
-```
-GET /api/orders/creator-client-orders/?client=2&target_creator=3
-```
-
-**Пример ответа:**
-```json
-[
-  {
-    "id": 5,
-    "title": "Дизайн логотипа",
-    "description": "Нужен логотип для нового проекта",
-    "client": 2,
-    "budget": 5000,
-    "deadline": "2023-08-10",
-    "status": "in_progress",
-    "created_at": "2023-07-08T09:15:33Z",
-    "updated_at": "2023-07-09T18:22:54Z"
-  },
-  {
-    "id": 8,
-    "title": "Дизайн визитной карточки",
-    "description": "Разработать дизайн корпоративной визитки",
-    "client": 2,
-    "budget": 2500,
-    "deadline": "2023-07-25",
-    "status": "completed",
-    "created_at": "2023-07-01T10:22:15Z",
-    "updated_at": "2023-07-15T16:40:33Z"
-  }
-]
-```
-
-### Фильтрация заказов
-
-**Запрос:**
-```
-GET /api/orders/
-```
-
-**Заголовки:**
-```
-Authorization: Bearer <token>
-```
-
-**Параметры фильтрации:**
-- `client` - идентификатор клиента
-- `target_creator` - идентификатор креатора (важно: используйте target_creator вместо creator)
-- `status` - статус заказа (awaiting_response, in_progress, on_review, completed, cancelled)
-
-**Пример запроса:**
-```
-GET /api/orders/?target_creator=3&status=completed
-```
-
-## Чаты
-
-### Получение списка чатов
-
-**Запрос:**
-```
-GET /api/chats/
-```
-
-**Заголовки:**
-```
-Authorization: Bearer <token>
-```
-
-**Пример ответа:**
-```json
-[
-  {
-    "id": 1,
-    "client": {
-      "id": 2,
-      "username": "client1",
-      "avatar": "/media/avatars/client1.jpg"
-    },
-    "creator": {
-      "id": 3,
-      "username": "creator1",
-      "avatar": "/media/avatars/creator1.jpg"
-    },
-    "order": {
-      "id": 5,
-      "title": "Дизайн логотипа"
-    },
-    "last_message": {
-      "content": "Отправляю предварительный макет логотипа",
-      "created_at": "2023-07-11T10:22:15Z",
-      "sender_username": "creator1"
-    },
-    "unread_count": 2,
-    "created_at": "2023-07-01T09:30:00Z",
-    "updated_at": "2023-07-11T10:22:15Z"
-  }
-]
-```
-
-### Получение чата по ID участников
-
-**Запрос:**
-```
-GET /api/chats/{creator_id}-{client_id}/
-```
-
-**Заголовки:**
-```
-Authorization: Bearer <token>
-```
-
-**Пример запроса:**
-```
-GET /api/chats/3-2/
-```
-
-**Пример ответа:**
+**Ответ:**
 ```json
 {
-  "id": 1,
-  "client": {
-    "id": 2,
-    "username": "client1",
-    "avatar": "/media/avatars/client1.jpg"
-  },
-  "creator": {
-    "id": 3,
-    "username": "creator1",
-    "avatar": "/media/avatars/creator1.jpg"
-  },
-  "order": {
-    "id": 5,
-    "title": "Дизайн логотипа"
-  },
-  "messages": [
+  "orders": [
     {
       "id": 1,
-      "sender": 2,
-      "sender_details": {
+      "title": "Название заказа",
+      "status": "in_progress",
+      "status_label": "В работе",
+      "budget": 15000,
+      "deadline": "2024-01-15T00:00:00Z",
+      "creator": {
         "id": 2,
-        "username": "client1",
-        "avatar": "/media/avatars/client1.jpg"
+        "username": "creator_username",
+        "avatar": "url_to_avatar"
       },
-      "content": "Здравствуйте! Интересует разработка логотипа.",
-      "attachment": null,
-      "is_system_message": false,
-      "created_at": "2023-07-01T09:35:22Z",
-      "read_by_client": true,
-      "read_by_creator": true
-    },
-    {
-      "id": 2,
-      "sender": 3,
-      "sender_details": {
-        "id": 3,
-        "username": "creator1",
-        "avatar": "/media/avatars/creator1.jpg"
+      "target_creator": {
+        "id": 2,
+        "username": "creator_username", 
+        "avatar": "url_to_avatar"
       },
-      "content": "Здравствуйте! Да, готов обсудить детали.",
-      "attachment": null,
-      "is_system_message": false,
-      "created_at": "2023-07-01T10:15:45Z",
-      "read_by_client": true,
-      "read_by_creator": true
+      "chat_id": 1,
+      "allowed_actions": ["cancel"],
+      "action_labels": {
+        "cancel": "Отменить"
+      },
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
     }
   ],
-  "created_at": "2023-07-01T09:30:00Z",
-  "updated_at": "2023-07-11T10:22:15Z"
+  "count": 1
 }
 ```
 
-### Получение сообщений чата по ID участников
+**Поля ответа:**
+- `id` - ID заказа
+- `title` - название заказа
+- `status` - статус заказа (draft, published, awaiting_response, in_progress, on_review, completed, canceled)
+- `status_label` - статус заказа на русском языке
+- `budget` - бюджет заказа
+- `deadline` - срок выполнения заказа
+- `creator` - информация о креаторе чата
+- `target_creator` - информация о назначенном исполнителе заказа
+- `chat_id` - ID чата
+- `allowed_actions` - список доступных действий для клиента
+- `action_labels` - названия действий на русском языке
+- `created_at` - дата создания заказа
+- `updated_at` - дата последнего обновления заказа
 
-**Запрос:**
-```
-GET /api/chats/{creator_id}-{client_id}/messages/
-```
+### 2. Изменение статуса заказа клиентом
 
-**Заголовки:**
-```
-Authorization: Bearer <token>
-```
+**POST** `/api/orders/{order_id}/client-change-status/`
 
-**Пример запроса:**
-```
-GET /api/chats/3-2/messages/
-```
+Позволяет клиенту изменить статус своего заказа в зависимости от текущего состояния.
 
-**Пример ответа:**
-```json
-[
-  {
-    "id": 1,
-    "chat": 1,
-    "sender": 2,
-    "sender_details": {
-      "id": 2,
-      "username": "client1",
-      "avatar": "/media/avatars/client1.jpg"
-    },
-    "content": "Здравствуйте! Интересует разработка логотипа.",
-    "attachment": null,
-    "is_system_message": false,
-    "created_at": "2023-07-01T09:35:22Z",
-    "read_by_client": true,
-    "read_by_creator": true
-  },
-  {
-    "id": 2,
-    "chat": 1,
-    "sender": 3,
-    "sender_details": {
-      "id": 3,
-      "username": "creator1",
-      "avatar": "/media/avatars/creator1.jpg"
-    },
-    "content": "Здравствуйте! Да, готов обсудить детали.",
-    "attachment": null,
-    "is_system_message": false,
-    "created_at": "2023-07-01T10:15:45Z",
-    "read_by_client": true,
-    "read_by_creator": true
-  }
-]
-```
+**Требования:**
+- Аутентификация: обязательна
+- Роль: клиент заказа
 
-### Отправка сообщения через ID участников
-
-**Запрос:**
-```
-POST /api/chats/{creator_id}-{client_id}/messages/
-```
-
-**Заголовки:**
-```
-Authorization: Bearer <token>
-Content-Type: application/json
-```
+**Параметры URL:**
+- `order_id` - ID заказа
 
 **Тело запроса:**
 ```json
 {
-  "content": "Меня интересует разработка логотипа для моего проекта"
+  "action": "cancel",
+  "comment": "Причина изменения статуса (необязательно)"
 }
 ```
 
-**Пример запроса:**
-```
-POST /api/chats/3-2/messages/
-```
+**Доступные действия:**
 
-**Пример ответа:**
+#### Для статуса "draft" (Черновик):
+- `cancel` - отменить заказ
+
+#### Для статуса "published" (Опубликован):
+- `cancel` - отменить заказ
+
+#### Для статуса "awaiting_response" (Ожидает отклика):
+- `cancel` - отменить заказ
+
+#### Для статуса "in_progress" (В работе):
+- `cancel` - отменить заказ
+
+#### Для статуса "on_review" (На проверке):
+- `cancel` - отменить заказ
+- `complete` - принять работу (завершить заказ)
+- `request_revision` - вернуть на доработку
+
+#### Для статусов "completed" и "canceled":
+- Никаких действий недоступно (финальные статусы)
+
+**Ответ при успехе:**
 ```json
 {
-  "id": 4,
-  "chat": 1,
-  "sender": 2,
-  "sender_details": {
-    "id": 2,
-    "username": "client1",
-    "avatar": "/media/avatars/client1.jpg"
-  },
-  "content": "Меня интересует разработка логотипа для моего проекта",
-  "attachment": null,
-  "is_system_message": false,
-  "created_at": "2023-07-10T16:50:22Z",
-  "read_by_client": true,
-  "read_by_creator": false
+  "message": "Заказ отменен",
+  "new_status": "canceled",
+  "comment": "Причина изменения статуса"
 }
 ```
 
-### Отправка сообщения через стандартный API
-
-**Запрос:**
-```
-POST /api/chats/{chat_id}/messages/
-```
-
-**Описание:**  
-Отправляет новое сообщение в указанный чат.
-
-**Заголовки:**
-```
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-**Тело запроса:**
+**Ответ при ошибке:**
 ```json
 {
-  "content": "Меня интересует разработка логотипа для моего проекта"
+  "error": "Действие \"complete\" недоступно для заказа в статусе \"in_progress\"",
+  "allowed_actions": ["cancel"]
 }
 ```
 
-**Пример запроса:**
-```
-POST /api/chats/1/messages/
-```
+**Коды ответов:**
+- `200` - успешное изменение статуса
+- `400` - неверные параметры или недоступное действие
+- `403` - нет прав доступа
+- `404` - заказ не найден
+- `500` - внутренняя ошибка сервера
 
-**Пример ответа:**
-```json
-{
-  "id": 4,
-  "chat": 1,
-  "sender": 2,
-  "sender_details": {
-    "id": 2,
-    "username": "client1",
-    "avatar": "/media/avatars/client1.jpg"
-  },
-  "content": "Меня интересует разработка логотипа для моего проекта",
-  "attachment": null,
-  "is_system_message": false,
-  "created_at": "2023-07-10T16:50:22Z",
-  "read_by_client": true,
-  "read_by_creator": false
+### 3. Системные сообщения
+
+При изменении статуса заказа автоматически создается системное сообщение в чате (если чат существует) с информацией об изменении и комментарием клиента (если указан).
+
+Примеры системных сообщений:
+- "Заказ отменен клиентом"
+- "Заказ принят клиентом"
+- "Заказ возвращен на доработку клиентом. Комментарий: Нужно изменить цвет логотипа"
+
+### 4. Валидация переходов статусов
+
+Система использует валидацию переходов статусов, определенную в модели Order:
+
+```python
+valid_transitions = {
+    'draft': ['published', 'canceled'],
+    'published': ['awaiting_response', 'in_progress', 'canceled'],
+    'awaiting_response': ['in_progress', 'canceled'],
+    'in_progress': ['on_review', 'canceled'],
+    'on_review': ['in_progress', 'completed', 'canceled'],
+    'completed': [],  # Финальный статус
+    'canceled': ['draft']  # Можно восстановить только в черновик
 }
 ```
 
-### Отправка сообщения с вложением
-
-**Запрос:**
-```
-POST /api/chats/{chat_id}/messages/
-```
-
-**Заголовки:**
-```
-Authorization: Bearer <token>
-Content-Type: multipart/form-data
-```
-
-**Параметры формы:**
-- `content` - текст сообщения
-- `attachment` - прикрепляемый файл
-
-**Пример ответа:**
-```json
-{
-  "id": 5,
-  "chat": 1,
-  "sender": 2,
-  "sender_details": {
-    "id": 2,
-    "username": "client1",
-    "avatar": "/media/avatars/client1.jpg"
-  },
-  "content": "Вот референс для логотипа",
-  "attachment": "/media/chat_attachments/reference.jpg",
-  "is_system_message": false,
-  "created_at": "2023-07-10T16:55:30Z",
-  "read_by_client": true,
-  "read_by_creator": false
-}
-```
-
-### Создание отклика на заказ через чат
-
-**Запрос:**
-```
-POST /api/chats/create-for-order/{chat_id}/
-```
-
-**Описание:**  
-Создает отклик на указанный заказ от имени креатора, участвующего в чате. Если такой отклик уже существует, возвращает информацию о существующем отклике. Автоматически связывает чат с заказом, если он еще не связан, и добавляет системное сообщение об отклике в чат.
-
-**Заголовки:**
-```
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-**Тело запроса:**
-```json
-{
-  "order": 15,
-  "price": 5000,
-  "message": "Я заинтересован в выполнении этого заказа"
-}
-```
-
-**Параметры запроса:**
-- `order` (обязательный) - идентификатор заказа, на который создается отклик
-- `price` (необязательный) - предлагаемая цена за выполнение заказа (по умолчанию равна бюджету заказа)
-- `message` (необязательный) - текст сообщения в отклике
-
-**Пример запроса:**
-```
-POST /api/chats/create-for-order/5/
-```
-
-**Пример ответа (новый отклик):**
-```json
-{
-  "id": 12,
-  "order": 15,
-  "creator": 3,
-  "price": 5000,
-  "message": "Я заинтересован в выполнении этого заказа",
-  "created_at": "2023-07-15T13:45:22Z",
-  "status": "pending"
-}
-```
-
-**Пример ответа (существующий отклик):**
-```json
-{
-  "id": 10,
-  "order": 15,
-  "creator": 3,
-  "price": 4500,
-  "message": "Готов выполнить ваш заказ",
-  "created_at": "2023-07-10T09:30:15Z",
-  "status": "pending"
-}
-```
+Клиент может инициировать только определенные переходы в зависимости от текущего статуса заказа.

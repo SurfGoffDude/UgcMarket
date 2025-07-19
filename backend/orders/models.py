@@ -221,13 +221,13 @@ class Order(models.Model):
             bool: True если статус был успешно изменен, False в противном случае.
         """
         valid_transitions = {
-            'draft': ['published', 'canceled'],
-            'published': ['awaiting_response', 'in_progress', 'canceled'],
-            'awaiting_response': ['in_progress', 'canceled'],
-            'in_progress': ['on_review', 'canceled'],
-            'on_review': ['in_progress', 'completed', 'canceled'],
-            'completed': [],  # Финальный статус
-            'canceled': ['draft']  # Можно восстановить только в черновик
+        'draft': ['published', 'canceled'],
+        'published': ['awaiting_response', 'in_progress', 'completed', 'canceled'],  # Клиент может завершить опубликованный заказ
+        'awaiting_response': ['in_progress', 'canceled'],
+        'in_progress': ['on_review', 'completed', 'canceled'],  # Клиент может завершить заказ в процессе
+        'on_review': ['in_progress', 'completed', 'canceled'],
+        'completed': [],  # Финальный статус
+        'canceled': ['draft']  # Можно восстановить только в черновик
         }
         
         if new_status in valid_transitions.get(self.status, []):

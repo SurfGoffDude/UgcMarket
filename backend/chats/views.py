@@ -115,6 +115,89 @@ class ChatViewSet(viewsets.ModelViewSet):
             'chat_participants': chat_participants
         })
     
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated], url_path='client-orders')
+    def client_orders(self, request):
+        """
+        Возвращает заказы клиента в чатах с информацией о доступных действиях.
+        
+        Этот эндпоинт предназначен для отображения заказов в левой панели чата
+        с кнопками управления статусом для клиента.
+        """
+        user = request.user
+        
+        # Получаем чаты, где пользователь является клиентом и есть заказ
+        chats = Chat.objects.filter(
+            client=user,
+            order__isnull=False
+        ).select_related('order', 'creator').prefetch_related('order__target_creator')
+        
+        orders_data = []
+        for chat in chats:
+            order = chat.order
+            
+            # Определяем доступные действия для клиента в зависимости от статуса заказа
+            allowed_actions = {
+            'draft': ['cancel'],
+            'published': ['cancel', 'complete'],
+            'awaiting_response': ['cancel'],
+            'in_progress': ['cancel', 'complete'],
+            'on_review': ['cancel', 'complete', 'request_revision'],
+            'completed': [],  # Финальный статус
+            'canceled': []  # Финальный статус
+            }
+            
+            # Получаем статус заказа на русском языке
+            status_labels = {
+                'draft': 'Черновик',
+                'published': 'Опубликован',
+                'awaiting_response': 'Ожидает отклика',
+                'in_progress': 'В работе',
+                'on_review': 'На проверке',
+                'completed': 'Завершен',
+                'canceled': 'Отменен'
+            }
+            
+            # Получаем названия действий на русском языке
+            action_labels = {
+                'cancel': 'Отменить',
+                'complete': 'Принять работу',
+                'request_revision': 'Вернуть на доработку'
+            }
+            
+            order_data = {
+                'id': order.id,
+                'title': order.title,
+                'status': order.status,
+                'status_label': status_labels.get(order.status, order.status),
+                'budget': order.budget,
+                'deadline': order.deadline,
+                'creator': {
+                'id': chat.creator.id,
+                'username': chat.creator.username,
+                'avatar': chat.creator.avatar.url if chat.creator.avatar and hasattr(chat.creator.avatar, 'url') else None
+                } if chat.creator else None,
+                'target_creator': {
+                'id': order.target_creator.id,
+                'username': order.target_creator.username,
+                'avatar': order.target_creator.avatar.url if order.target_creator.avatar and hasattr(order.target_creator.avatar, 'url') else None
+                } if order.target_creator else None,
+                'chat_id': chat.id,
+                'allowed_actions': allowed_actions.get(order.status, []),
+                'action_labels': {action: action_labels.get(action, action) for action in allowed_actions.get(order.status, [])},
+                'created_at': order.created_at,
+                'updated_at': order.updated_at
+            }
+            
+            orders_data.append(order_data)
+        
+        # Сортируем заказы по дате обновления (новые сверху)
+        orders_data.sort(key=lambda x: x['updated_at'], reverse=True)
+        
+        return Response({
+            'orders': orders_data,
+            'count': len(orders_data)
+        })
+    
     def get_permissions(self):
         """
         Устанавливает разрешения в зависимости от действия.
