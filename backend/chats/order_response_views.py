@@ -306,19 +306,36 @@ class CreateOrderResponseByOrderView(APIView):
                 serializer = OrderResponseSerializer(existing_response)
                 return Response(serializer.data)
             
-            # Проверяем, существует ли уже чат между этими пользователями
+            # Проверяем, существует ли уже чат между этими пользователями для этого заказа
+            logger.info("Поиск существующего чата между клиентом %s и креатором %s для заказа %s", client.id, creator.id, order.id)
+            # Сначала ищем чат для этого заказа
             chat = Chat.objects.filter(
-                (Q(client=client) & Q(creator=creator)) |
-                (Q(client=creator) & Q(creator=client))
+                client=client,
+                creator=creator,
+                order=order
             ).first()
+            
+            # Если не нашли, ищем любой чат между этими пользователями
+            if not chat:
+                logger.info("Чат для этого заказа не найден, ищем любой чат между пользователями")
+                chat = Chat.objects.filter(
+                    client=client,
+                    creator=creator
+                ).first()
             
             # Если чата нет, создаем его
             if not chat:
-                chat = Chat.objects.create(
-                    client=client,
-                    creator=creator,
-                    order=order  # Сразу связываем с заказом
-                )
+                logger.info("Создание нового чата между клиентом %s и креатором %s", client.id, creator.id)
+                try:
+                    chat = Chat.objects.create(
+                        client=client,
+                        creator=creator,
+                        order=order  # Сразу связываем с заказом
+                    )
+                    logger.info("Чат успешно создан, ID: %s", chat.id)
+                except Exception as e:
+                    logger.error("Ошибка при создании чата: %s", str(e))
+                    return Response({"error": f"Не удалось создать чат: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             # Если чат есть, но не связан с заказом, связываем
             elif not chat.order:
                 chat.order = order
@@ -330,25 +347,42 @@ class CreateOrderResponseByOrderView(APIView):
             timeframe = request.data.get('timeframe', 7)  # По умолчанию срок выполнения 7 дней
             
             # Создаем отклик
-            order_response = OrderResponse.objects.create(
-                order=order,
-                creator=creator,
-                price=price,
-                message=message,
-                timeframe=timeframe
-            )
+            logger.info("Создание отклика на заказ: %s", order.id)
+            try:
+                order_response = OrderResponse.objects.create(
+                    order=order,
+                    creator=creator,
+                    price=price,
+                    message=message,
+                    timeframe=timeframe
+                )
+                logger.info("Отклик успешно создан, ID: %s", order_response.id)
+            except Exception as e:
+                logger.error("Ошибка при создании отклика на заказ: %s", str(e))
+                return Response({"error": f"Не удалось создать отклик: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
             # Добавляем системное сообщение в чат
+            logger.info("Создание системного сообщения в чате: %s", chat.id)
             try:
+                # Подробное логирование всех аргументов
+                logger.info("Аргументы для создания системного сообщения:")
+                logger.info("  - chat.id: %s", chat.id if chat else "None")
+                logger.info("  - content: %s", f"Создан отклик на заказ '{order.title}'")
+                logger.info("  - is_system_message: %s", True)
+                logger.info("  - sender: %s", None)
+                
                 system_message = Message.objects.create(
                     chat=chat,
                     content=f"Создан отклик на заказ '{order.title}'",
                     is_system_message=True,
                     sender=None  # Системное сообщение не имеет отправителя
                 )
+                logger.info("Системное сообщение успешно создано, ID: %s", system_message.id)
             except Exception as e:
-                # Если не удается создать системное сообщение, продолжаем работу
-                logger.error(f"Ошибка при создании системного сообщения: {str(e)}")
+                # Логируем подробную информацию об ошибке, но позволяем процессу продолжиться
+                logger.error("Ошибка при создании системного сообщения: %s", str(e))
+                import traceback
+                logger.error("Трассировка стека: %s", traceback.format_exc())
                 # Не прерываем процесс создания отклика
             
             # Возвращаем информацию о созданном отклике

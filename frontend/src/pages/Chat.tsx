@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -22,20 +22,39 @@ import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
+import api from '@/lib/api';
 
 // Types
 type Message = {
   id: string;
-  senderId: string;
+  senderId?: string;
+  sender?: number;
+  sender_details?: {
+    id: number;
+    username: string;
+    avatar?: string | null;
+  };
   content: string;
-  timestamp: Date;
-  status: 'sent' | 'delivered' | 'read';
-  type: 'text' | 'image' | 'file' | 'status';
+  created_at: string; // заменяем timestamp на created_at для совместимости с бэкендом
+  status?: 'sent' | 'delivered' | 'read';
+  type?: 'text' | 'image' | 'file' | 'status' | 'video';
+  attachment?: string | null; // добавляем поле attachment для файлов, прикрепленных к сообщению
+  is_system_message?: boolean; // добавляем флаг системного сообщения
+  read_by_client?: boolean;
+  read_by_creator?: boolean;
   fileInfo?: {
     name: string;
     size: string;
     type: string;
     url: string;
+  };
+};
+
+// API Response Types
+interface ApiResponse {
+  data: {
+    messages?: Message[];
+    results?: Message[];
   };
 };
 
@@ -78,74 +97,13 @@ const orderDetails: Order = {
   price: 15000
 };
 
-const initialMessages: Message[] = [
-  {
-    id: '1',
-    senderId: 'system',
-    content: 'Вы начали обсуждение по заказу #ORD-12345',
-    timestamp: new Date('2023-12-01T10:00:00'),
-    status: 'read',
-    type: 'status'
-  },
-  {
-    id: '2',
-    senderId: 'user1',
-    content: 'Здравствуйте! Спасибо за отклик на мой заказ. Можете рассказать подробнее о вашем опыте работы с travel-контентом?',
-    timestamp: new Date('2023-12-01T10:05:00'),
-    status: 'read',
-    type: 'text'
-  },
-  {
-    id: '3',
-    senderId: 'user2',
-    content: 'Добрый день! Конечно, у меня более 3 лет опыта монтажа travel-видео. Вот пример моей работы:',
-    timestamp: new Date('2023-12-01T10:10:00'),
-    status: 'read',
-    type: 'text'
-  },
-  {
-    id: '4',
-    senderId: 'user2',
-    content: 'https://example.com/video-preview.mp4',
-    timestamp: new Date('2023-12-01T10:10:30'),
-    status: 'read',
-    type: 'video',
-    fileInfo: {
-      name: 'travel-video-preview.mp4',
-      size: '24.5 MB',
-      type: 'video/mp4',
-      url: 'https://example.com/video-preview.mp4'
-    }
-  },
-  {
-    id: '5',
-    senderId: 'user1',
-    content: 'Отлично выглядит! Я бы хотел обсудить детали задания. Вот мой бриф:',
-    timestamp: new Date('2023-12-01T10:15:00'),
-    status: 'read',
-    type: 'text'
-  },
-  {
-    id: '6',
-    senderId: 'user1',
-    content: 'brief.pdf',
-    timestamp: new Date('2023-12-01T10:15:30'),
-    status: 'read',
-    type: 'file',
-    fileInfo: {
-      name: 'Бриф на монтаж.pdf',
-      size: '2.1 MB',
-      type: 'application/pdf',
-      url: 'https://example.com/brief.pdf'
-    }
-  }
-];
-
 const Chat = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [order, setOrder] = useState<Order>(orderDetails);
@@ -155,54 +113,128 @@ const Chat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  // Функция для загрузки сообщений через API
+  const fetchMessages = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Если id имеет формат "creator_id-client_id"
+      if (id && id.includes('-')) {
+        // Получаем сообщения по chat_id в формате "creator_id-client_id"
+        const response = await api.get(`/api/chats/${id}/`);
+        const responseData = response as ApiResponse;
+        if (responseData.data && responseData.data.messages) {
+          setMessages(responseData.data.messages);
+        } else {
+          // Если по какой-то причине нет сообщений, используем пустой массив
+          setMessages([]);
+        }
+      } else if (id) {
+        // Получаем сообщения для чата по числовому ID
+        const response = await api.get(`/api/chats/${id}/messages/`);
+        const responseData = response as ApiResponse;
+        if (responseData.data && responseData.data.results) {
+          setMessages(responseData.data.results);
+        } else {
+          setMessages([]);
+        }
+      }
+      
+      // Отмечаем сообщения как прочитанные
+      if (id) {
+        try {
+          await api.post(`/api/chats/${id}/mark-as-read/`);
+        } catch (markError) {
+          console.error('Ошибка при отметке сообщений как прочитанных:', markError);
+        }
+      }
+    } catch (err) {
+      console.error('Ошибка при загрузке сообщений:', err);
+      setError('Не удалось загрузить сообщения');
+      toast({
+        title: "Ошибка",
+        description: "Не удалось загрузить сообщения",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id, toast]);
+
+  // Загрузка сообщений при монтировании компонента
+  useEffect(() => {
+    if (id) {
+      fetchMessages();
+    }
+  }, [id, fetchMessages]);
+  
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+  
+
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if ((!newMessage.trim() && !selectedFile) || isTyping) return;
+    if (!newMessage.trim() && !selectedFile) return;
 
-    const newMsg: Message = {
-      id: Date.now().toString(),
-      senderId: currentUser.id,
-      content: newMessage,
-      timestamp: new Date(),
-      status: 'sent',
-      type: selectedFile ? (selectedFile.type.startsWith('image/') ? 'image' : 'file') : 'text',
-      fileInfo: selectedFile ? {
-        name: selectedFile.name,
-        size: `${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB`,
-        type: selectedFile.type,
-        url: URL.createObjectURL(selectedFile)
-      } : undefined
-    };
-
-    setMessages([...messages, newMsg]);
-    setNewMessage('');
-    setSelectedFile(null);
-
-    // Simulate typing and response
-    if (Math.random() > 0.5) {
-      setIsTyping(true);
-      setTimeout(() => {
-        const responseMsg: Message = {
-          id: (Date.now() + 1).toString(),
-          senderId: otherUserData.id,
-          content: 'Спасибо за сообщение! Я рассмотрю ваш запрос и отвечу в ближайшее время.',
-          timestamp: new Date(),
-          status: 'delivered',
-          type: 'text'
-        };
-        setMessages(prev => [...prev, responseMsg]);
-        setIsTyping(false);
-      }, 2000);
+    try {
+      const now = new Date();
+      
+      // Создаем временное сообщение для отображения (оптимистичный UI)
+      const tempMsg: Message = {
+        id: `temp-${Date.now()}`,
+        senderId: 'user1', // В реальной ситуации тут должен быть ID текущего пользователя
+        content: newMessage.trim(),
+        created_at: now.toISOString(),
+        status: 'sent',
+        type: selectedFile ? 'file' : 'text',
+        ...(selectedFile && {
+          fileInfo: {
+            name: selectedFile.name,
+            size: `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB`,
+            type: selectedFile.type,
+            url: URL.createObjectURL(selectedFile)
+          }
+        })
+      };
+      
+      // Добавляем временное сообщение в UI
+      setMessages([...messages, tempMsg]);
+      
+      // Формируем данные для отправки
+      const formData = new FormData();
+      formData.append('content', newMessage.trim());
+      
+      if (selectedFile) {
+        formData.append('attachment', selectedFile);
+      }
+      
+      // Отправляем сообщение через API
+      if (id) {
+        await api.post(`/api/chats/${id}/messages/`, formData);
+      }
+      
+      // Очищаем форму
+      setNewMessage('');
+      setSelectedFile(null);
+      
+      // Обновляем список сообщений с сервера
+      fetchMessages();
+      
+    } catch (error) {
+      console.error('Ошибка при отправке сообщения:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось отправить сообщение",
+        variant: "destructive",
+      });
     }
   };
 
@@ -232,7 +264,7 @@ const Chat = () => {
       id: `status-${Date.now()}`,
       senderId: 'system',
       content: `Статус заказа изменен на: ${getStatusText(newStatus)}`,
-      timestamp: new Date(),
+      created_at: new Date().toISOString(),
       status: 'read',
       type: 'status'
     };
@@ -364,7 +396,7 @@ const Chat = () => {
                 <div className="flex items-center justify-between">
                   <h3 className="font-medium text-gray-900 truncate">{otherUserData.name}</h3>
                   <span className="text-xs text-gray-500">
-                    {formatTime(new Date(messages[messages.length - 1].timestamp))}
+                    {formatTime(new Date(messages[messages.length - 1].created_at))}
                   </span>
                 </div>
                 <p className="text-sm text-gray-500 truncate">
@@ -479,17 +511,42 @@ const Chat = () => {
 
         {/* Messages */}
         <ScrollArea className="flex-1 p-4 overflow-y-auto">
-          <div className="space-y-4">
-            {messages.map((message, index) => {
+          <div className="px-4 py-6 space-y-6">
+            {isLoading ? (
+              <div className="flex justify-center">
+                <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                  </div>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="flex justify-center">
+                <div className="bg-red-50 rounded-2xl px-4 py-2 shadow-sm text-red-600">
+                  {error}
+                  <Button variant="link" onClick={fetchMessages} className="ml-2 text-xs">
+                    Повторить
+                  </Button>
+                </div>
+              </div>
+            ) : messages.length === 0 ? (
+              <div className="flex justify-center">
+                <div className="bg-blue-50 rounded-2xl px-4 py-2 shadow-sm text-blue-600">
+                  Нет сообщений в этом чате. Начните беседу первым!
+                </div>
+              </div>
+            ) : messages.map((message, index) => {
               const isCurrentUser = message.senderId === currentUser.id;
               const showDate = index === 0 || 
-                new Date(message.timestamp).toDateString() !== new Date(messages[index - 1].timestamp).toDateString();
+                new Date(message.created_at).toDateString() !== new Date(messages[index - 1].created_at).toDateString();
               
               return (
                 <React.Fragment key={message.id}>
                   {showDate && (
                     <div className="text-center text-sm text-gray-500 my-4">
-                      {formatDate(new Date(message.timestamp))}
+                      {formatDate(new Date(message.created_at))}
                     </div>
                   )}
                   
@@ -505,7 +562,7 @@ const Chat = () => {
                         )}
                         {renderMessageContent(message)}
                         <div className={`text-xs mt-1 flex items-center ${isCurrentUser ? 'text-blue-100 justify-end' : 'text-gray-500'}`}>
-                          {formatTime(new Date(message.timestamp))}
+                          {formatTime(new Date(message.created_at))}
                           {isCurrentUser && (
                             <span className="ml-1">
                               {message.status === 'read' ? (

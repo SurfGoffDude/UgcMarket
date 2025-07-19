@@ -1,30 +1,22 @@
 """
-Модели для приложения chats.
+Модели для приложения чатов.
 
-В данном модуле описаны модели для работы с чатами и сообщениями между
-пользователями системы (клиентами и креаторами).
+Этот модуль содержит определения моделей для функционала чатов:
+- Chat: Модель чата между клиентом и креатором
+- Message: Модель сообщения в чате
+- SystemMessageTemplate: Шаблоны системных сообщений
 """
-
 from django.db import models
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
-from django.utils import timezone
 
 
 class Chat(models.Model):
     """
     Модель чата между клиентом и креатором.
     
-    Чат создается для общения между клиентом и креатором. Может быть связан с заказом,
-    если чат создан в контексте конкретного заказа.
-    
-    Attributes:
-        client (ForeignKey): Клиент, участвующий в чате.
-        creator (ForeignKey): Креатор, участвующий в чате.
-        order (ForeignKey, опционально): Заказ, связанный с чатом.
-        is_active (BooleanField): Флаг активности чата.
-        created_at (DateTimeField): Дата и время создания чата.
-        updated_at (DateTimeField): Дата и время последнего обновления чата.
+    Чат содержит сообщения и связан с клиентом и креатором.
+    Опционально может быть связан с заказом.
     """
     client = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -46,10 +38,6 @@ class Chat(models.Model):
         blank=True,
         verbose_name=_('заказ')
     )
-    is_active = models.BooleanField(
-        _('активен'),
-        default=True
-    )
     created_at = models.DateTimeField(
         _('дата создания'),
         auto_now_add=True
@@ -58,23 +46,27 @@ class Chat(models.Model):
         _('дата обновления'),
         auto_now=True
     )
-    
+    is_active = models.BooleanField(
+        _('активен'),
+        default=True,
+        help_text=_('Указывает, активен ли чат')
+    )
+
     class Meta:
         verbose_name = _('чат')
         verbose_name_plural = _('чаты')
-        # Уникальное ограничение на пару (client, creator)
-        unique_together = ('client', 'creator')
         ordering = ['-updated_at']
-    
+
     def __str__(self):
         """
         Возвращает строковое представление чата.
         
         Returns:
-            str: Строковое представление чата вида "Чат между <имя клиента> и <имя креатора>".
+            str: Строковое представление чата.
         """
-        return f"Чат между {self.client.username} и {self.creator.username}"
-    
+        order_info = f" ({self.order.title})" if self.order else ""
+        return f"Чат между {self.client.username} и {self.creator.username}{order_info}"
+
     def get_last_message(self):
         """
         Возвращает последнее сообщение в чате.
@@ -83,39 +75,34 @@ class Chat(models.Model):
             Message: Последнее сообщение в чате или None, если сообщений нет.
         """
         return self.messages.order_by('-created_at').first()
-    
+        
     def get_unread_count_for_user(self, user):
         """
         Возвращает количество непрочитанных сообщений для указанного пользователя.
         
         Args:
-            user: Пользователь, для которого нужно получить количество непрочитанных сообщений.
+            user (User): Пользователь, для которого подсчитываются непрочитанные сообщения.
             
         Returns:
             int: Количество непрочитанных сообщений.
         """
         if user == self.client:
+            # Для клиента считаем сообщения, которые он не прочитал
             return self.messages.filter(read_by_client=False).exclude(sender=user).count()
         elif user == self.creator:
+            # Для креатора считаем сообщения, которые он не прочитал
             return self.messages.filter(read_by_creator=False).exclude(sender=user).count()
-        return 0
+        else:
+            # Для других пользователей (например, администраторов) возвращаем 0
+            return 0
 
 
 class Message(models.Model):
     """
     Модель сообщения в чате.
     
-    Сообщения могут быть отправлены клиентом, креатором или системой.
-    
-    Attributes:
-        chat (ForeignKey): Чат, к которому относится сообщение.
-        sender (ForeignKey, опционально): Отправитель сообщения (None для системных сообщений).
-        content (TextField): Содержимое сообщения.
-        attachment (FileField, опционально): Прикрепленный файл.
-        is_system_message (BooleanField): Флаг, указывающий, что сообщение системное.
-        read_by_client (BooleanField): Флаг, указывающий, что сообщение прочитано клиентом.
-        read_by_creator (BooleanField): Флаг, указывающий, что сообщение прочитано креатором.
-        created_at (DateTimeField): Дата и время создания сообщения.
+    Сообщение содержит текст и может иметь вложение.
+    Может быть системным сообщением или отправлено пользователем.
     """
     chat = models.ForeignKey(
         Chat,
@@ -152,40 +139,75 @@ class Message(models.Model):
     )
     created_at = models.DateTimeField(
         _('дата создания'),
-        default=timezone.now
+        auto_now_add=True
     )
-    
+
     class Meta:
         verbose_name = _('сообщение')
         verbose_name_plural = _('сообщения')
         ordering = ['created_at']
-    
+
     def __str__(self):
         """
         Возвращает строковое представление сообщения.
         
         Returns:
-            str: Строковое представление сообщения с его содержимым и отправителем.
+            str: Строковое представление сообщения.
         """
-        sender_name = self.sender.username if self.sender else 'Система'
-        return f"Сообщение от {sender_name}: {self.content[:50]}..."
-    
-    def save(self, *args, **kwargs):
+        sender = self.sender.username if self.sender else 'Система'
+        return f"Сообщение от {sender} в чате {self.chat_id}"
+
+    def mark_as_read_by(self, user):
         """
-        Переопределяем метод save для установки флагов прочитанных сообщений
-        и обновления времени последнего обновления чата.
+        Отмечает сообщение как прочитанное пользователем.
+        
+        Args:
+            user (User): Пользователь, прочитавший сообщение.
         """
-        # Если сообщение отправлено клиентом, то оно автоматически считается прочитанным клиентом
-        if self.sender == self.chat.client:
+        # Определяем, является ли пользователь клиентом или креатором чата
+        if user == self.chat.client:
             self.read_by_client = True
-        
-        # Если сообщение отправлено креатором, то оно автоматически считается прочитанным креатором
-        if self.sender == self.chat.creator:
+            self.save(update_fields=['read_by_client'])
+        elif user == self.chat.creator:
             self.read_by_creator = True
+            self.save(update_fields=['read_by_creator'])
+
+
+class SystemMessageTemplate(models.Model):
+    """
+    Модель шаблона системного сообщения.
+    
+    Используется для генерации системных сообщений в различных событиях.
+    """
+    EVENT_CHOICES = (
+        ('order_accepted', _('Заказ принят')),
+        ('order_completed', _('Заказ завершен')),
+        ('order_cancelled', _('Заказ отменен')),
+        ('delivery_created', _('Создана поставка')),
+        ('delivery_accepted', _('Поставка принята')),
+        ('delivery_rejected', _('Поставка отклонена')),
+    )
+    
+    event = models.CharField(
+        _('событие'),
+        max_length=50,
+        choices=EVENT_CHOICES,
+        unique=True
+    )
+    template = models.TextField(
+        _('шаблон сообщения'),
+        help_text=_('Используйте переменные в формате {variable_name}')
+    )
+    
+    class Meta:
+        verbose_name = _('шаблон системного сообщения')
+        verbose_name_plural = _('шаблоны системных сообщений')
         
-        # Сохраняем сообщение
-        super().save(*args, **kwargs)
+    def __str__(self):
+        """
+        Возвращает строковое представление шаблона.
         
-        # Обновляем время последнего обновления чата
-        self.chat.updated_at = timezone.now()
-        self.chat.save(update_fields=['updated_at'])
+        Returns:
+            str: Строковое представление шаблона.
+        """
+        return f"Шаблон для события {self.get_event_display()}"

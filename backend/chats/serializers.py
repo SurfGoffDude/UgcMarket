@@ -115,7 +115,7 @@ class ChatListSerializer(serializers.ModelSerializer):
         model = Chat
         fields = [
             'id', 'client', 'creator', 'order', 'last_message', 
-            'unread_count', 'is_active', 'created_at', 'updated_at'
+            'unread_count', 'created_at', 'updated_at'
         ]
     
     def get_last_message(self, obj):
@@ -164,7 +164,7 @@ class ChatDetailSerializer(serializers.ModelSerializer):
         model = Chat
         fields = [
             'id', 'client', 'creator', 'order', 'messages', 
-            'is_active', 'created_at', 'updated_at'
+            'created_at', 'updated_at'
         ]
 
 

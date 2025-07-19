@@ -9,9 +9,9 @@
  * Использует компонент OrderDetailView для отображения информации о заказе в стиле предпросмотра.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
+import axios, { AxiosError } from 'axios';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -53,6 +53,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getOrder, acceptOrder, deliverOrder, requestRevision, completeOrder, cancelOrder, openDispute } from '@/api/ordersApi';
 import { User as UserType } from '@/types/user';
 import { Order, OrderStatus } from '@/types/orders';
+import { UserProfile } from '@/types/auth';
 
 // Импортируем наш новый компонент для отображения заказа
 import OrderDetailView from '@/components/OrderDetailView';
@@ -60,7 +61,7 @@ import OrderDetailView from '@/components/OrderDetailView';
 /**
  * Основной компонент страницы детального просмотра заказа
  */
-const OrderDetailPage = () => {
+function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
@@ -89,7 +90,7 @@ const OrderDetailPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [order, setOrder] = useState<Order | null>(null);
   const [isCreator, setIsCreator] = useState(false);
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   
   /* ------------------------------ Загрузка данных -------------------------- */
@@ -103,6 +104,23 @@ const OrderDetailPage = () => {
     enabled: !!id && isAuthenticated,
   });
 
+  // Синхронизация данных из useQuery с локальными состояниями
+  useEffect(() => {
+    if (orderData) {
+      setOrder(orderData);
+      // Определяем, является ли текущий пользователь креатором заказа
+      setIsCreator(user?.id === orderData.executor?.id);
+    }
+    
+    if (!isLoadingOrder) {
+      setIsLoading(false);
+    }
+    
+    if (errorOrder) {
+      setError(errorOrder instanceof Error ? errorOrder.message : 'Произошла ошибка при загрузке заказа');
+    }
+  }, [orderData, isLoadingOrder, errorOrder, user]);
+
   /* ------------------------------ Мутации ---------------------------------- */
   // Принятие заказа
   const acceptMutation = useMutation({
@@ -114,7 +132,7 @@ const OrderDetailPage = () => {
         description: 'Вы можете начать выполнение заказа.' 
       });
     },
-    onError: (e: any) => toast({
+    onError: (e: AxiosError) => toast({
       title: 'Ошибка принятия заказа',
       description: e?.message ?? 'Произошла ошибка при принятии заказа',
       variant: 'destructive',
@@ -134,7 +152,7 @@ const OrderDetailPage = () => {
         description: 'Исполнитель получил ваш запрос.' 
       });
     },
-    onError: (e: any) => toast({
+    onError: (e: AxiosError) => toast({
       title: 'Ошибка запроса доработки',
       description: e?.message ?? 'Произошла ошибка при запросе доработки',
       variant: 'destructive',
@@ -154,7 +172,7 @@ const OrderDetailPage = () => {
         description: 'Заказ успешно завершен. Благодарим за использование нашего сервиса!' 
       });
     },
-    onError: (e: any) => toast({
+    onError: (e: AxiosError) => toast({
       title: 'Ошибка завершения заказа',
       description: e?.message ?? 'Произошла ошибка при завершении заказа',
       variant: 'destructive',
@@ -174,7 +192,7 @@ const OrderDetailPage = () => {
         description: 'Заказ был успешно отменен.' 
       });
     },
-    onError: (e: any) => toast({
+    onError: (e: AxiosError) => toast({
       title: 'Ошибка отмены заказа',
       description: e?.message ?? 'Произошла ошибка при отмене заказа',
       variant: 'destructive',
@@ -194,7 +212,7 @@ const OrderDetailPage = () => {
         description: 'Спор был успешно открыт. Наши менеджеры рассмотрят его в ближайшее время.' 
       });
     },
-    onError: (e: any) => toast({
+    onError: (e: AxiosError) => toast({
       title: 'Ошибка открытия спора',
       description: e?.message ?? 'Произошла ошибка при открытии спора',
       variant: 'destructive',
@@ -220,7 +238,7 @@ const OrderDetailPage = () => {
         description: 'Файлы успешно загружены и отправлены клиенту.' 
       });
     },
-    onError: (e: any) => toast({
+    onError: (e: AxiosError) => toast({
       title: 'Ошибка доставки заказа',
       description: e?.message ?? 'Произошла ошибка при доставке заказа',
       variant: 'destructive',
@@ -265,11 +283,11 @@ const OrderDetailPage = () => {
   };
 
   const handleConfirmComplete = () => {
-    completeMutation.mutate({
-      orderId,
-      reason: completeReason,
-    });
-  };
+    if (!order) return;
+    
+    completeMutation.mutate({ orderId: order.id, reason: completeReason });
+    setShowCompleteDialog(false);
+  }
 
   // Отмена заказа
   const handleCancelOrder = () => {
@@ -302,6 +320,11 @@ const OrderDetailPage = () => {
     }
   };
 
+  // Возврат к списку заказов
+  const goBackToOrders = () => {
+    navigate('/orders');
+  };
+
   // Переход к чату заказа
   const goToMessages = async () => {
     // Проверка orderId
@@ -314,134 +337,138 @@ const OrderDetailPage = () => {
       });
       return;
     }
-
-    // Получаем токен из локального хранилища
-    const token = localStorage.getItem('authToken') || localStorage.getItem('access_token');
+    // Приоритет отдаём access_token, затем authToken, проверяем наличие токенов в консоли
+    const accessToken = localStorage.getItem('access_token');
+    const authToken = localStorage.getItem('authToken');
+    const token = accessToken || authToken;
+    
+    console.log("ACCESS TOKEN:", accessToken ? "присутствует" : "отсутствует");
+    console.log("AUTH TOKEN:", authToken ? "присутствует" : "отсутствует");
+    console.log("ИСПОЛЬЗУЕМЫЙ ТОКЕН:", token ? token.substring(0, 10) + "..." : "отсутствует");
 
     if (!token) {
-      console.error("Токен авторизации отсутствует");
       toast({
-        title: "Необходима авторизация",
-        description: "Пожалуйста, войдите в систему для доступа к чатам",
+        title: "Ошибка авторизации",
+        description: "Для перехода к чату необходимо авторизоваться",
         variant: "destructive"
       });
       navigate('/login');
       return;
     }
 
+    // Проверяем наличие данных пользователя
+    if (!user) {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось получить информацию о пользователе",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const isCreator = user?.user_type === 'Креатор';
+    
+    // Если у нас нет информации о заказе
+    if (!order) {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось получить информацию о заказе",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     try {
-      // Логирование для диагностики проблемы
-      console.log("Объект заказа:", order);
-      console.log("target_creator:", order?.target_creator);
-      console.log("buyer:", order?.buyer);
-      console.log("Текущий пользователь:", user);
-      
-      // Проверяем, кто текущий пользователь и являемся ли мы креатором
-      const isCreator = user?.user_type === 'Креатор';
-      
-      // Если у нас нет информации о заказе
-      if (!order) {
-        toast({
-          title: "Ошибка",
-          description: "Не удалось получить информацию о заказе",
-          variant: "destructive"
-        });
-        return;
-      }
-      
       // Если пользователь креатор, создаем отклик
       if (isCreator && orderId) {
+        console.log(`Креатор: создаем отклик на заказ через новый эндпоинт: /api/chats/create-for-order-by-id/${orderId}/`);
+        console.log("Токен авторизации:", token?.substring(0, 10) + "..." + (token?.length ?? 0)); // Логирование части токена для безопасности
+        
+        // Получаем тип токена из localStorage, чтобы проверить используем ли мы правильный
+        const authToken = localStorage.getItem('authToken');
+        const accessToken = localStorage.getItem('access_token');
+        console.log("authToken в localStorage:", authToken ? "присутствует" : "отсутствует");
+        console.log("access_token в localStorage:", accessToken ? "присутствует" : "отсутствует");
+        console.log("Какой токен используется:", token === authToken ? "authToken" : token === accessToken ? "access_token" : "другой источник");
+        
+        // Смотрим полные данные запроса для диагностики
+        const requestData = {
+          price: order.price,
+          message: "Я заинтересован в выполнении этого заказа",
+          timeframe: 7
+        };
+        console.log("Данные запроса:", requestData);
+        
+        const requestHeaders = { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        };
+        console.log("Заголовки запроса:", requestHeaders);
+        
         try {
-          console.log(`Креатор: создаем отклик на заказ через новый эндпоинт: /api/chats/create-for-order-by-id/${orderId}/`);
-          console.log("Токен авторизации:", token?.substring(0, 10) + "..." + (token?.length ?? 0)); // Логирование части токена для безопасности
-          
-          // Получаем тип токена из localStorage, чтобы проверить используем ли мы правильный
-          const authToken = localStorage.getItem('authToken');
-          const accessToken = localStorage.getItem('access_token');
-          console.log("authToken в localStorage:", authToken ? "присутствует" : "отсутствует");
-          console.log("access_token в localStorage:", accessToken ? "присутствует" : "отсутствует");
-          console.log("Какой токен используется:", token === authToken ? "authToken" : token === accessToken ? "access_token" : "другой источник");
-          
-          // Смотрим полные данные запроса для диагностики
-          const requestData = {
-            price: order.price,
-            message: "Я заинтересован в выполнении этого заказа",
-            timeframe: 7
-          };
-          console.log("Данные запроса:", requestData);
-          
-          const requestHeaders = { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          };
-          console.log("Заголовки запроса:", requestHeaders);
-          
-          try {
-            // Попробуем использовать формат Bearer вместо Bearer, если возникнет 401
-            const createResponse = await axios.post(`/api/chats/create-for-order-by-id/${orderId}/`, 
-              requestData, 
-              { 
-                headers: {
-                  Authorization: `Bearer ${token}`,  // Меняем Bearer на Bearer
-                  'Content-Type': 'application/json'
-                },
-                validateStatus: function (status) {
-                  console.log("Статус ответа:", status); 
-                  return true; // Не отклоняем запрос при 401
-                }
+          // Попробуем использовать формат Bearer вместо Bearer, если возникнет 401
+          const createResponse = await axios.post(
+            `/api/chats/create-for-order-by-id/${orderId}/`, 
+            requestData, 
+            { 
+              headers: {
+                Authorization: `Bearer ${token}`, 
+                'Content-Type': 'application/json'
+              },
+              validateStatus: function (status) {
+                console.log("Статус ответа:", status); 
+                return true; // Не отклоняем запрос при 401
               }
-            );
-            
-            console.log("Результат создания отклика:", createResponse);
-            console.log("Статус ответа:", createResponse.status);
-            console.log("Данные ответа:", createResponse.data);
-            
-            if (createResponse.status === 401) {
-              console.error("Ошибка авторизации (401): Проверьте токен");
-              setError("Ошибка авторизации. Пожалуйста, попробуйте выйти и войти снова.");
-              return;
             }
+          );
+          
+          console.log("Результат создания отклика:", createResponse);
+          console.log("Статус ответа:", createResponse.status);
+          console.log("Данные ответа:", createResponse.data);
+          
+          if (createResponse.status === 401) {
+            console.error("Ошибка авторизации (401): Проверьте токен");
+            setError("Ошибка авторизации. Пожалуйста, попробуйте выйти и войти снова.");
+            return;
+          }
+          
+          // Проверяем статус 200 или 201 для успешного создания отклика
+          if (createResponse.status === 201 || createResponse.status === 200) {
+            console.log("Отклик успешно создан");
             
+            // Проверяем наличие chat_id в ответе (старый формат API)
             if (createResponse.data && createResponse.data.chat_id) {
-              // Здесь мы получаем идентификаторы из ответа API
               const responseClientId = createResponse.data.client_id;
               const responseCreatorId = createResponse.data.creator_id;
-              const chatId = createResponse.data.chat_id;
-              console.log("Отклик уже существует, получаем информацию о чате");
-              
-              // Переходим в чат
+              console.log("Переходим в чат по данным из API");
               navigate(`/chats/${responseCreatorId}-${responseClientId}`);
               return;
-            } else {
-              const errorMessage = "Не удалось создать отклик на заказ";
-              toast({
-                title: "Ошибка",
-                description: errorMessage,
-                variant: "destructive"
+            }
+            
+            // Обработка нового формата ответа API - отклик создан, но нужно перенаправить в чат
+            if (createResponse.data && createResponse.data.creator && order?.buyer) {
+              const creatorId = createResponse.data.creator.id;
+              const buyerId = order.buyer.id;
+              console.log("Переходим в чат с ID участников:", creatorId, buyerId);
+              
+              toast({ 
+                title: 'Отклик отправлен', 
+                description: 'Ваш отклик на заказ успешно отправлен' 
               });
+              
+              navigate(`/chats/${creatorId}-${buyerId}`);
               return;
             }
-          } catch (error: any) {
-            console.error("Ошибка при создании отклика на заказ:", error);
             
-            // Если есть данные о существующем отклике в ответе
-            if (error?.response?.data?.response) {
-              const existingResponse = error.response.data.response;
-              console.log("Существующий отклик:", existingResponse);
-              
-              // Если в ответе есть данные о чате
-              if (error?.response?.data?.chat_id && error?.response?.data?.client_id && error?.response?.data?.creator_id) {
-                navigate(`/chats/${error.response.data.creator_id}-${error.response.data.client_id}`);
-                return;
-              }
-              
-              // Пробуем получить существующий заказ для получения ID участников
-              try {
-                const orderResponse = await axios.get(`/api/orders/${existingResponse.order}/`, {
-                  headers: { Authorization: `Bearer ${token}` }
-                });
-                
-                if (orderResponse.data && orderResponse.data.buyer) {
+            // Если нет нужных данных для перехода в чат
+            toast({ 
+              title: 'Отклик отправлен', 
+              description: 'Ваш отклик на заказ успешно отправлен, но не удалось перейти в чат. Пожалуйста, перейдите в раздел чатов вручную.' 
+            });
+            navigate('/chats');
+            return;
+          } else {
+            const errorMessage = "Не удалось создать отклик на заказ";
             toast({
               title: "Ошибка",
               description: errorMessage,
@@ -449,17 +476,28 @@ const OrderDetailPage = () => {
             });
             return;
           }
-        } catch (error: any) {
+        } catch (error: unknown) {
+          const axiosError = error as AxiosError;
           console.error("Ошибка при создании отклика на заказ:", error);
           
           // Если есть данные о существующем отклике в ответе
-          if (error?.response?.data?.response) {
-            const existingResponse = error.response.data.response;
+          // Проверяем, что ошибка содержит ответ с информацией о существующем отклике
+          if (axiosError?.response?.data?.response) {
+            const responseData = axiosError.response.data as any;
+            const existingResponse = responseData.response;
             console.log("Существующий отклик:", existingResponse);
             
-            // Если в ответе есть данные о чате
-            if (error?.response?.data?.chat_id && error?.response?.data?.client_id && error?.response?.data?.creator_id) {
-              navigate(`/chats/${error.response.data.creator_id}-${error.response.data.client_id}`);
+            // Проверяем, есть ли в ответе данные чата для перехода
+            if (responseData?.chat_id && responseData?.client_id && responseData?.creator_id) {
+              console.log("Переходим в чат по данным из ответа об ошибке");
+              navigate(`/chats/${responseData.creator_id}-${responseData.client_id}`);
+              return;
+            }
+            
+            // Если в response есть creator, используем эти данные
+            if (existingResponse?.creator && order?.buyer) {
+              console.log("Переходим в чат с ID участников из существующего отклика");
+              navigate(`/chats/${existingResponse.creator.id}-${order.buyer.id}`);
               return;
             }
             
@@ -473,19 +511,20 @@ const OrderDetailPage = () => {
                 // Используем ID текущего пользователя и ID клиента из заказа
                 navigate(`/chats/${user.id}-${orderResponse.data.buyer.id}`);
                 return;
+              } else {
+                const errorMessage = "Ошибка при получении данных заказа";
+                toast({
+                  title: "Ошибка",
+                  description: errorMessage,
+                  variant: "destructive"
+                });
+                return;
               }
             } catch (innerError) {
               console.error("Ошибка при получении информации о заказе:", innerError);
             }
           }
         }
-      } catch (outerError) {
-        console.error("Ошибка при обработке отклика на заказ:", outerError);
-        toast({
-          title: "Ошибка",
-          description: "Не удалось создать отклик на заказ",
-          variant: "destructive"
-        });
       }
       
       // Если пользователь клиент
@@ -515,7 +554,8 @@ const OrderDetailPage = () => {
             });
             return;
           }
-        } catch (responsesError) {
+        } catch (responsesError: unknown) {
+          const axiosError = responsesError as AxiosError;
           console.error("Ошибка при получении откликов:", responsesError);
         }
       }
@@ -526,34 +566,14 @@ const OrderDetailPage = () => {
         description: "Недостаточно информации для перехода в чат. Пожалуйста, попробуйте позже.",
         variant: "destructive"
       });
-      
     } catch (error: any) {
-      console.error("Ошибка при работе с API чата:", error);
-      
-      // Обработка ошибок
-      const statusCode = error.response?.status || 500;
-      const errorMessage = error.response?.data?.error || error.message || "Неизвестная ошибка";
-      
-      if (statusCode === 401) {
-        toast({
-          title: "Ошибка авторизации",
-          description: "Ваша сессия истекла. Пожалуйста, войдите снова.",
-          variant: "destructive"
-        });
-        navigate('/login');
-      } else {
-        toast({
-          title: "Ошибка",
-          description: errorMessage || "Произошла ошибка при работе с чатом",
-          variant: "destructive"
-        });
-      }
+      console.error("Ошибка при обработке заказа:", error);
+      toast({
+        title: "Ошибка",
+        description: "Произошла ошибка при попытке перехода к чату",
+        variant: "destructive"
+      });
     }
-  };
-  
-  // Возврат к списку заказов
-  const goBackToOrders = () => {
-    navigate('/orders');
   };
 
   // Открытие формы отзыва

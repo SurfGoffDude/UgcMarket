@@ -435,7 +435,29 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.target_creator = user
         order.save()
         
-
+        # Создаем чат между клиентом и креатором, если его еще нет
+        try:
+            logger.info(f"Attempting to create chat for order {order.id} between client {order.client.id} and creator {user.id}")
+            chat, created = Chat.objects.get_or_create(
+                client=order.client,
+                creator=user,
+                order=order
+            )
+            logger.info(f"Chat creation result: chat_id={chat.id}, created={created}")
+            
+            # Если был создан новый чат, добавляем первое системное сообщение
+            if created:
+                message = Message.objects.create(
+                    chat=chat,
+                    content=f'Креатор {user.username} принял заказ "{order.title}" в работу.',
+                    is_system_message=True
+                )
+                logger.info(f"System message created with id={message.id}")
+            else:
+                logger.info(f"Chat already exists with id={chat.id}")
+        except Exception as e:
+            logger.error(f"Error creating chat: {str(e)}")
+            # Не вызываем исключение, чтобы процесс отклика на заказ всё равно завершился успешно
         
         # Добавляем системное сообщение
         try:

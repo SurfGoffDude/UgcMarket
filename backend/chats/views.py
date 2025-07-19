@@ -55,6 +55,66 @@ class ChatViewSet(viewsets.ModelViewSet):
             return ChatCreateSerializer
         return ChatDetailSerializer
     
+    def list(self, request, *args, **kwargs):
+        """
+        Переопределяем метод list для возврата данных в формате, ожидаемом фронтендом.
+        
+        Фронтенд ожидает поле chat_participants, содержащее список участников чата в формате:
+        {
+            id: number,
+            username: string,
+            avatar?: string | null,
+            role: 'creator' | 'client',
+            chat_id: string // формат: "{id_креатора}-{id_клиента}"
+        }
+        """
+        user = request.user
+        queryset = self.filter_queryset(self.get_queryset())
+        
+        # Преобразуем чаты в формат участников, ожидаемый фронтендом
+        chat_participants = []
+        
+        for chat in queryset:
+            # Определяем другого участника чата (не текущего пользователя)
+            other_participant = None
+            role = None
+            
+            if user == chat.client:
+                other_participant = chat.creator
+                role = 'creator'
+            else:
+                other_participant = chat.client
+                role = 'client'
+            
+            # Формируем ID чата в формате "{id_креатора}-{id_клиента}"
+            chat_id = f"{chat.creator.id}-{chat.client.id}"
+            
+            # Получаем URL аватара, если он есть
+            avatar_url = None
+            if hasattr(other_participant, 'avatar') and other_participant.avatar:
+                try:
+                    avatar_url = other_participant.avatar.url
+                except ValueError:
+                    # Если возникла ошибка, значит у аватара нет файла
+                    avatar_url = None
+                    
+            # Добавляем участника в список
+            chat_participants.append({
+                'id': other_participant.id,
+                'username': other_participant.username,
+                'avatar': avatar_url,
+                'role': role,
+                'chat_id': chat_id
+            })
+        
+        # Возвращаем chat_participants на верхнем уровне ответа
+        return Response({
+            'count': len(chat_participants),
+            'next': None,
+            'previous': None,
+            'chat_participants': chat_participants
+        })
+    
     def get_permissions(self):
         """
         Устанавливает разрешения в зависимости от действия.
@@ -62,6 +122,24 @@ class ChatViewSet(viewsets.ModelViewSet):
         if self.action in ['retrieve', 'update', 'partial_update']:
             return [permissions.IsAuthenticated(), IsClientOrCreator()]
         return [permissions.IsAuthenticated()]
+    
+    @action(detail=False, methods=['get'], url_path='(?P<chat_id>[^/.]+)')
+    def get_by_chat_id(self, request, chat_id=None):
+        """
+        Получает чат по составному идентификатору (creator_id-client_id).
+        """
+        try:
+            # Парсим идентификаторы пользователей
+            creator_id, client_id = chat_id.split('-')
+            creator_id = int(creator_id)
+            client_id = int(client_id)
+            
+            # Получаем чат по креатору и клиенту
+            chat = Chat.objects.get(creator_id=creator_id, client_id=client_id)
+            serializer = self.get_serializer(chat)
+            return Response(serializer.data)
+        except (ValueError, Chat.DoesNotExist):
+            return Response({"detail": "Чат не найден."}, status=status.HTTP_404_NOT_FOUND)
     
     @action(detail=True, methods=['post'])
     def mark_as_read(self, request, pk=None):
@@ -210,12 +288,67 @@ class ChatByParticipantsView(APIView):
 
 class ChatMessagesByParticipantsView(APIView):
     """
-    Представление для отправки сообщений в чат по ID участников.
+    Представление для получения и отправки сообщений в чат по ID участников.
     
     URL формат: /api/chats/<creator_id>-<client_id>/messages/
     """
     permission_classes = [permissions.IsAuthenticated]
     
+    def get(self, request, participant_ids):
+        """
+        Получение списка сообщений для чата по ID участников.
+        
+        Args:
+            request: Объект запроса.
+            participant_ids: Строка вида "creator_id-client_id".
+        
+        Returns:
+            Response: Ответ со списком сообщений или ошибкой.
+        """
+        try:
+            # Разбираем ID участников
+            creator_id, client_id = map(int, participant_ids.split('-'))
+            
+            # Проверяем, что текущий пользователь является одним из участников
+            user = request.user
+            if user.id != creator_id and user.id != client_id:
+                return Response(
+                    {'error': 'Вы не являетесь участником этого чата'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Ищем чат по участникам (в любом порядке)
+            chat = Chat.objects.filter(
+                (Q(creator_id=creator_id) & Q(client_id=client_id)) |
+                (Q(creator_id=client_id) & Q(client_id=creator_id))
+            ).first()
+            
+            if not chat:
+                return Response(
+                    {'error': 'Чат не найден'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Получаем сообщения по чату в порядке от старых к новым
+            messages = chat.messages.all().order_by('created_at')
+            
+            # Сериализуем сообщения
+            serializer = MessageSerializer(messages, many=True, context={'request': request})
+            
+            # Возвращаем список сообщений
+            return Response({'results': serializer.data}, status=status.HTTP_200_OK)
+            
+        except ValueError:
+            return Response(
+                {'error': 'Неверный формат идентификаторов участников. Ожидается формат "creator_id-client_id"'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'Один или оба участника не найдены'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
     def post(self, request, participant_ids):
         """
         Отправка сообщения в чат по ID участников.
