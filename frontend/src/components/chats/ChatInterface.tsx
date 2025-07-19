@@ -778,12 +778,7 @@ const ChatInterface: React.FC = () => {
                     <CardTitle className="text-md">
                       {interlocutor.username}
                     </CardTitle>
-                    {chatOrder && (
-                      <div className="text-xs text-gray-500 flex items-center mt-1">
-                        <Package size={12} className="mr-1" />
-                        Заказ: {chatOrder.title}
-                      </div>
-                    )}
+
                   </div>
                 </div>
               </div>
