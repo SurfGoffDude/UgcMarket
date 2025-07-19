@@ -624,14 +624,15 @@ class OrderViewSet(viewsets.ModelViewSet):
             
             # Отправляем системное сообщение в чат, если он существует
             try:
-                chat = Chat.objects.get(order=order)
-                Message.objects.create(
-                    chat=chat,
-                    content=system_message,
-                    is_system_message=True
-                )
-            except Chat.DoesNotExist:
+                if order.chat:
+                    Message.objects.create(
+                        chat=order.chat,
+                        content=system_message,
+                        is_system_message=True
+                    )
+            except Exception as e:
                 # Чат может не существовать для некоторых заказов
+                logger.warning(f"Не удалось отправить системное сообщение в чат: {str(e)}")
                 pass
             
             return Response(

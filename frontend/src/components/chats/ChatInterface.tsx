@@ -328,6 +328,8 @@ const ChatInterface: React.FC = () => {
       // Находим конкретный заказ для определения роли пользователя
       const currentOrder = clientOrders.find(order => order.id === orderId);
       console.log('currentOrder found:', currentOrder);
+      console.log('currentOrder.client:', currentOrder?.client);
+      console.log('currentOrder.creator:', currentOrder?.creator);
       
       if (!currentOrder) {
         console.error('Заказ не найден! orderId:', orderId, 'clientOrders:', clientOrders);

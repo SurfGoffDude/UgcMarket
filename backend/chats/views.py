@@ -195,6 +195,11 @@ class ChatViewSet(viewsets.ModelViewSet):
                 'status_label': status_labels.get(order.status, order.status),
                 'budget': order.budget,
                 'deadline': order.deadline,
+                'client': {
+                    'id': order.client.id,
+                    'username': order.client.username,
+                    'avatar': order.client.avatar.url if order.client.avatar and hasattr(order.client.avatar, 'url') else None
+                } if order.client else None,
                 'creator': {
                 'id': chat.creator.id,
                 'username': chat.creator.username,
