@@ -12,7 +12,7 @@ from django.db.models import F, Q
 from django.utils import timezone
 
 # Импортируем модели Chat и Message для создания чата при отклике
-from chats.models import Chat, Message
+from chats.models import Chat, Message, SystemMessageTemplate
 
 from .models import (
     Category, Tag, Order, OrderAttachment, 
@@ -121,16 +121,18 @@ class OrderViewSet(viewsets.ModelViewSet):
             # Возвращаем только заказы, где пользователь является исполнителем
             return queryset.filter(target_creator=self.request.user)
         
-        # Для списка показываем только доступные заказы
+        # Для списка показываем только доступные заказы со статусом "Новый" (published)
         if self.action == 'list':
             user = self.request.user
             
-            # Для стаффа показываем все заказы
+            # Для стаффа показываем все заказы со статусом published
             if user.is_staff:
-                return queryset
+                return queryset.filter(status='published')
                 
-            # Для обычных пользователей показываем публичные и их заказы
+            # Для обычных пользователей показываем только новые (published) публичные и их заказы
             return queryset.filter(
+                status='published'
+            ).filter(
                 Q(is_private=False) | 
                 Q(client=user) | 
                 Q(is_private=True, target_creator=user)
