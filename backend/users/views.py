@@ -23,6 +23,7 @@ from .models import (
     PortfolioItem,
     PortfolioImage,
     Service,
+    FavoriteCreator,
 )
 from .serializers import (
     UserSerializer,
@@ -35,6 +36,7 @@ from .serializers import (
     PortfolioItemSerializer,
     PortfolioImageSerializer,
     ServiceSerializer,
+    FavoriteCreatorSerializer,
 )
 from .tokens import email_verification_token
 from .utils import send_verification_email
@@ -792,3 +794,182 @@ class ServiceViewSet(viewsets.ModelViewSet):
 
         services = Service.objects.filter(creator_profile=request.user.creator_profile)
         return Response(self.get_serializer(services, many=True).data)
+
+
+# ──────────────────────── favorite creators ─────────────────────────
+class FavoriteCreatorViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet для управления избранными креаторами.
+    
+    Позволяет клиентам добавлять креаторов в избранное, удалять из избранного
+    и просматривать список своих избранных креаторов.
+    
+    Endpoints:
+        GET /api/users/favorite-creators/ - получить список избранных креаторов
+        POST /api/users/favorite-creators/ - добавить креатора в избранное
+        DELETE /api/users/favorite-creators/{id}/ - удалить из избранного
+        GET /api/users/favorite-creators/check/{creator_id}/ - проверить, в избранном ли креатор
+    """
+    serializer_class = FavoriteCreatorSerializer
+    permission_classes = [IsAuthenticated, IsVerifiedUser]
+    queryset = FavoriteCreator.objects.all()  # Базовый queryset для роутера
+    
+    def get_queryset(self):
+        """
+        Возвращает только избранных креаторов текущего пользователя.
+        
+        Returns:
+            QuerySet: Избранные креаторы текущего пользователя с предзагруженными данными.
+        """
+        return FavoriteCreator.objects.filter(
+            client=self.request.user
+        ).select_related(
+            'creator__user'
+        ).prefetch_related(
+            'creator__tags',
+            'creator__social_links'
+        ).order_by('-created_at')
+    
+    def create(self, request, *args, **kwargs):
+        """
+        Добавляет креатора в избранное.
+        
+        Args:
+            request: HTTP запрос с creator_id в данных.
+            
+        Returns:
+            Response: Созданная запись избранного или ошибка валидации.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        try:
+            favorite = serializer.save()
+            return Response(
+                self.get_serializer(favorite).data,
+                status=status.HTTP_201_CREATED
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        Удаляет креатора из избранного.
+        
+        Args:
+            request: HTTP запрос.
+            *args, **kwargs: Аргументы с ID записи для удаления.
+            
+        Returns:
+            Response: Подтверждение удаления или ошибка.
+        """
+        try:
+            instance = self.get_object()
+            instance.delete()
+            return Response(
+                {'message': 'Креатор удален из избранного'},
+                status=status.HTTP_204_NO_CONTENT
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    @action(detail=False, methods=['get'])
+    def check(self, request):
+        """
+        Проверяет, находится ли креатор в избранном у текущего пользователя.
+        
+        Параметры запроса:
+        - creator_id: ID креатора для проверки
+        
+        Args:
+            request: HTTP запрос.
+            
+        Returns:
+            Response: Результат проверки с булевым значением is_favorite.
+        """
+        creator_id = request.query_params.get('creator_id')
+        if not creator_id:
+            return Response(
+                {'error': 'Параметр creator_id обязателен'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        try:
+            creator_id = int(creator_id)
+            is_favorite = FavoriteCreator.objects.filter(
+                client=request.user,
+                creator_id=creator_id
+            ).exists()
+            
+            return Response({
+                'is_favorite': is_favorite,
+                'creator_id': creator_id
+            })
+        except (ValueError, TypeError):
+            return Response(
+                {'error': 'Неверный ID креатора'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    @action(detail=False, methods=['delete'])
+    def remove(self, request):
+        """
+        Удаляет креатора из избранного по ID креатора.
+        
+        Альтернативный способ удаления, когда известен только ID креатора,
+        а не ID записи FavoriteCreator.
+        
+        Параметры запроса:
+        - creator_id: ID креатора для удаления
+        
+        Args:
+            request: HTTP запрос.
+            
+        Returns:
+            Response: Подтверждение удаления или ошибка.
+        """
+        creator_id = request.query_params.get('creator_id')
+        if not creator_id:
+            return Response(
+                {'error': 'Параметр creator_id обязателен'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        try:
+            creator_id = int(creator_id)
+            deleted_count, _ = FavoriteCreator.objects.filter(
+                client=request.user,
+                creator_id=creator_id
+            ).delete()
+            
+            if deleted_count > 0:
+                return Response(
+                    {'message': 'Креатор удален из избранного'},
+                    status=status.HTTP_204_NO_CONTENT
+                )
+            else:
+                return Response(
+                    {'error': 'Креатор не найден в избранном'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        except (ValueError, TypeError):
+            return Response(
+                {'error': 'Неверный ID креатора'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )

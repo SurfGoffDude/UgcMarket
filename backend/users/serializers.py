@@ -19,6 +19,7 @@ from .models import (
     PortfolioImage,
     Service,
     ServiceImage,
+    FavoriteCreator,
 )
 
 User = get_user_model()
@@ -753,3 +754,62 @@ class ServiceSerializer(serializers.ModelSerializer):
             for img in images_data:
                 ServiceImage.objects.create(service=instance, image=img)
         return instance
+
+
+# ──────────────────────────────── FAVORITE CREATORS ────────────────────────────────
+class FavoriteCreatorSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для избранных креаторов.
+    
+    Предоставляет полную информацию о связи клиент-креатор в избранном,
+    включая детальную информацию о креаторе.
+    """
+    creator = CreatorProfileListSerializer(read_only=True)
+    creator_id = serializers.IntegerField(write_only=True)
+    
+    class Meta:
+        model = FavoriteCreator
+        fields = [
+            'id',
+            'creator',
+            'creator_id', 
+            'created_at'
+        ]
+        read_only_fields = ['id', 'created_at']
+    
+    def create(self, validated_data):
+        """
+        Создает новую запись избранного креатора.
+        
+        Args:
+            validated_data (dict): Валидированные данные с creator_id.
+            
+        Returns:
+            FavoriteCreator: Созданная запись избранного креатора.
+            
+        Raises:
+            ValidationError: Если креатор уже в избранном у данного клиента.
+        """
+        client = self.context['request'].user
+        creator_id = validated_data['creator_id']
+        
+        # Проверяем, что креатор существует
+        try:
+            creator = CreatorProfile.objects.get(id=creator_id)
+        except CreatorProfile.DoesNotExist:
+            raise serializers.ValidationError({'creator_id': 'Креатор не найден'})
+        
+        # Проверяем, что клиент не добавляет себя в избранное (если он креатор)
+        if hasattr(client, 'creator_profile') and client.creator_profile.id == creator_id:
+            raise serializers.ValidationError({'creator_id': 'Нельзя добавить себя в избранное'})
+        
+        # Создаем запись
+        favorite, created = FavoriteCreator.objects.get_or_create(
+            client=client,
+            creator=creator
+        )
+        
+        if not created:
+            raise serializers.ValidationError({'creator_id': 'Креатор уже в избранном'})
+            
+        return favorite

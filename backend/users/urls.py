@@ -10,7 +10,8 @@ from .views import (
     UserViewSet, ClientProfileViewSet, CreatorProfileViewSet,
     UserRegistrationView, EmailVerificationView,
     PortfolioItemViewSet, PortfolioImageViewSet,
-    CurrentCreatorProfileView, CurrentClientProfileView, ServiceViewSet
+    CurrentCreatorProfileView, CurrentClientProfileView, ServiceViewSet,
+    FavoriteCreatorViewSet
 )
 
 # Создаем роутер для API
@@ -21,6 +22,7 @@ router.register('creator-profiles', CreatorProfileViewSet)
 router.register('portfolio', PortfolioItemViewSet)
 router.register('portfolio-images', PortfolioImageViewSet)
 router.register('services', ServiceViewSet)
+router.register('favorite-creators', FavoriteCreatorViewSet)
 
 urlpatterns = [
     # Маршруты ViewSet для пользователей и профилей

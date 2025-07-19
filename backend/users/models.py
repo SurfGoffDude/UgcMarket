@@ -586,3 +586,42 @@ class ServiceImage(models.Model):
 
     def __str__(self):
         return f"Изображение для {self.service.title}"
+
+
+class FavoriteCreator(models.Model):
+    """
+    Модель для хранения избранных креаторов клиентов.
+    
+    Эта модель создает связь many-to-many между клиентами (User) и креаторами (CreatorProfile),
+    позволяя клиентам добавлять креаторов в избранное.
+    
+    Attributes:
+        client (ForeignKey): Ссылка на пользователя-клиента.
+        creator (ForeignKey): Ссылка на профиль креатора.
+        created_at (DateTimeField): Дата и время добавления в избранное.
+    """
+    client = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='favorite_creators',
+        verbose_name=_('Клиент')
+    )
+    creator = models.ForeignKey(
+        CreatorProfile,
+        on_delete=models.CASCADE,
+        related_name='favorited_by',
+        verbose_name=_('Креатор')
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_('Дата добавления')
+    )
+
+    class Meta:
+        verbose_name = _('Избранный креатор')
+        verbose_name_plural = _('Избранные креаторы')
+        unique_together = ['client', 'creator']
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.client.username} -> {self.creator.creator_name or self.creator.user.username}"

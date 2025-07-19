@@ -15,7 +15,8 @@ import {
   AlertCircle,
   Clock,
   FileText,
-  PlusCircle
+  PlusCircle,
+  Heart
 } from 'lucide-react';
 
 // Импортируем наш тип пользователя
@@ -23,7 +24,9 @@ import { User } from '@/types/user';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useClientProfile } from '@/hooks/useApi';
+import { useFavorites } from '@/hooks/useFavorites';
 import apiClient from '@/api/client';
+import CreatorCard from '@/components/CreatorCard';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -95,6 +98,9 @@ const ClientProfilePage: React.FC = () => {
   
   // Используем новый хук для получения данных профиля клиента
   const { client, loading: isClientLoading, error: clientError, reload: reloadClient } = useClientProfile();
+  
+  // Хук для работы с избранными креаторами
+  const { favorites, loading: favoritesLoading, error: favoritesError } = useFavorites();
   
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isEditing, setIsEditing] = useState<boolean>(false);
@@ -554,8 +560,12 @@ const ClientProfilePage: React.FC = () => {
         
         {/* Табы с разделами профиля */}
         <Tabs defaultValue="orders" className="mt-6">
-          <TabsList className="grid grid-cols-3 mb-6">
+          <TabsList className="grid grid-cols-4 mb-6">
             <TabsTrigger value="orders">Мои заказы</TabsTrigger>
+            <TabsTrigger value="favorites">
+              <Heart className="h-4 w-4 mr-1" />
+              Избранные
+            </TabsTrigger>
             <TabsTrigger value="reviews">Отзывы</TabsTrigger>
             <TabsTrigger value="settings">Настройки</TabsTrigger>
           </TabsList>
@@ -675,6 +685,88 @@ const ClientProfilePage: React.FC = () => {
                     )
                   )}
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="favorites">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Heart className="h-5 w-5 mr-2 text-red-500" />
+                  Избранные креаторы
+                </CardTitle>
+                <CardDescription>
+                  Креаторы, которые вы добавили в избранное
+                </CardDescription>
+              </CardHeader>
+              
+              <CardContent>
+                {favoritesLoading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[...Array(6)].map((_, i) => (
+                      <div key={i} className="space-y-3">
+                        <Skeleton className="h-48 w-full rounded-lg" />
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-4 w-1/2" />
+                      </div>
+                    ))}
+                  </div>
+                ) : favoritesError ? (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Ошибка</AlertTitle>
+                    <AlertDescription>
+                      Не удалось загрузить список избранных креаторов. Попробуйте обновить страницу.
+                    </AlertDescription>
+                  </Alert>
+                ) : favorites.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {favorites.map((favorite) => (
+                      <div key={favorite.id} className="relative">
+                        <CreatorCard 
+                          creator={{
+                            id: favorite.creator.id,
+                            user: favorite.creator.user,
+                            creator_name: favorite.creator.creator_name,
+                            bio: favorite.creator.bio,
+                            categories: favorite.creator.categories,
+                            rating: favorite.creator.rating,
+                            reviews_count: favorite.creator.reviews_count,
+                            services_count: favorite.creator.services_count,
+                            base_price: favorite.creator.base_price,
+                            location: favorite.creator.location,
+                            is_online: favorite.creator.is_online,
+                            response_time: favorite.creator.response_time,
+                            completion_rate: favorite.creator.completion_rate
+                          }}
+                          useLink={true}
+                          showDetailedProfile={false}
+                        />
+                        <div className="absolute top-2 right-2 bg-white dark:bg-gray-800 rounded-full p-1 shadow-sm">
+                          <Badge variant="outline" className="text-xs text-gray-500">
+                            Добавлен {new Date(favorite.created_at).toLocaleDateString('ru-RU')}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Heart className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                      Нет избранных креаторов
+                    </h3>
+                    <p className="text-gray-500 dark:text-gray-400 mb-6">
+                      Начните добавлять креаторов в избранное, чтобы легко находить их позже
+                    </p>
+                    <Button asChild variant="default" className="bg-[#282D4E] hover:bg-[#363c68]">
+                      <Link to="/catalog-creators">
+                        Посмотреть каталог креаторов
+                      </Link>
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

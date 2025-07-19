@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Star, Heart, MessageSquare, Check, ExternalLink, Briefcase, MapPin, GraduationCap, Lock, Unlock, Phone, Mail, Calendar, Globe, Instagram, Twitter, Facebook, Youtube, Linkedin, Github, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Creator as MockCreator } from '@/data/creators';
 import { useChat } from '@/hooks/useChat';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFavoriteStatus } from '@/hooks/useFavorites';
+import { favoritesApi } from '@/api/favoritesApi';
+import { toast } from '@/components/ui/use-toast';
 
 // Тип для вложенного объекта пользователя от API
 interface UserData {
@@ -66,6 +69,11 @@ interface CreatorCardProps {
 const CreatorCard: React.FC<CreatorCardProps> = ({ creator, useLink, showDetailedProfile }) => {
   const { openChatWithCreator, loading: chatLoading } = useChat();
   const { user } = useAuth();
+  
+  // Состояние для избранного
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
+  
   // Адаптеры для получения данных из разных форматов
   const getNestedUser = () => {
     return 'user' in creator ? creator.user : null;
@@ -260,6 +268,63 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator, useLink, showDetaile
       return typeof date === 'string' ? date : undefined;
     }
     return undefined;
+  };
+  
+  // Проверяем статус избранного при загрузке компонента
+  useEffect(() => {
+    const checkFavoriteStatus = async () => {
+      if (!user || !getId()) return;
+      
+      try {
+        const status = await favoritesApi.checkFavoriteStatus(Number(getId()));
+        setIsFavorite(status.is_favorite);
+      } catch (error) {
+        console.error('Ошибка при проверке статуса избранного:', error);
+      }
+    };
+    
+    checkFavoriteStatus();
+  }, [user]);
+  
+  // Обработчик переключения избранного
+  const handleToggleFavorite = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!user) {
+      toast({
+        title: "Требуется авторизация",
+        description: "Войдите в аккаунт, чтобы добавлять креаторов в избранное",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const creatorId = getId();
+    if (!creatorId) return;
+    
+    setFavoriteLoading(true);
+    
+    try {
+      const newStatus = await favoritesApi.toggleFavorite(Number(creatorId));
+      setIsFavorite(newStatus);
+      
+      toast({
+        title: "Успешно!",
+        description: newStatus 
+          ? "Креатор добавлен в избранное" 
+          : "Креатор удален из избранного",
+      });
+    } catch (error) {
+      console.error('Ошибка при изменении статуса избранного:', error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось изменить статус избранного",
+        variant: "destructive",
+      });
+    } finally {
+      setFavoriteLoading(false);
+    }
   };
 
   return (
@@ -479,8 +544,18 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator, useLink, showDetaile
                 <MessageSquare className="h-4 w-4" />
               )}
             </Button>
-            <Button variant="ghost" size="sm" className="text-gray-500 hover:text-red-500">
-              <Heart className="h-4 w-4" />
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className={`transition-colors ${isFavorite ? 'text-red-500 hover:text-red-600' : 'text-gray-500 hover:text-red-500'}`}
+              onClick={handleToggleFavorite}
+              disabled={favoriteLoading}
+            >
+              {favoriteLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Heart className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
+              )}
             </Button>
           </div>
         </div>
