@@ -319,9 +319,29 @@ class OrderViewSet(viewsets.ModelViewSet):
             
             # Отклоняем остальные отклики
             OrderResponse.objects.filter(order=order).exclude(id=response_id).update(status='rejected')
-  
             
-            # Если чат только что создан или произошло изменение статуса, добавляем системное сообщение
+            logger.info(f"ОТЛАДКА: начинаем создание чата для заказа {order.id}, клиент: {order.client.username}, креатор: {creator.username}")
+            
+            try:
+                # Создаем новый чат для этого заказа
+                # Каждый заказ должен иметь свой отдельный чат
+                chat = Chat.objects.create(
+                    client=order.client,
+                    creator=creator,
+                    order=order,
+                    is_active=True
+                )
+                chat_created = True
+                
+                logger.info(f"ОТЛАДКА: чат успешно создан для заказа {order.id}, chat_id={chat.id}")
+            except Exception as chat_error:
+                logger.error(f"КРИТИЧЕСКАЯ ОШИБКА при создании чата для заказа {order.id}: {str(chat_error)}")
+                return Response(
+                    {'error': f'Ошибка при создании чата: {str(chat_error)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            
+            # Создаем системное сообщение о назначении исполнителя
             try:
                 template = SystemMessageTemplate.objects.get(
                     event_type=SystemMessageTemplate.EVENT_ORDER_CREATOR_ASSIGNED,
@@ -334,8 +354,16 @@ class OrderViewSet(viewsets.ModelViewSet):
                 )
             except (SystemMessageTemplate.DoesNotExist, KeyError):
                 # Используем стандартное сообщение
-                message_text = f"Креатор {creator.username} назначен исполнителем заказа '{order.title}'."                
-
+                message_text = f"Креатор {creator.username} назначен исполнителем заказа '{order.title}'. Заказ перешел в статус 'В работе'."
+            
+            # Добавляем системное сообщение в чат
+            Message.objects.create(
+                chat=chat,
+                content=message_text,
+                is_system_message=True
+            )
+            
+            logger.info(f"ОТЛАДКА: системное сообщение добавлено в чат {chat.id}")
             
             return Response(
                 {'message': 'Исполнитель выбран, заказ перешел в статус "В работе"'},
