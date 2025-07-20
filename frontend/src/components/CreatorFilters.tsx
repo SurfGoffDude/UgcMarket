@@ -167,7 +167,7 @@ const CreatorFilters: React.FC<CreatorFiltersProps> = ({ onFilterChange, initial
 
   // Обработчик подтверждения поиска
   const handleSearchSubmit = () => {
-    console.log('Нажата кнопка Найти, текущий ввод:', inputValue);
+
     setSearchQuery(inputValue); // Применяем поисковый запрос только при подтверждении
     
     // Явно вызываем функцию фильтрации
@@ -178,7 +178,7 @@ const CreatorFilters: React.FC<CreatorFiltersProps> = ({ onFilterChange, initial
       responseTime: selectedResponseTime
     });
     
-    console.log('Фильтрация применена с поисковым запросом:', inputValue);
+
   };
 
   // Обработчик изменения выбранных тегов

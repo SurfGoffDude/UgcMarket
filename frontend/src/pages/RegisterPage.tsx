@@ -152,7 +152,7 @@ const RegisterPage: React.FC = () => {
           setErrors(err.response.data);
         } else {
           const errorMessage = typeof err.response.data === 'string' ? err.response.data : 'Ошибка сервера';
-          console.log('Ошибка представляет собой строку или неизвестный формат:', errorMessage);
+
           setError(errorMessage);
         }
       } else if (err.request) {
@@ -163,7 +163,7 @@ const RegisterPage: React.FC = () => {
         setError(err.message || 'Не удалось зарегистрироваться. Пожалуйста, попробуйте еще раз.');
       }
     } finally {
-      console.log('=== Процесс регистрации завершен ===');
+
       setLoading(false);
     }
   };

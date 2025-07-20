@@ -48,6 +48,7 @@ import CreatorOrdersPage from "@/pages/CreatorOrdersPage";
 import NotificationsPage from "@/pages/NotificationsPage";
 import NotificationSettingsPage from "@/pages/NotificationSettingsPage";
 import ChatsListPage from "@/pages/ChatsListPage";
+import HowItWorksPage from "@/pages/HowItWorksPage";
 import ChatPage from "@/pages/ChatPage";
 
 // Система уведомлений
@@ -95,6 +96,7 @@ const App = () => {
           <Layout>
               <Routes>
                 <Route path="/" element={<Index />} />
+                <Route path="/how-it-works" element={<HowItWorksPage />} />
                 <Route path="/catalog-creators" element={<CatalogPage />} />
                 <Route path="/creator-profile" element={<CreatorProfilePage />} />
                 <Route path="/creators/:id" element={<CreatorProfilePage />} />

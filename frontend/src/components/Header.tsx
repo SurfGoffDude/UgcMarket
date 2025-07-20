@@ -21,7 +21,7 @@ import {
 const navLinks = [
   { name: 'Я клиент', path: '/catalog-creators' },
   { name: 'Я креатор', path: '/catalog-orders' },
-  { name: 'Как это работает', path: '#how-it-works' },
+  { name: 'Как это работает', path: '/how-it-works' },
   { name: 'Блог', path: '/blog' },
 ];
 
@@ -206,10 +206,7 @@ const Header = () => {
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem className="cursor-pointer" onClick={() => {
-                    console.log('Клик по кнопке Сообщения (десктоп)!');
-                    console.log('Текущий URL до перехода:', window.location.pathname);
-                    navigate('/chats');
-                    console.log('Переход на URL:', '/chats');
+                  navigate('/chats');
                   }}>
                     <MessageSquare className="mr-2 h-4 w-4" />
                     <span>Сообщения</span>
@@ -311,12 +308,9 @@ const Header = () => {
                       </Button>
                     </Link>
                     <Link to="/chats" className="block" onClick={(e) => {
-                      e.preventDefault();
-                      console.log('Клик по кнопке Сообщения (мобильная версия)!');
-                      console.log('Текущий URL до перехода:', window.location.pathname);
-                      toggleMenu();
-                      navigate('/chats');
-                      console.log('Переход на URL:', '/chats');
+                    e.preventDefault();
+                    toggleMenu();
+                    navigate('/chats');
                     }}>
                       <Button variant="outline" className="w-full justify-center">
                         <MessageSquare className="w-4 h-4 mr-2" />

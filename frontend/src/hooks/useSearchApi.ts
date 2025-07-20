@@ -126,7 +126,7 @@ export function useSearchRecommendations(query: string) {
  */
 export function useAddClickedItem() {
   const addClickedItem = useCallback((itemId: number) => {
-    console.log(`Отслеживание клика по элементу ${itemId}. Логика еще не реализована.`);
+
   }, []);
   return { addClickedItem };
 }
@@ -193,7 +193,7 @@ export function useCreatorsList(filters?: CreatorListFilters) {
   // Добавляем перезагрузку данных при изменении URL
   useEffect(() => {
     if (url) {
-      console.log('%c[DEBUG] URL изменился, перезагружаем данные:', 'color: #4CAF50; font-weight: bold', url);
+
       refetch();
     }
   }, [url, refetch]);
@@ -236,7 +236,7 @@ export function useCreatorsList(filters?: CreatorListFilters) {
           // Проверяем, что ID числовой
           if (!isNaN(Number(numericId))) {
             tagValues.push(numericId);
-            console.log(`[DEBUG] Добавлен ID тега: ${numericId} из тега ${tagId}`);
+
           }
         });
       });
@@ -249,7 +249,7 @@ export function useCreatorsList(filters?: CreatorListFilters) {
     const queryString = queryParams.toString();
     const newUrl = queryString ? `${API_URL}/creator-profiles/?${queryString}` : `${API_URL}/creator-profiles/`;
     
-    console.log('[DEBUG] Обновление URL с фильтрами:', newUrl);
+
     setUrl(newUrl);
   }, [filters]);
   
@@ -262,7 +262,7 @@ export function useCreatorsList(filters?: CreatorListFilters) {
           : (Array.isArray(apiData) ? apiData : []))
       : [];
     
-    console.log('[DEBUG] Получены данные от API:', apiCreators.length, 'креаторов');
+
     
     // Больше не применяем дублирующую фильтрацию на клиенте,
     // так как фильтрация уже была выполнена на сервере через параметры URL
@@ -315,7 +315,7 @@ export function useCreatorsList(filters?: CreatorListFilters) {
     };
   }, [filters]);
   
-  console.log('[DEBUG] Активные фильтры:', activeFilters);
+
 
   return {
     creators: finalData,

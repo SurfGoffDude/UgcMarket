@@ -39,7 +39,7 @@ const CreatorsList: React.FC = () => {
     const fetchChatParticipants = async () => {
       try {
         // Проверка авторизации с использованием useAuth
-        console.log('Статус авторизации:', { isAuthenticated, token: !!token });
+
         
         if (!isAuthenticated || !token) {
           console.error('Нет токена или пользователь не авторизован');
@@ -48,7 +48,7 @@ const CreatorsList: React.FC = () => {
           return;
         }
         
-        console.log('Запрашиваем список чатов с токеном');
+
         // Запрашиваем список участников чата
         const response = await axios.get('/api/chats/', {
           headers: {
@@ -56,22 +56,22 @@ const CreatorsList: React.FC = () => {
           }
         });
         
-        console.log('API Response:', response.data);
+
         
         if (response.data && response.data.chat_participants) {
-          console.log('Получены участники чата:', response.data.chat_participants.length);
+
           setParticipants(response.data.chat_participants);
         } else {
           // Обратная совместимость со старым форматом API
           if (response.data && response.data.creators) {
-            console.log('Получены креаторы (старый формат):', response.data.creators.length);
+
             const creatorsAsParticipants = response.data.creators.map((creator: any) => ({
               ...creator,
               role: 'creator'
             }));
             setParticipants(creatorsAsParticipants);
           } else {
-            console.log('Нет данных о чатах');
+
             setParticipants([]);
           }
         }

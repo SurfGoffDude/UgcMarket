@@ -42,14 +42,14 @@ class WebSocketService {
       
       // Настраиваем обработчики событий
       this.socketRef.onopen = () => {
-        console.log('WebSocket соединение установлено');
+
         this.connected = true;
         this.reconnectAttempts = 0;
         resolve();
       };
       
       this.socketRef.onclose = (e) => {
-        console.log('WebSocket соединение закрыто (код:', e.code, ')');
+
         this.connected = false;
         
         // Пытаемся переподключиться только при неожиданном закрытии соединения
@@ -85,12 +85,12 @@ class WebSocketService {
     this.reconnectAttempts += 1;
     const delay = Math.min(5000 * Math.pow(2, this.reconnectAttempts - 1), 60000);
     
-    console.log(`Попытка переподключения ${this.reconnectAttempts}/${this.maxReconnectAttempts} через ${delay}мс`);
+
     
     this.reconnectTimeout = setTimeout(() => {
       if (this.authToken) {
         this.connect(this.authToken, this.url)
-          .catch(() => console.log('Ошибка при попытке переподключения'));
+          .catch(() => {});
       }
     }, delay);
   }

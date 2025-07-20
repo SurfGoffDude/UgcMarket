@@ -342,9 +342,7 @@ function OrderDetailPage() {
     const authToken = localStorage.getItem('authToken');
     const token = accessToken || authToken;
     
-    console.log("ACCESS TOKEN:", accessToken ? "присутствует" : "отсутствует");
-    console.log("AUTH TOKEN:", authToken ? "присутствует" : "отсутствует");
-    console.log("ИСПОЛЬЗУЕМЫЙ ТОКЕН:", token ? token.substring(0, 10) + "..." : "отсутствует");
+
 
     if (!token) {
       toast({
@@ -381,15 +379,12 @@ function OrderDetailPage() {
     try {
       // Если пользователь креатор, создаем отклик
       if (isCreator && orderId) {
-        console.log(`Креатор: создаем отклик на заказ через новый эндпоинт: /api/chats/create-for-order-by-id/${orderId}/`);
-        console.log("Токен авторизации:", token?.substring(0, 10) + "..." + (token?.length ?? 0)); // Логирование части токена для безопасности
+
         
         // Получаем тип токена из localStorage, чтобы проверить используем ли мы правильный
         const authToken = localStorage.getItem('authToken');
         const accessToken = localStorage.getItem('access_token');
-        console.log("authToken в localStorage:", authToken ? "присутствует" : "отсутствует");
-        console.log("access_token в localStorage:", accessToken ? "присутствует" : "отсутствует");
-        console.log("Какой токен используется:", token === authToken ? "authToken" : token === accessToken ? "access_token" : "другой источник");
+
         
         // Смотрим полные данные запроса для диагностики
         const requestData = {
@@ -397,13 +392,13 @@ function OrderDetailPage() {
           message: "Я заинтересован в выполнении этого заказа",
           timeframe: 7
         };
-        console.log("Данные запроса:", requestData);
+
         
         const requestHeaders = { 
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         };
-        console.log("Заголовки запроса:", requestHeaders);
+
         
         try {
           // Попробуем использовать формат Bearer вместо Bearer, если возникнет 401
@@ -416,15 +411,13 @@ function OrderDetailPage() {
                 'Content-Type': 'application/json'
               },
               validateStatus: function (status) {
-                console.log("Статус ответа:", status); 
+
                 return true; // Не отклоняем запрос при 401
               }
             }
           );
           
-          console.log("Результат создания отклика:", createResponse);
-          console.log("Статус ответа:", createResponse.status);
-          console.log("Данные ответа:", createResponse.data);
+
           
           if (createResponse.status === 401) {
             console.error("Ошибка авторизации (401): Проверьте токен");
@@ -434,13 +427,13 @@ function OrderDetailPage() {
           
           // Проверяем статус 200 или 201 для успешного создания отклика
           if (createResponse.status === 201 || createResponse.status === 200) {
-            console.log("Отклик успешно создан");
+
             
             // Проверяем наличие chat_id в ответе (старый формат API)
             if (createResponse.data && createResponse.data.chat_id) {
               const responseClientId = createResponse.data.client_id;
               const responseCreatorId = createResponse.data.creator_id;
-              console.log("Переходим в чат по данным из API");
+
               navigate(`/chats/${responseCreatorId}-${responseClientId}`);
               return;
             }
@@ -449,7 +442,7 @@ function OrderDetailPage() {
             if (createResponse.data && createResponse.data.creator && order?.buyer) {
               const creatorId = createResponse.data.creator.id;
               const buyerId = order.buyer.id;
-              console.log("Переходим в чат с ID участников:", creatorId, buyerId);
+
               
               toast({ 
                 title: 'Отклик отправлен', 
@@ -485,18 +478,18 @@ function OrderDetailPage() {
           if (axiosError?.response?.data?.response) {
             const responseData = axiosError.response.data as any;
             const existingResponse = responseData.response;
-            console.log("Существующий отклик:", existingResponse);
+
             
             // Проверяем, есть ли в ответе данные чата для перехода
             if (responseData?.chat_id && responseData?.client_id && responseData?.creator_id) {
-              console.log("Переходим в чат по данным из ответа об ошибке");
+
               navigate(`/chats/${responseData.creator_id}-${responseData.client_id}`);
               return;
             }
             
             // Если в response есть creator, используем эти данные
             if (existingResponse?.creator && order?.buyer) {
-              console.log("Переходим в чат с ID участников из существующего отклика");
+
               navigate(`/chats/${existingResponse.creator.id}-${order.buyer.id}`);
               return;
             }
@@ -536,7 +529,7 @@ function OrderDetailPage() {
             headers: { Authorization: `Bearer ${token}` }
           });
           
-          console.log("Отклики на заказ:", responsesResponse.data);
+
           
           if (responsesResponse.data && responsesResponse.data.length > 0) {
             // Берем первый отклик

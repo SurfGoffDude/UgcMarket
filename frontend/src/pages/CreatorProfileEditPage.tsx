@@ -249,9 +249,7 @@ const CreatorProfileEditPage: React.FC = () => {
   useEffect(() => {
     if (creator) {
       // Отладка: выводим данные профиля
-      console.log('DEBUG - Данные профиля:', creator);
-      console.log('DEBUG - Поле gender в user:', creator.user?.gender);
-      console.log('DEBUG - Поле average_work_time:', creator.average_work_time);
+
       
       // Преобразуем профиль в формат формы
       form.reset({
@@ -301,9 +299,7 @@ const CreatorProfileEditPage: React.FC = () => {
     setApiError(null);
     try {
       // Отладка: выводим данные формы перед отправкой
-      console.log('DEBUG - Данные формы перед отправкой:', data);
-      console.log('DEBUG - Поле gender перед отправкой:', data.gender);
-      console.log('DEBUG - Поле average_work_time перед отправкой:', data.average_work_time);
+
       
       // Получаем данные из формы
       const { 
@@ -330,7 +326,7 @@ const CreatorProfileEditPage: React.FC = () => {
       
       // Добавляем поля пользователя (User)
       userFields.gender = data.gender || '';
-      console.log('DEBUG - userFields после добавления gender:', userFields);
+
       
       // Обновляем bio в модели User - всегда отправляем bio в поля User
       // Это критично для корректного сохранения
@@ -365,7 +361,7 @@ const CreatorProfileEditPage: React.FC = () => {
       };
       
       // Отладка: выводим данные CreatorProfile перед отправкой
-      console.log('DEBUG - CreatorProfile данные перед отправкой:', creatorProfileData);
+
       
       // Всегда добавляем поля User
       creatorProfileData.user = userFields;
@@ -373,12 +369,12 @@ const CreatorProfileEditPage: React.FC = () => {
       // Преобразуем данные в FormData
     Object.entries(creatorProfileData).forEach(([key, value]) => {
       if (key === 'social_links') {
-        console.log(`DEBUG - Сериализация объекта ${key}:`, JSON.stringify(value));
+
         formData.append(key, JSON.stringify(value));
       } else if (key === 'user') {
         // Проверка, что объект user не пустой и содержит нужные поля
         if (Object.keys(value as Record<string, any>).length > 0) {
-          console.log(`DEBUG - Сериализация объекта ${key}:`, JSON.stringify(value));
+
           formData.append(key, JSON.stringify(value));
           
           // Для надёжности также передаём user.gender и user.bio как отдельные поля
@@ -416,7 +412,7 @@ const CreatorProfileEditPage: React.FC = () => {
       
       // Отладка: просмотр сформированного FormData
       for (const pair of formData.entries()) {
-        console.log('DEBUG - FormData поле:', pair[0], pair[1]);
+
       }
 
       // Отправляем обновление профиля креатора

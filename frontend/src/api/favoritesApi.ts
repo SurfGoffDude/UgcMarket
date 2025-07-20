@@ -67,7 +67,7 @@ export const favoritesApi = {
    */
   getFavorites: async (): Promise<FavoriteCreator[]> => {
     const response = await apiClient.get('/favorite-creators/');
-    console.log('API response for favorites:', response.data);
+
     // Если ответ содержит results (пагинация), возвращаем results, иначе сами данные
     return response.data.results || response.data;
   },

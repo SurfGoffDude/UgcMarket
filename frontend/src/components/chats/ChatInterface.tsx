@@ -102,14 +102,7 @@ const ChatInterface: React.FC = () => {
   // Для заказов
   const [clientOrders, setClientOrders] = useState<ClientOrder[]>([]);
   
-  // Отладка изменений clientOrders
-  useEffect(() => {
-    console.log('=== clientOrders изменился ===', {
-      length: clientOrders.length,
-      orders: clientOrders.map(o => ({ id: o.id, title: o.title, status: o.status, creator: o.creator, client: o.client }))
-    });
-    console.log('Полные объекты заказов:', clientOrders);
-  }, [clientOrders]);
+
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [updatingOrderStatus, setUpdatingOrderStatus] = useState<number | null>(null);
   
@@ -122,22 +115,19 @@ const ChatInterface: React.FC = () => {
  * со статусами in_progress, on_review или completed
   */
   const fetchClientOrders = useCallback(async () => {
-    console.log('=== fetchClientOrders вызван ===');
+
     console.trace('Stack trace for fetchClientOrders call');
     
     if (!user || !token) {
-      console.log('fetchClientOrders: нет user или token', { user: !!user, token: !!token });
+
       return;
     }
     
     try {
-      console.log('fetchClientOrders: начинаем загрузку заказов для пользователя:', user.id);
+
       setLoadingOrders(true);
       const response = await getClientOrders();
-      console.log('fetchClientOrders: получен ответ от API:', response);
-      console.log('fetchClientOrders: устанавливаем заказы:', response.orders);
       setClientOrders(response.orders || []);
-      console.log('fetchClientOrders: установлено заказов:', response.orders?.length || 0);
     } catch (error) {
       console.error('Ошибка при загрузке заказов:', error);
       console.error('Полная информация об ошибке:', {
@@ -182,8 +172,7 @@ const ChatInterface: React.FC = () => {
     setError(null);
     
     try {
-      console.log('Формат ID чата из URL:', id);
-      console.log('Тип ID чата:', typeof id);
+
       
       const response = await axios.get(`/api/chats/${id}/`, {
         headers: {
@@ -191,8 +180,7 @@ const ChatInterface: React.FC = () => {
         }
       });
       
-      console.log('Ответ API при загрузке чата:', response.data);
-      console.log('ID чата в БД:', response.data.id);
+
       
       setChat(response.data);
     } catch (err) {
@@ -246,7 +234,7 @@ const ChatInterface: React.FC = () => {
       `${chat.creator.id}-${chat.client.id}` : id;
       
     try {
-      console.log(`Запрашиваем сообщения для чата с составным ID: ${compositeId}`);
+
       // Получаем сообщения чата по эндпоинту с составным ID
       const response = await axios.get(`/api/chats/${compositeId}/messages/`, {
         params: { 
@@ -266,12 +254,12 @@ const ChatInterface: React.FC = () => {
           // Непагинированный ответ - простой массив сообщений
           newMessages = response.data;
           hasNext = false; // В непагинированном ответе нет следующей страницы
-          console.log('Получен непагинированный ответ с сообщениями:', newMessages.length);
+
         } else if (response.data.results) {
           // Пагинированный ответ - объект с полями results, next и т.д.
           newMessages = response.data.results;
           hasNext = !!response.data.next;
-          console.log('Получен пагинированный ответ с сообщениями:', newMessages.length);
+
         } else {
           console.error('API вернул данные в неожиданном формате:', response.data);
         }
@@ -320,16 +308,16 @@ const ChatInterface: React.FC = () => {
       setUpdatingOrderStatus(orderId);
       
       // Отладочная информация
-      console.log('=== DEBUG: handleOrderStatusChange ===');
-      console.log('orderId:', orderId, 'type:', typeof orderId);
-      console.log('clientOrders:', clientOrders);
-      console.log('clientOrders IDs:', clientOrders.map(order => ({ id: order.id, type: typeof order.id })));
+
+
+
+
       
       // Находим конкретный заказ для определения роли пользователя
       const currentOrder = clientOrders.find(order => order.id === orderId);
-      console.log('currentOrder found:', currentOrder);
-      console.log('currentOrder.client:', currentOrder?.client);
-      console.log('currentOrder.creator:', currentOrder?.creator);
+
+
+
       
       if (!currentOrder) {
         console.error('Заказ не найден! orderId:', orderId, 'clientOrders:', clientOrders);
@@ -403,7 +391,7 @@ const ChatInterface: React.FC = () => {
       `${chat.creator.id}-${chat.client.id}` : id;
       
     try {
-      console.log(`Отправляем сообщение в чат с составным ID: ${compositeId}`);
+
       // Теперь отправляем сообщение по URL с составным ID чата
       const response = await axios.post(`/api/chats/${compositeId}/messages/`, {
         content: messageText

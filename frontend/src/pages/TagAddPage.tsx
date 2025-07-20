@@ -69,7 +69,7 @@ const TagAddPage: React.FC = () => {
   // Когда и профиль, и список тегов загружены  // Дополнительная фильтрация на стороне клиента
   const tags = React.useMemo(() => {
     // Выводим в консоль первый тег для анализа структуры
-    if (allTags.length > 0) console.log('All tags before filtering:', allTags.length, 'Types:', [...new Set(allTags.map(tag => tag.type))]);
+
     
     // Фильтруем только теги с типом creator, строго
     return allTags.filter(tag => {
@@ -138,11 +138,7 @@ const TagAddPage: React.FC = () => {
       {/* Дополнительная отладочная информация для анализа тегов */}
       {(() => {
         // Выводим всю информацию о тегах для анализа
-        console.log('Tags count after filtering:', tags.length);
-        console.log('Tags types:', [...new Set(tags.map(tag => tag.type))]);
-        if (tags.length > 0) {
-          console.log('First filtered tag:', tags[0]);
-        }
+
         return null;
       })()}
       
