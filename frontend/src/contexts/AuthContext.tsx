@@ -44,8 +44,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             loading: false
           }));
         } catch (error) {
-          // Если токен недействителен, выходим из системы
-          handleLogout();
+          // Если токен недействителен, только очищаем данные аутентификации без перенаправления
+          clearAuth();
         }
       } else {
         setAuthState(prev => ({
@@ -99,8 +99,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Функция выхода из системы
-  const handleLogout = (): void => {
+  // Функция очистки данных аутентификации без перенаправления
+  const clearAuth = (): void => {
     authApi.logout();
     setAuthState({
       isAuthenticated: false,
@@ -108,6 +108,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       token: null,
       loading: false
     });
+  };
+
+  // Функция выхода из системы с перенаправлением на страницу входа
+  const handleLogout = (): void => {
+    clearAuth();
     navigate('/login');
   };
 

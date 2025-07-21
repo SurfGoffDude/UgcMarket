@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,10 +17,20 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [authMessage, setAuthMessage] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   // Получаем функции из контекста аутентификации
   const { login, isAuthenticated, user } = useAuth();
+  
+  // Проверяем параметр reason в URL для отображения сообщения о необходимости авторизации
+  useEffect(() => {
+    const reason = searchParams.get('reason');
+    if (reason === 'auth_required') {
+      setAuthMessage('Для доступа к этой странице необходимо войти в систему или зарегистрироваться.');
+    }
+  }, [searchParams]);
 
   // Перенаправляем на страницу профиля, если пользователь уже авторизован
   useEffect(() => {
@@ -79,6 +89,13 @@ const LoginPage: React.FC = () => {
           <Alert variant="destructive" className="border-red-500 bg-red-50 dark:bg-red-900/30">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription className="ml-2">{error}</AlertDescription>
+          </Alert>
+        )}
+        
+        {authMessage && (
+          <Alert className="mb-4 border-amber-500 bg-amber-50 dark:bg-amber-900/30">
+            <AlertCircle className="h-4 w-4 text-amber-500" />
+            <AlertDescription className="ml-2 text-amber-700 dark:text-amber-300">{authMessage}</AlertDescription>
           </Alert>
         )}
 

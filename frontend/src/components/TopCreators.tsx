@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Star, CheckCircle, ArrowRight, User } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Button } from './ui/button';
 import { useInView } from 'react-intersection-observer';
 import { useNavigate } from 'react-router-dom';
 import { fetchTopCreators } from '@/api/creatorsApi';
 import { Creator } from '@/types/creators';
+import { useAuth } from '@/contexts/AuthContext';
+import CreatorCard from './CreatorCard';
 
 // Временные моковые данные для запасного варианта
 const mockCreators = [
@@ -77,21 +79,31 @@ const TopCreators = () => {
   const [creators, setCreators] = useState<Creator[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
+  // Получаем состояние авторизации и информацию о пользователе из AuthContext
+  const { isAuthenticated, user } = useAuth();
+
   // Загружаем данные о топ-креаторах при монтировании компонента
   useEffect(() => {
     const loadTopCreators = async () => {
       setIsLoading(true);
       try {
-        const data = await fetchTopCreators(4); // Получаем 4 лучших креатора
-        setCreators(data.map(creator => ({
-          ...creator,
-          // Добавляем поля для совместимости с отображением
-          display_name: `${creator.user?.first_name || ''} ${creator.user?.last_name || ''}`.trim() || creator.user?.username || 'Креатор',
-          username: creator.user?.username || '',
-          min_price: creator.price_range?.min || 3000,
-          tags_display: creator.specializations || [],
-          top_service: creator.bio || 'Профессиональные услуги в сфере контента'
-        })));
+        // Проверяем авторизацию перед выполнением API-запроса
+        if (isAuthenticated) {
+          const data = await fetchTopCreators(4); // Получаем 4 лучших креатора
+          setCreators(data.map(creator => ({
+            ...creator,
+            // Добавляем поля для совместимости с отображением
+            display_name: `${creator.user?.first_name || ''} ${creator.user?.last_name || ''}`.trim() || creator.user?.username || 'Креатор',
+            username: creator.user?.username || '',
+            min_price: creator.price_range?.min || 3000,
+            tags_display: creator.specializations || [],
+            top_service: creator.bio || 'Профессиональные услуги в сфере контента'
+          })));
+        } else {
+          // Если пользователь не авторизован, используем моковые данные
+          console.log('Пользователь не авторизован, используем моковые данные для TopCreators');
+          setCreators(mockCreators as unknown as Creator[]);
+        }
       } catch (error) {
         console.error('Ошибка при загрузке топ-креаторов:', error);
         // Используем моковые данные в случае ошибки
@@ -102,16 +114,36 @@ const TopCreators = () => {
     };
     
     loadTopCreators();
-  }, []);
+  }, [isAuthenticated]);
   
   // Переход на страницу всех креаторов
   const handleShowAllCreators = () => {
-    navigate('/catalog/creators');
+    navigate('/catalog-creators');
   };
   
   // Переход на страницу профиля креатора
   const handleCreatorProfile = (id: number) => {
     navigate(`/creators/${id}`);
+  };
+
+  // Анимации для элементов
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.4 }
+    }
   };
 
   return (
@@ -128,130 +160,29 @@ const TopCreators = () => {
         
         <motion.div 
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: inView ? 1 : 0 }}
-          transition={{ staggerChildren: 0.1 }}
+          variants={containerVariants}
+          initial="hidden"
+          animate={inView ? "visible" : "hidden"}
         >
           {isLoading ? (
-            // Отображаем скелетоны загрузки
-            Array.from({ length: 4 }).map((_, index) => (
-              <motion.div key={index}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: inView ? 1 : 0, y: inView ? 0 : 20 }}
-                transition={{ duration: 0.4, delay: index * 0.1 }}
-                className="h-full"
-              >
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg h-full animate-pulse overflow-hidden border border-gray-100 dark:border-gray-700">
-                  <div className="p-6">
-                    <div className="flex items-center">
-                      <div className="w-14 h-14 rounded-full bg-gray-200 dark:bg-gray-700 mr-4"></div>
-                      <div>
-                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24 mb-2"></div>
-                        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
-                      </div>
-                    </div>
-                    <div className="mt-4 h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
-                    <div className="mt-2 h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-                    <div className="mt-4 flex flex-wrap">
-                      <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-16 mr-2 mb-2"></div>
-                      <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-20 mr-2 mb-2"></div>
-                    </div>
-                  </div>
-                  <div className="mt-auto p-6 pt-0 border-t border-gray-100 dark:border-gray-700">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-8 mb-1"></div>
-                        <div className="h-5 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
-                      </div>
-                      <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
+            // Заглушки для загрузки
+            Array(4).fill(0).map((_, index) => (
+              <motion.div 
+                key={`skeleton-${index}`} 
+                variants={itemVariants}
+                className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 h-96 animate-pulse"
+              />
             ))
           ) : (
-            // Отображаем реальных креаторов
-            creators.map((creator, index) => (
+            // Отображаем креаторов с использованием CreatorCard
+            creators.map((creator) => (
               <motion.div 
                 key={creator.id} 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: inView ? 1 : 0, y: inView ? 0 : 20 }}
-                transition={{ duration: 0.4, delay: index * 0.1 }}
-                className="h-full"
+                variants={itemVariants}
+                onClick={() => handleCreatorProfile(Number(creator.id))}
+                className="cursor-pointer"
               >
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col h-full overflow-hidden border border-gray-100 dark:border-gray-700">
-                  <div className="p-6">
-                    <div className="flex items-center mb-4">
-                      <div className="relative">
-                        {creator.avatar ? (
-                          <img 
-                            src={creator.avatar} 
-                            alt={creator.display_name || 'Креатор'} 
-                            className="w-14 h-14 rounded-full object-cover border-2 border-white dark:border-gray-700 shadow-sm"
-                          />
-                        ) : (
-                          <div className="w-14 h-14 rounded-full bg-gray-200 dark:bg-gray-700 border-2 border-white dark:border-gray-700 shadow-sm flex items-center justify-center">
-                            <User className="w-6 h-6 text-gray-500 dark:text-gray-400" />
-                          </div>
-                        )}
-                        {creator.is_online && (
-                          <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white dark:border-gray-800"></div>
-                        )}
-                      </div>
-                      <div className="ml-4">
-                        <div className="flex items-center">
-                          <h3 className="font-bold text-gray-900 dark:text-white">{creator.display_name}</h3>
-                          {creator.is_verified && <CheckCircle className="w-4 h-4 ml-1.5 text-primary" />}
-                        </div>
-                        <p className="text-gray-500 dark:text-gray-400 text-sm">@{creator.username}</p>
-                      </div>
-                    </div>
-                    
-                    <p className="text-gray-900 dark:text-gray-100 font-medium text-sm mb-2 line-clamp-2">
-                      {creator.top_service}
-                    </p>
-                    
-                    <div className="flex items-center mb-4">
-                      <div className="flex items-center mr-4">
-                        <Star className="w-4 h-4 text-yellow-500 mr-1" />
-                        <span className="text-gray-700 dark:text-gray-200 font-medium">{creator.rating}</span>
-                        <span className="text-gray-500 dark:text-gray-400 text-xs ml-1">({creator.reviews_count || 0})</span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-1.5">
-                      {creator.tags_display && creator.tags_display.length > 0 ? creator.tags_display.slice(0, 3).map((tag, tagIndex) => (
-                        <span 
-                          key={tagIndex} 
-                          className="text-xs px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
-                          {tag}
-                        </span>
-                      )) : (
-                        <span className="text-xs px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
-                          Контент-креатор
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="mt-auto p-6 pt-0">
-                    <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">от</p>
-                          <p className="text-lg font-bold text-primary dark:text-[var(--primary-400)]">{creator.min_price?.toLocaleString() || '3000'} ₽</p>
-                        </div>
-                        <Button 
-                          size="sm" 
-                          className="rounded-full bg-[#E95C4B] hover:bg-[#d54538]" 
-                          onClick={() => handleCreatorProfile(creator.id)}
-                        >
-                          Заказать <ArrowRight className="w-4 h-4 ml-1.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <CreatorCard creator={creator} hideButtons={user?.has_creator_profile || false} />
               </motion.div>
             ))
           )}

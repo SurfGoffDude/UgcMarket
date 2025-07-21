@@ -64,9 +64,10 @@ interface CreatorCardProps {
   creator: CreatorProps;
   useLink?: boolean;
   showDetailedProfile?: boolean;
+  hideButtons?: boolean; // Добавляем параметр для скрытия кнопок
 }
 
-const CreatorCard: React.FC<CreatorCardProps> = ({ creator, useLink, showDetailedProfile }) => {
+const CreatorCard: React.FC<CreatorCardProps> = ({ creator, useLink, showDetailedProfile, hideButtons = false }) => {
   const { openChatWithCreator, loading: chatLoading } = useChat();
   const { user } = useAuth();
   
@@ -517,48 +518,50 @@ const CreatorCard: React.FC<CreatorCardProps> = ({ creator, useLink, showDetaile
         </div>
 
         {/* Кнопки действий */}
-        <div className="flex justify-between items-center pt-2 border-t border-gray-100 dark:border-gray-700">
-          <Button variant="ghost" size="sm" className="text-gray-500 hover:text-primary" asChild>
-            <Link to={`/creators/${getId()}`}>
-              <ExternalLink className="h-4 w-4 mr-1" />
-              Профиль
-            </Link>
-          </Button>
-          <div className="flex space-x-2">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="text-gray-500 hover:text-primary"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (creator) {
-                  openChatWithCreator(getId());
-                }
-              }}
-              disabled={!user || chatLoading}
-            >
-              {chatLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <MessageSquare className="h-4 w-4" />
-              )}
+        {!hideButtons && (
+          <div className="flex justify-between items-center pt-2 border-t border-gray-100 dark:border-gray-700">
+            <Button variant="ghost" size="sm" className="text-gray-500 hover:text-primary" asChild>
+              <Link to={`/creators/${getId()}`}>
+                <ExternalLink className="h-4 w-4 mr-1" />
+                Профиль
+              </Link>
             </Button>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className={`transition-colors ${isFavorite ? 'text-red-500 hover:text-red-600' : 'text-gray-500 hover:text-red-500'}`}
-              onClick={handleToggleFavorite}
-              disabled={favoriteLoading}
-            >
-              {favoriteLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Heart className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
-              )}
-            </Button>
+            <div className="flex space-x-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-gray-500 hover:text-primary"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (creator) {
+                    openChatWithCreator(getId());
+                  }
+                }}
+                disabled={!user || chatLoading}
+              >
+                {chatLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <MessageSquare className="h-4 w-4" />
+                )}
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className={`transition-colors ${isFavorite ? 'text-red-500 hover:text-red-600' : 'text-gray-500 hover:text-red-500'}`}
+                onClick={handleToggleFavorite}
+                disabled={favoriteLoading}
+              >
+                {favoriteLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Heart className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
+                )}
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

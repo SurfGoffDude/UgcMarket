@@ -15,6 +15,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Layout from "@/components/Layout";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 // Страницы
 import Index from "@/pages/Index";
@@ -97,47 +98,47 @@ const App = () => {
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/how-it-works" element={<HowItWorksPage />} />
-                <Route path="/catalog-creators" element={<CatalogPage />} />
-                <Route path="/creator-profile" element={<CreatorProfilePage />} />
-                <Route path="/creators/:id" element={<CreatorProfilePage />} />
-                <Route path="/creators/:id/edit" element={<CreatorProfileEditPage />} />
-                <Route path="/creators/:id/reviews" element={<CreatorReviews />} />
-                <Route path="/creators/:creatorId/service/:serviceId" element={<ServicePage />} />
-                <Route path="/create-order" element={<CreateOrder />} />
+                <Route path="/catalog-creators" element={<ProtectedRoute><CatalogPage /></ProtectedRoute>} />
+                <Route path="/creator-profile" element={<ProtectedRoute><CreatorProfilePage /></ProtectedRoute>} />
+                <Route path="/creators/:id" element={<ProtectedRoute><CreatorProfilePage /></ProtectedRoute>} />
+                <Route path="/creators/:id/edit" element={<ProtectedRoute><CreatorProfileEditPage /></ProtectedRoute>} />
+                <Route path="/creators/:id/reviews" element={<ProtectedRoute><CreatorReviews /></ProtectedRoute>} />
+                <Route path="/creators/:creatorId/service/:serviceId" element={<ProtectedRoute><ServicePage /></ProtectedRoute>} />
+                <Route path="/create-order" element={<ProtectedRoute><CreateOrder /></ProtectedRoute>} />
                 
                 {/* Страницы аутентификации */}
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/email-verification" element={<EmailVerificationPage />} />
-                <Route path="/client-profile" element={<ClientProfilePage />} />
+                <Route path="/client-profile" element={<ProtectedRoute><ClientProfilePage /></ProtectedRoute>} />
                 
                 {/* Страницы заказов */}
-                <Route path="/catalog-orders" element={<CatalogOrdersPage />} />
-                <Route path="/orders" element={<OrdersPage />} />
-                <Route path="/creator-orders" element={<CreatorOrdersPage />} />
-                <Route path="/orders/:id" element={<OrderDetailPage />} />
-                <Route path="/orders/:id/delivery" element={<OrderDeliveryPage />} />
-                <Route path="/orders/:id/respond" element={<OrderResponsePage />} />
+                <Route path="/catalog-orders" element={<ProtectedRoute><CatalogOrdersPage /></ProtectedRoute>} />
+                <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
+                <Route path="/creator-orders" element={<ProtectedRoute><CreatorOrdersPage /></ProtectedRoute>} />
+                <Route path="/orders/:id" element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />
+                <Route path="/orders/:id/delivery" element={<ProtectedRoute><OrderDeliveryPage /></ProtectedRoute>} />
+                <Route path="/orders/:id/respond" element={<ProtectedRoute><OrderResponsePage /></ProtectedRoute>} />
                 
                 {/* Страницы сообщений */}
-                <Route path="/messages" element={<MessagesPage />} />
+                <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
                 
                 {/* Страницы чатов */}
-                <Route path="/chats" element={<ChatsListPage />} />
-                <Route path="/chats/:id" element={<ChatPage />} />
+                <Route path="/chats" element={<ProtectedRoute><ChatsListPage /></ProtectedRoute>} />
+                <Route path="/chats/:id" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
                 
                 {/* Страницы уведомлений */}
-                <Route path="/notifications" element={<NotificationsPage />} />
-                <Route path="/notifications/settings" element={<NotificationSettingsPage />} />
+                <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+                <Route path="/notifications/settings" element={<ProtectedRoute><NotificationSettingsPage /></ProtectedRoute>} />
                 
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="/profile/edit" element={<ProfileEditPage />} />
-                <Route path="/creators/:id/edit" element={<CreatorProfileEditPage />} />
-                <Route path="/tags/add" element={<TagAddPage />} />
-                <Route path="/services/add" element={<ServiceAddPage />} />
-                <Route path="/portfolio/add" element={<PortfolioAddPage />} />
-                <Route path="/portfolio/:id" element={<PortfolioDetailPage />} />
-                <Route path="/services/:id" element={<ServiceDetailPage />} />
+                <Route path="/profile/edit" element={<ProtectedRoute><ProfileEditPage /></ProtectedRoute>} />
+                <Route path="/creators/:id/edit" element={<ProtectedRoute><CreatorProfileEditPage /></ProtectedRoute>} />
+                <Route path="/tags/add" element={<ProtectedRoute><TagAddPage /></ProtectedRoute>} />
+                <Route path="/services/add" element={<ProtectedRoute><ServiceAddPage /></ProtectedRoute>} />
+                <Route path="/portfolio/add" element={<ProtectedRoute><PortfolioAddPage /></ProtectedRoute>} />
+                <Route path="/portfolio/:id" element={<ProtectedRoute><PortfolioDetailPage /></ProtectedRoute>} />
+                <Route path="/services/:id" element={<ProtectedRoute><ServiceDetailPage /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
             </Routes>
           </Layout>

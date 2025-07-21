@@ -6,6 +6,7 @@ import { Button } from './ui/button';
 import { useNavigate } from 'react-router-dom';
 import { fetchLatestPublicOrders } from '@/api/ordersApi';
 import { OrderWithDetails } from '@/types/orders';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Моковые данные на случай ошибки
 const mockOrders = [
@@ -60,29 +61,39 @@ const NewOrders = () => {
 
   const [orders, setOrders] = useState<OrderWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Получаем состояние авторизации из AuthContext
+  const { isAuthenticated } = useAuth();
 
   // Загружаем данные о последних публичных заказах при монтировании компонента
   useEffect(() => {
     const loadLatestOrders = async () => {
       setIsLoading(true);
       try {
-        const data = await fetchLatestPublicOrders(4); // Получаем 4 последних публичных заказа
-        setOrders(data.results.map(order => ({
-          ...order,
-          // Форматируем данные для отображения
-          budget: order.budget ? 
-            typeof order.budget === 'number' 
-              ? `${order.budget.toLocaleString()} ₽` 
-              : order.budget
-            : `${order.price?.toLocaleString() || '0'} ₽`,
-          deadline: order.delivery_date ? 
-            new Date(order.delivery_date) > new Date() ?
-              `${Math.ceil((new Date(order.delivery_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} дней` : 
-              'Срок истек'
-            : 'Не указан',
-          proposals: order.proposals?.length || 0,
-          category: order.tags?.length > 0 ? order.tags[0].name : 'Разное'
-        })));
+        // Проверяем авторизацию перед выполнением API-запроса
+        if (isAuthenticated) {
+          const data = await fetchLatestPublicOrders(4); // Получаем 4 последних публичных заказа
+          setOrders(data.results.map(order => ({
+            ...order,
+            // Форматируем данные для отображения
+            budget: order.budget ? 
+              typeof order.budget === 'number' 
+                ? `${order.budget.toLocaleString()} ₽` 
+                : order.budget
+              : `${order.price?.toLocaleString() || '0'} ₽`,
+            deadline: order.delivery_date ? 
+              new Date(order.delivery_date) > new Date() ?
+                `${Math.ceil((new Date(order.delivery_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} дней` : 
+                'Срок истек'
+              : 'Не указан',
+            proposals: order.proposals?.length || 0,
+            category: order.tags?.length > 0 ? order.tags[0].name : 'Разное'
+          })));
+        } else {
+          // Если пользователь не авторизован, используем моковые данные
+          console.log('Пользователь не авторизован, используем моковые данные для NewOrders');
+          setOrders(mockOrders as unknown as OrderWithDetails[]);
+        }
       } catch (error) {
         console.error('Ошибка при загрузке последних заказов:', error);
         // Используем моковые данные в случае ошибки
@@ -93,7 +104,7 @@ const NewOrders = () => {
     };
     
     loadLatestOrders();
-  }, []);
+  }, [isAuthenticated]);
   
   // Переход на страницу всех заказов
   const handleViewAllOrders = () => {

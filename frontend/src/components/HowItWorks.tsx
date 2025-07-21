@@ -121,7 +121,7 @@ const HowItWorks = () => {
                   <div 
                     className={`w-12 h-12 bg-gradient-to-r ${step.color} rounded-xl flex items-center justify-center mb-4 transition-transform duration-300 group-hover:scale-110`}
                   >
-                    <Icon className="w-6 h-6 text-white" />
+                    <Icon className="w-6 h-6 text-[#E95C4B] dark:text-gray-900" />
                   </div>
                   <div className="flex items-center mb-2">
                     <span className="w-8 h-8 bg-[var(--primary-100)] dark:bg-[var(--primary-900/50)] text-primary dark:text-[var(--primary-400)] rounded-full flex items-center justify-center font-bold mr-3 transition-colors">

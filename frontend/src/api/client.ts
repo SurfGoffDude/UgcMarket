@@ -77,6 +77,8 @@ apiClient.interceptors.response.use(
           // Если нет токена обновления, выход из системы
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
+          // Перенаправляем на страницу входа с параметром причины
+          window.location.href = '/login?reason=auth_required';
           return Promise.reject(error);
         }
         
@@ -99,6 +101,8 @@ apiClient.interceptors.response.use(
         // Если не удалось обновить токен, выход из системы
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
+        // Перенаправляем на страницу входа с параметром причины
+        window.location.href = '/login?reason=auth_required';
         return Promise.reject(refreshError);
       }
     }

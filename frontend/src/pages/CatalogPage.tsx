@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 
 import CreatorCard from '@/components/CreatorCard';
 import CreatorFilters from '@/components/CreatorFilters';
+import { useAuth } from '@/contexts/AuthContext';
 import { useCreatorsList, SelectedTags } from '@/hooks/useSearchApi';
 import { Button } from '@/components/ui/button';
 
@@ -29,7 +30,7 @@ const CatalogPage: React.FC = () => {
   responseTime: null,
 });
   const { creators, loading, error, refetch } = useCreatorsList(filters);
-
+  const { user } = useAuth();
 
 
   const handleFilterChange = (newFilters: Filters) => {
@@ -74,7 +75,7 @@ const CatalogPage: React.FC = () => {
             ) : (
               <div className="grid grid-cols-1 gap-8">
                 {creators.slice(0, 3).map((creator) => (
-                  <CreatorCard key={creator.id} creator={creator} />
+                  <CreatorCard key={creator.id} creator={creator} hideButtons={user?.has_creator_profile || false} />
                 ))}
               </div>
             )}

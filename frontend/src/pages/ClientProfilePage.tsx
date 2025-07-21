@@ -742,6 +742,7 @@ const ClientProfilePage: React.FC = () => {
                           }}
                           useLink={true}
                           showDetailedProfile={false}
+                          hideButtons={user?.has_creator_profile || false}
                         />
                         <div className="absolute top-2 right-2 bg-white dark:bg-gray-800 rounded-full p-1 shadow-sm">
                           <Badge variant="outline" className="text-xs text-gray-500">
