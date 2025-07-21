@@ -256,28 +256,26 @@ ALTER USER ugcmarket CREATEDB;
 
 ```bash
 # Создаем конфигурацию Nginx
-sudo cat > /etc/nginx/sites-available/ugcmarket << EOF
+cat > /etc/nginx/sites-available/ugcmarket << 'EOF'
 server {
     listen 80 default_server;
     server_name 95.215.56.138;
 
-    # favicon — не логируем
     location = /favicon.ico {
         access_log off;
         log_not_found off;
     }
 
-    # Статика Django
+    client_max_body_size 50M;
+
     location /static/ {
         alias /var/www/ugcmarket/backend/staticfiles/;
     }
 
-    # Медиа Django
     location /media/ {
         alias /var/www/ugcmarket/backend/media/;
     }
 
-    # WebSocket (если используется)
     location /ws/ {
         proxy_pass http://127.0.0.1:8001;
         proxy_http_version 1.1;
@@ -287,7 +285,6 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
     }
 
-    # API Django
     location /api/ {
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host $host;
@@ -296,7 +293,6 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # Админка Django
     location /admin/ {
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host $host;
@@ -305,13 +301,11 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # Статика React (CSS, JS, изображения)
     location /assets/ {
         root /var/www/ugcmarket/frontend/dist;
         access_log off;
     }
 
-    # React SPA (включая index.html)
     location / {
         root /var/www/ugcmarket/frontend/dist;
         try_files $uri $uri/ /index.html;
@@ -319,6 +313,7 @@ server {
     }
 }
 EOF
+
 
 # Активируем конфигурацию
 sudo ln -s /etc/nginx/sites-available/ugcmarket /etc/nginx/sites-enabled/

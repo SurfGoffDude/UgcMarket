@@ -75,6 +75,11 @@ const PortfolioDetailPage = () => {
           const firstImage = imagesResponse.data[0];
         }
         
+        // Обрабатываем полученные изображения
+        if (imagesResponse.data && Array.isArray(imagesResponse.data)) {
+          setPortfolioImages(imagesResponse.data);
+        }
+        
         // Обрабатываем разные форматы API ответа (массив или объект с results)
         let imagesArray: PortfolioImage[] = [];
         if (Array.isArray(imagesResponse.data)) {
@@ -84,13 +89,6 @@ const PortfolioDetailPage = () => {
         }
         
         setPortfolioImages(imagesArray);
-        
-        // Вызываем эндпоинт для увеличения счетчика просмотров (если такой есть)
-        try {
-          await apiClient.post(`portfolio/${id}/view/`);
-        } catch (viewError) {
-          // Если эндпоинта для просмотров нет, игнорируем ошибку
-        }
       } catch (err: any) {
         setError(err?.response?.data?.detail || 'Не удалось загрузить информацию о работе');
         toast({
