@@ -89,8 +89,17 @@ const PortfolioDetailPage = () => {
         }
         
         setPortfolioImages(imagesArray);
-      } catch (err: any) {
-        setError(err?.response?.data?.detail || 'Не удалось загрузить информацию о работе');
+      } catch (err: unknown) {
+        // Типизированная обработка ошибки
+        let errorMessage = 'Не удалось загрузить информацию о работе';
+        
+        if (err && typeof err === 'object' && 'response' in err && 
+            err.response && typeof err.response === 'object' && 'data' in err.response &&
+            err.response.data && typeof err.response.data === 'object' && 'detail' in err.response.data) {
+          errorMessage = String(err.response.data.detail);
+        }
+        
+        setError(errorMessage);
         toast({
           title: 'Ошибка',
           description: 'Не удалось загрузить информацию о работе',

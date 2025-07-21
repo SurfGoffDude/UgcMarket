@@ -408,12 +408,6 @@ const CreatorProfileEditPage: React.FC = () => {
         formData.append('avatar', avatar);
         formData.append('user.avatar', avatar);
       }
-      
-      
-      // Отладка: просмотр сформированного FormData
-      for (const pair of formData.entries()) {
-
-      }
 
       // Отправляем обновление профиля креатора
       await apiClient.patch(`creator-profiles/${id}/`, formData, {

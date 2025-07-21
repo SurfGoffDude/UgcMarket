@@ -55,6 +55,81 @@ class UserSerializer(serializers.ModelSerializer):
     has_creator_profile = serializers.BooleanField(read_only=True)
     has_client_profile = serializers.BooleanField(read_only=True)
     creator_profile_id = serializers.IntegerField(source="creator_profile.id", read_only=True)
+    # Явно указываем тип поля для аватара
+    avatar = serializers.ImageField(required=False, allow_null=True)
+    
+    def update(self, instance, validated_data):
+        """
+        Обновляет пользователя с обработкой аватара.
+        
+        Args:
+            instance: Экземпляр модели User для обновления
+            validated_data: Проверенные данные для обновления
+            
+        Returns:
+            Обновленный экземпляр модели User
+        """
+        import os
+        from django.conf import settings
+        
+        print(f"DEBUG - UserSerializer.update - начало обновления пользователя {instance.username}")
+        print(f"DEBUG - UserSerializer.update - validated_data: {validated_data}")
+        
+        # Проверяем наличие аватара в данных
+        avatar = validated_data.pop('avatar', None)
+        if avatar is not None:
+            print(f"DEBUG - UserSerializer.update - найден аватар: {avatar}")
+            print(f"DEBUG - UserSerializer.update - тип аватара: {type(avatar)}")
+            print(f"DEBUG - UserSerializer.update - имя файла: {avatar.name}")
+            print(f"DEBUG - UserSerializer.update - размер файла: {avatar.size} байт")
+            
+            # Проверяем директорию для сохранения аватаров
+            avatar_dir = os.path.join(settings.MEDIA_ROOT, 'avatars')
+            print(f"DEBUG - UserSerializer.update - директория для аватаров: {avatar_dir}")
+            print(f"DEBUG - UserSerializer.update - директория существует: {os.path.exists(avatar_dir)}")
+            
+            # Создаем директорию, если она не существует
+            if not os.path.exists(avatar_dir):
+                try:
+                    os.makedirs(avatar_dir)
+                    print(f"DEBUG - UserSerializer.update - создана директория: {avatar_dir}")
+                except Exception as e:
+                    print(f"DEBUG - UserSerializer.update - ошибка при создании директории: {e}")
+            
+            # Проверяем права доступа к директории
+            try:
+                print(f"DEBUG - UserSerializer.update - права доступа к директории: {oct(os.stat(avatar_dir).st_mode)[-3:]}")
+            except Exception as e:
+                print(f"DEBUG - UserSerializer.update - ошибка при проверке прав доступа: {e}")
+            
+            # Устанавливаем аватар
+            old_avatar = instance.avatar
+            instance.avatar = avatar
+            print(f"DEBUG - UserSerializer.update - аватар установлен: {instance.avatar}")
+        
+        # Обновляем остальные поля
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        # Сохраняем пользователя
+        try:
+            instance.save()
+            print(f"DEBUG - UserSerializer.update - пользователь сохранен, аватар: {instance.avatar}")
+            
+            # Проверяем, что файл сохранен на диск
+            if instance.avatar:
+                try:
+                    avatar_path = instance.avatar.path
+                    print(f"DEBUG - UserSerializer.update - путь к файлу аватара: {avatar_path}")
+                    print(f"DEBUG - UserSerializer.update - файл существует: {os.path.exists(avatar_path)}")
+                    if os.path.exists(avatar_path):
+                        print(f"DEBUG - UserSerializer.update - размер файла на диске: {os.path.getsize(avatar_path)} байт")
+                except Exception as e:
+                    print(f"DEBUG - UserSerializer.update - ошибка при проверке файла: {e}")
+        except Exception as e:
+            print(f"DEBUG - UserSerializer.update - ошибка при сохранении пользователя: {e}")
+        
+        return instance
 
     class Meta:
         model = User
@@ -283,24 +358,23 @@ class SocialLinkSerializer(serializers.ModelSerializer):
 
 
 class CreatorProfileSerializer(serializers.ModelSerializer):
-    """Полный профиль креатора (базовый).
+    """
+    Полный профиль креатора (базовый).
 
     Всегда приводит список тегов к списку их имён для удобства фронтенда.
     """
     user = UserSerializer(required=False)
+    full_name = serializers.SerializerMethodField(read_only=True)
+    username = serializers.SerializerMethodField(read_only=True)
+    # Явно указываем поле avatar для обработки загружаемых файлов
+    avatar = serializers.ImageField(required=False, allow_null=True)
+    bio = serializers.SerializerMethodField(read_only=True)
+    location = serializers.SerializerMethodField(read_only=True)
     social_links = SocialLinkSerializer(many=True, required=False)
     social_links_data = serializers.ListField(child=serializers.DictField(), write_only=True, required=False)
     skills = serializers.ListField(child=serializers.DictField(), required=False, write_only=True)
-    # Поддержка как ID, так и строк для тегов
+    services_count = serializers.IntegerField(read_only=True)
     tags = serializers.ListField(required=False, write_only=True)
-
-    full_name = serializers.SerializerMethodField()
-    username = serializers.SerializerMethodField()
-    avatar = serializers.SerializerMethodField()
-    bio = serializers.SerializerMethodField()
-    location = serializers.SerializerMethodField()
-    location_write = serializers.CharField(max_length=100, required=False, allow_blank=True, write_only=True)
-    review_count = serializers.IntegerField(source="completed_orders", read_only=True)
 
     class Meta:
         model = CreatorProfile
@@ -310,10 +384,9 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
             "nickname",
             "full_name",
             "username",
-            "avatar",
+            "avatar",  # Поле для загрузки аватара
             "bio",
             "location",
-            "location_write",
             "specialization",
             "experience",
             "portfolio_link",
@@ -325,8 +398,8 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
             "skills",
             "tags",
             "rating",
-            "review_count",
             "completed_orders",
+            "services_count",
             "average_response_time",
             "average_work_time",
             "created_at",
@@ -335,7 +408,6 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id",
             "rating",
-            "review_count",
             "completed_orders",
             "created_at",
             "updated_at",
@@ -351,7 +423,16 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
         return obj.user.username
 
     def get_avatar(self, obj):
-        return obj.user.avatar.url if obj.user.avatar else None
+        # Возвращает URL аватара пользователя.
+    #     
+    #     Если аватар не установлен, возвращает None.
+        if obj.user.avatar and hasattr(obj.user.avatar, 'url'):
+            try:
+                return obj.user.avatar.url
+            except Exception as e:
+                print(f"DEBUG - Ошибка при получении URL аватара: {e}")
+                return None
+        return None
 
     def get_bio(self, obj):
         return obj.user.bio
@@ -402,8 +483,64 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
             user.bio = bio
         if location is not None:
             user.location = location
+            
+        # Обработка аватара
+        # Исправление: используем ранее извлеченный аватар, а не пытаемся получить его из validated_data снова
         if avatar is not None:
-            user.avatar = avatar
+            print(f"DEBUG - CreatorProfileSerializer.update - avatar перед сохранением: {avatar} (тип: {type(avatar)})")
+            
+            # Проверяем, что файл существует и доступен для чтения
+            try:
+                print(f"DEBUG - CreatorProfileSerializer.update - размер файла: {avatar.size} байт")
+                print(f"DEBUG - CreatorProfileSerializer.update - имя файла: {avatar.name}")
+                print(f"DEBUG - CreatorProfileSerializer.update - content_type: {avatar.content_type}")
+                
+                # Проверяем чтение файла
+                avatar.seek(0)  # Убедимся, что указатель в начале файла
+                data = avatar.read(1024)  # Прочитаем первый килобайт
+                avatar.seek(0)  # Вернем указатель в начало
+                print(f"DEBUG - CreatorProfileSerializer.update - файл успешно прочитан, размер прочитанных данных: {len(data)} байт")
+                
+                # Устанавливаем аватар
+                user.avatar = avatar
+                print(f"DEBUG - CreatorProfileSerializer.update - user.avatar после присвоения: {user.avatar} (тип: {type(user.avatar)})")
+                
+            except Exception as e:
+                print(f"DEBUG - CreatorProfileSerializer.update - ошибка при доступе к файлу: {e}")
+                # Попробуем сохранить файл вручную
+                try:
+                    from django.core.files.storage import default_storage
+                    from django.core.files.base import ContentFile
+                    import os
+                    
+                    # Сохраняем файл во временный файл
+                    temp_path = default_storage.save(f"avatars/temp_{avatar.name}", ContentFile(avatar.read()))
+                    avatar.seek(0)  # Возвращаем указатель в начало файла
+                    print(f"DEBUG - CreatorProfileSerializer.update - файл успешно сохранен во временный файл: {temp_path}")
+                    
+                    # Устанавливаем аватар
+                    user.avatar = avatar
+                    print(f"DEBUG - CreatorProfileSerializer.update - user.avatar после присвоения: {user.avatar} (тип: {type(user.avatar)})")
+                except Exception as e2:
+                    print(f"DEBUG - CreatorProfileSerializer.update - ошибка при ручном сохранении файла: {e2}")
+            
+            # Сохраняем пользователя сразу после установки аватара
+            try:
+                user.save()
+                print(f"DEBUG - CreatorProfileSerializer.update - пользователь сохранен с аватаром")
+                
+                # Проверяем, что файл сохранен
+                if user.avatar and hasattr(user.avatar, 'path'):
+                    print(f"DEBUG - CreatorProfileSerializer.update - путь к файлу аватара: {user.avatar.path}")
+                    import os
+                    if os.path.exists(user.avatar.path):
+                        print(f"DEBUG - CreatorProfileSerializer.update - файл существует на диске, размер: {os.path.getsize(user.avatar.path)} байт")
+                    else:
+                        print(f"DEBUG - CreatorProfileSerializer.update - файл не существует на диске: {user.avatar.path}")
+            except Exception as e:
+                print(f"DEBUG - CreatorProfileSerializer.update - ошибка при сохранении пользователя с аватаром: {e}")
+        else:
+            print("DEBUG - CreatorProfileSerializer.update - аватар не был передан")
             
         # Отладка поля gender в user_data и его установка
         print("DEBUG - CreatorProfileSerializer.update - gender в user_data:", user_data.get('gender'))
@@ -418,7 +555,33 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
                 setattr(user, attr, value)
                 
         print("DEBUG - CreatorProfileSerializer.update - gender после установки:", user.gender)
+        
+        # Проверяем директорию для сохранения аватаров
+        import os
+        from django.conf import settings
+        avatar_dir = os.path.join(settings.MEDIA_ROOT, 'avatars')
+        print(f"DEBUG - CreatorProfileSerializer.update - директория для аватаров: {avatar_dir}")
+        print(f"DEBUG - CreatorProfileSerializer.update - директория существует: {os.path.exists(avatar_dir)}")
+        print(f"DEBUG - CreatorProfileSerializer.update - права доступа: {oct(os.stat(avatar_dir).st_mode)[-3:]}")
+        
+        # Сохраняем пользователя
+        print("DEBUG - CreatorProfileSerializer.update - сохранение пользователя...")
         user.save()
+        print("DEBUG - CreatorProfileSerializer.update - пользователь сохранен")
+        
+        # Проверяем, сохранился ли аватар
+        if avatar is not None:
+            print(f"DEBUG - CreatorProfileSerializer.update - аватар после сохранения: {user.avatar}")
+            if user.avatar:
+                avatar_path = user.avatar.path
+                print(f"DEBUG - CreatorProfileSerializer.update - путь к файлу аватара: {avatar_path}")
+                print(f"DEBUG - CreatorProfileSerializer.update - файл существует: {os.path.exists(avatar_path)}")
+                if os.path.exists(avatar_path):
+                    print(f"DEBUG - CreatorProfileSerializer.update - размер файла: {os.path.getsize(avatar_path)} байт")
+            else:
+                print("DEBUG - CreatorProfileSerializer.update - аватар не сохранился!")
+        else:
+            print("DEBUG - CreatorProfileSerializer.update - аватар не был передан")
 
         # --- tags
         if tags_data is not None:
@@ -569,8 +732,41 @@ class CreatorProfileDetailSerializer(CreatorProfileSerializer):
     # Показываем теги полностью через вложенный TagSerializer
     tags = TagSerializer(many=True, read_only=True)
 
-    class Meta(CreatorProfileSerializer.Meta):
-        pass  # Наследуем все поля и настройки базового сериализатора
+    class Meta:
+        model = CreatorProfile
+        fields = [
+            "id",
+            "user",
+            "nickname",
+            "full_name",
+            "username",
+            "avatar",
+            "bio",
+            "location",
+            "specialization",
+            "experience",
+            "portfolio_link",
+            "social_links",
+            "social_links_data",
+            "skills",
+            "tags",
+            "rating",
+            "completed_orders",
+            "services_count",
+            "available_for_hire",
+            "average_response_time",
+            "average_work_time",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "rating",
+            "review_count",
+            "completed_orders",
+            "created_at",
+            "updated_at",
+        ]
 
     # --- representation -----------------------------------------------------
     def to_representation(self, instance):

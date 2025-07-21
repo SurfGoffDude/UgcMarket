@@ -293,37 +293,142 @@ class CreatorProfileViewSet(viewsets.ModelViewSet):
     
     # Переопределяем стандартный метод partial_update
     def partial_update(self, request, *args, **kwargs):
-        import json
-        # Добавляем подробное логирование
-        print("\n" + "*" * 80)
-        print("DEBUG - CreatorProfileViewSet.partial_update - НАЧАЛО ОБРАБОТКИ")
-        print(f"DEBUG - CreatorProfileViewSet.partial_update - request.data (тип): {type(request.data)}")
-        print("DEBUG - CreatorProfileViewSet.partial_update - request.data (содержимое):")
-        for key in request.data:
-            value = request.data[key]
-            print(f"    {key}: {value} (тип: {type(value)})")
-        print("*" * 80 + "\n")
+        """
+        Обновляет профиль креатора с поддержкой multipart/form-data.
+        
+        Поддерживает обработку вложенных JSON-полей и загрузку файлов.
+        """
+        import os
+        from django.conf import settings
         
         instance = self.get_object()
+        print(f"DEBUG - CreatorProfileViewSet.partial_update - начало обработки для профиля {instance.id}")
         
-        # Подготовим правильный формат данных для сериализатора
-        # Поскольку мы получаем QueryDict, мы должны правильно обработать типы
+        # Отладка: проверяем тип запроса и наличие файлов
+        print(f"DEBUG - CreatorProfileViewSet.partial_update - Content-Type: {request.content_type}")
+        print(f"DEBUG - CreatorProfileViewSet.partial_update - Файлы в запросе: {request.FILES.keys()}")
+        
+        # Проверяем директорию для сохранения аватаров
+        avatar_dir = os.path.join(settings.MEDIA_ROOT, 'avatars')
+        print(f"DEBUG - CreatorProfileViewSet.partial_update - директория для аватаров: {avatar_dir}")
+        print(f"DEBUG - CreatorProfileViewSet.partial_update - директория существует: {os.path.exists(avatar_dir)}")
+        
+        # Создаем директорию, если она не существует
+        if not os.path.exists(avatar_dir):
+            try:
+                os.makedirs(avatar_dir)
+                print(f"DEBUG - CreatorProfileViewSet.partial_update - создана директория: {avatar_dir}")
+            except Exception as e:
+                print(f"DEBUG - CreatorProfileViewSet.partial_update - ошибка при создании директории: {e}")
+        
+        # Проверяем права доступа к директории
+        try:
+            print(f"DEBUG - CreatorProfileViewSet.partial_update - права доступа к директории: {oct(os.stat(avatar_dir).st_mode)[-3:]}")
+        except Exception as e:
+            print(f"DEBUG - CreatorProfileViewSet.partial_update - ошибка при проверке прав доступа: {e}")
+        
+        # Обработка multipart/form-data с вложенными JSON-полями
         processed_data = {}
         
-        # Обрабатываем все поля
+        # Обрабатываем обычные поля из request.data
         for key, value in request.data.items():
-            # Обработка JSON-полей
+            # Обработка вложенных JSON-полей
             if key == 'user' and isinstance(value, str):
                 try:
-                    processed_data[key] = json.loads(value)
-                except:
+                    print(f"DEBUG - Десериализация user из строки JSON: {value}")
+                    user_data = json.loads(value)
+                    processed_data['user'] = user_data
+                    
+                    # Если аватар еще не добавлен в processed_data, добавляем его
+                    if 'avatar' not in processed_data and 'user.avatar' in request.FILES:
+                        processed_data['avatar'] = request.FILES['user.avatar']
+                        print(f"DEBUG - Обработка user.avatar: {request.FILES['user.avatar']} (тип: {type(request.FILES['user.avatar'])}), размер: {request.FILES['user.avatar'].size} байт")
+                except Exception as e:
+                    print(f"DEBUG - Ошибка при десериализации user: {e}")
+                    # Если не удалось десериализовать, передаем как есть
                     processed_data[key] = value
-            # Обработка булевых полей
-            elif key == 'available_for_hire':
-                processed_data[key] = value.lower() == 'true'
+                    
+                    # Если аватар еще не добавлен в processed_data, добавляем его
+                    if 'avatar' not in processed_data and 'user.avatar' in request.FILES:
+                        processed_data['avatar'] = request.FILES['user.avatar']
+                        print(f"DEBUG - Обработка user.avatar: {request.FILES['user.avatar']} (тип: {type(request.FILES['user.avatar'])}), размер: {request.FILES['user.avatar'].size} байт")
             # Остальные поля передаем как есть
             else:
                 processed_data[key] = value
+        
+        # Добавляем отладочную информацию для аватара и обрабатываем файлы
+        if 'avatar' in request.FILES:
+            print(f"DEBUG - CreatorProfileViewSet.partial_update - avatar в request.FILES: {request.FILES['avatar']}")
+            print(f"DEBUG - CreatorProfileViewSet.partial_update - тип avatar: {type(request.FILES['avatar'])}")
+            print(f"DEBUG - CreatorProfileViewSet.partial_update - размер avatar: {request.FILES['avatar'].size} байт")
+            print(f"DEBUG - CreatorProfileViewSet.partial_update - имя файла: {request.FILES['avatar'].name}")
+            print(f"DEBUG - CreatorProfileViewSet.partial_update - content_type: {request.FILES['avatar'].content_type}")
+            processed_data['avatar'] = request.FILES['avatar']
+        elif 'user.avatar' in request.FILES:
+            print(f"DEBUG - CreatorProfileViewSet.partial_update - user.avatar в request.FILES: {request.FILES['user.avatar']}")
+            print(f"DEBUG - CreatorProfileViewSet.partial_update - тип user.avatar: {type(request.FILES['user.avatar'])}")
+            print(f"DEBUG - CreatorProfileViewSet.partial_update - размер user.avatar: {request.FILES['user.avatar'].size} байт")
+            print(f"DEBUG - CreatorProfileViewSet.partial_update - имя файла: {request.FILES['user.avatar'].name}")
+            print(f"DEBUG - CreatorProfileViewSet.partial_update - content_type: {request.FILES['user.avatar'].content_type}")
+            processed_data['avatar'] = request.FILES['user.avatar']
+            
+            # Проверяем, что файл корректно читается
+            try:
+                file_content = request.FILES['user.avatar'].read(1024)  # Читаем первые 1024 байта для проверки
+                print(f"DEBUG - CreatorProfileViewSet.partial_update - файл успешно прочитан, первые байты: {file_content[:20]}")
+                request.FILES['user.avatar'].seek(0)  # Возвращаем указатель в начало файла
+            except Exception as e:
+                print(f"DEBUG - CreatorProfileViewSet.partial_update - ошибка при чтении файла: {e}")
+                
+            # Проверяем, что файл корректно открывается
+            try:
+                from PIL import Image
+                img = Image.open(request.FILES['user.avatar'])
+                print(f"DEBUG - CreatorProfileViewSet.partial_update - изображение успешно открыто, размер: {img.size}")
+                request.FILES['user.avatar'].seek(0)  # Возвращаем указатель в начало файла
+            except Exception as e:
+                print(f"DEBUG - CreatorProfileViewSet.partial_update - ошибка при открытии изображения: {e}")
+                
+            # Проверяем, что файл корректно сохраняется
+            try:
+                from django.core.files.storage import default_storage
+                from django.core.files.base import ContentFile
+                path = default_storage.save(f"avatars/test_{request.FILES['user.avatar'].name}", ContentFile(request.FILES['user.avatar'].read()))
+                print(f"DEBUG - CreatorProfileViewSet.partial_update - файл успешно сохранен по пути: {path}")
+                request.FILES['user.avatar'].seek(0)  # Возвращаем указатель в начало файла
+            except Exception as e:
+                print(f"DEBUG - CreatorProfileViewSet.partial_update - ошибка при сохранении файла: {e}")
+                
+            # Проверяем, что файл корректно копируется
+            try:
+                import shutil
+                import tempfile
+                with tempfile.NamedTemporaryFile(delete=False) as tmp:
+                    shutil.copyfileobj(request.FILES['user.avatar'], tmp)
+                    print(f"DEBUG - CreatorProfileViewSet.partial_update - файл успешно скопирован во временный файл: {tmp.name}")
+                request.FILES['user.avatar'].seek(0)  # Возвращаем указатель в начало файла
+            except Exception as e:
+                print(f"DEBUG - CreatorProfileViewSet.partial_update - ошибка при копировании файла: {e}")
+                
+            # Проверяем, что файл корректно передается в processed_data
+            try:
+                print(f"DEBUG - CreatorProfileViewSet.partial_update - файл в processed_data: {processed_data['avatar']}")
+                print(f"DEBUG - CreatorProfileViewSet.partial_update - тип файла в processed_data: {type(processed_data['avatar'])}")
+                print(f"DEBUG - CreatorProfileViewSet.partial_update - размер файла в processed_data: {processed_data['avatar'].size} байт")
+            except Exception as e:
+                print(f"DEBUG - CreatorProfileViewSet.partial_update - ошибка при проверке файла в processed_data: {e}")
+                
+            # Проверяем, что файл корректно передается в сериализатор
+            try:
+                print(f"DEBUG - CreatorProfileViewSet.partial_update - файл перед передачей в сериализатор: {processed_data['avatar']}")
+                print(f"DEBUG - CreatorProfileViewSet.partial_update - тип файла перед передачей в сериализатор: {type(processed_data['avatar'])}")
+                print(f"DEBUG - CreatorProfileViewSet.partial_update - размер файла перед передачей в сериализатор: {processed_data['avatar'].size} байт")
+            except Exception as e:
+                print(f"DEBUG - CreatorProfileViewSet.partial_update - ошибка при проверке файла перед передачей в сериализатор: {e}")
+        
+        print(f"DEBUG - CreatorProfileViewSet.partial_update - ключи в processed_data: {processed_data.keys()}")
+        if 'avatar' in processed_data:
+            print(f"DEBUG - CreatorProfileViewSet.partial_update - avatar в processed_data: {processed_data['avatar']}")
         
         # Обработка social_links
         if 'social_links' in processed_data and isinstance(processed_data['social_links'], str):
@@ -349,24 +454,65 @@ class CreatorProfileViewSet(viewsets.ModelViewSet):
             print("DEBUG - Ошибки валидации:", serializer.errors)
             raise ValidationError(serializer.errors)
         
-        self.perform_update(serializer)
+        # Проверяем, что аватар попал в validated_data
+        print(f"DEBUG - Ключи в validated_data: {serializer.validated_data.keys()}")
+        if 'avatar' in serializer.validated_data:
+            print(f"DEBUG - Аватар в validated_data: {serializer.validated_data['avatar']}")
+            print(f"DEBUG - Тип аватара в validated_data: {type(serializer.validated_data['avatar'])}")
+            print(f"DEBUG - Размер аватара в validated_data: {serializer.validated_data['avatar'].size} байт")
+        else:
+            print("DEBUG - Аватар отсутствует в validated_data")
+        
+        # Выполняем обновление
+        try:
+            self.perform_update(serializer)
+            print("DEBUG - Обновление успешно выполнено")
+        except Exception as e:
+            print(f"DEBUG - Ошибка при выполнении обновления: {e}")
+            raise
         
         # Проверим, что social_links сохранились
         instance.refresh_from_db()
         print("DEBUG - После сохранения, social_links:", list(instance.social_links.all().values()))
         
+        # Проверяем, сохранился ли аватар
+        user = instance.user
+        user.refresh_from_db()
+        print(f"DEBUG - Аватар после сохранения: {user.avatar}")
+        
+        # Проверяем наличие файла на диске
+        import os
+        from django.conf import settings
+        
+        if user.avatar:
+            try:
+                avatar_path = user.avatar.path
+                print(f"DEBUG - Путь к файлу аватара: {avatar_path}")
+                print(f"DEBUG - Файл существует: {os.path.exists(avatar_path)}")
+                
+                if os.path.exists(avatar_path):
+                    print(f"DEBUG - Размер файла: {os.path.getsize(avatar_path)} байт")
+                    print(f"DEBUG - Права доступа к файлу: {oct(os.stat(avatar_path).st_mode)[-3:]}")
+                    
+                    # Проверяем URL аватара
+                    print(f"DEBUG - URL аватара: {user.avatar.url}")
+                    
+                    # Проверяем доступность файла через URL
+                    media_url = settings.MEDIA_URL.lstrip('/')
+                    media_root = settings.MEDIA_ROOT
+                    relative_path = os.path.relpath(avatar_path, media_root)
+                    url_path = os.path.join(media_url, relative_path)
+                    print(f"DEBUG - Относительный путь к файлу: {url_path}")
+                else:
+                    print("DEBUG - Файл не существует на диске!")
+            except Exception as e:
+                print(f"DEBUG - Ошибка при проверке файла аватара: {e}")
+        else:
+            print("DEBUG - Аватар не был сохранен в модели пользователя!")
+        
         if getattr(instance, "_prefetched_objects_cache", None):
             # Если объект имеет предзагруженные отношения, мы должны их очистить
             # поскольку они не будут автоматически обновлены
-            instance._prefetched_objects_cache = {}
-
-        return Response(serializer.data)
-        
-        # Проверяем, сохранились ли социальные ссылки
-        instance.refresh_from_db()
-        print(f"DEBUG - social_links после сохранения: {list(instance.social_links.all())}")
-        if getattr(instance, '_prefetched_objects_cache', None):
-            # Сбрасываем prefetched_objects_cache если он существует
             instance._prefetched_objects_cache = {}
         
         print("DEBUG - CreatorProfileViewSet.partial_update - ЗАВЕРШЕНО")
