@@ -449,13 +449,23 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
         return profile
 
     def update(self, instance, validated_data):
+        import logging
+        logger = logging.getLogger('django')
+        
         # Отладка входящих данных
-        print("DEBUG - CreatorProfileSerializer.update - validated_data:", validated_data)
+        logger.info(f"[CreatorProfileSerializer.update] Начало обновления профиля креатора {instance.id}")
+        logger.info(f"[CreatorProfileSerializer.update] Полученные данные: {validated_data.keys()}")
+        
+        # Проверяем наличие аватара в контексте
+        avatar_from_context = None
+        if self.context and 'avatar_file' in self.context:
+            avatar_from_context = self.context['avatar_file']
+            logger.info(f"[CreatorProfileSerializer.update] Найден аватар в контексте: {avatar_from_context}")
         
         # Получаем social_links из social_links_data (для multipart/form-data)
         social_links_data = validated_data.pop("social_links_data", None)
         if social_links_data is not None:
-            print("DEBUG - CreatorProfileSerializer.update - Найдено social_links_data:", social_links_data)
+            logger.info(f"[CreatorProfileSerializer.update] Найдено social_links_data: {social_links_data}")
             social_links = social_links_data
         else:
             # Стандартная обработка (для application/json)
@@ -467,10 +477,20 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
         location = validated_data.pop("location_write", None)
         avatar = validated_data.pop("avatar", None)
         
+        # Если аватар не найден в validated_data, но есть в контексте, используем его
+        if avatar is None and avatar_from_context is not None:
+            avatar = avatar_from_context
+            logger.info(f"[CreatorProfileSerializer.update] Используем аватар из контекста: {avatar}")
+        
         # Отладка полей после извлечения
-        print("DEBUG - CreatorProfileSerializer.update - user_data:", user_data)
-        print("DEBUG - CreatorProfileSerializer.update - bio:", bio)
-        print("DEBUG - CreatorProfileSerializer.update - location:", location)
+        logger.info(f"[CreatorProfileSerializer.update] user_data: {user_data}")
+        logger.info(f"[CreatorProfileSerializer.update] bio: {bio}")
+        logger.info(f"[CreatorProfileSerializer.update] location: {location}")
+        logger.info(f"[CreatorProfileSerializer.update] avatar получен: {avatar is not None}")
+        if avatar is not None:
+            logger.info(f"[CreatorProfileSerializer.update] Тип аватара: {type(avatar)}")
+            logger.info(f"[CreatorProfileSerializer.update] Имя файла: {getattr(avatar, 'name', 'None')}")
+            logger.info(f"[CreatorProfileSerializer.update] Размер файла: {getattr(avatar, 'size', 'None')} байт")
 
         # --- update CreatorProfile itself
         for attr, value in validated_data.items():
@@ -485,105 +505,71 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
             user.location = location
             
         # Обработка аватара
-        # Исправление: используем ранее извлеченный аватар, а не пытаемся получить его из validated_data снова
+        # Используем ранее извлеченный аватар, а не пытаемся получить его из validated_data снова
         if avatar is not None:
-            print(f"DEBUG - CreatorProfileSerializer.update - avatar перед сохранением: {avatar} (тип: {type(avatar)})")
+            logger.info(f"[CreatorProfileSerializer.update] avatar перед сохранением: {avatar} (тип: {type(avatar)})")
             
-            # Проверяем, что файл существует и доступен для чтения
+        
+        # Проверяем, что файл существует и доступен для чтения
+        try:
+            logger.info(f"[CreatorProfileSerializer.update] размер файла: {avatar.size} байт")
+            logger.info(f"[CreatorProfileSerializer.update] имя файла: {avatar.name}")
+            logger.info(f"[CreatorProfileSerializer.update] content_type: {avatar.content_type}")
+            
+            # Проверяем чтение файла
+            avatar.seek(0)  # Убедимся, что указатель в начале файла
+            data = avatar.read(1024)  # Прочитаем первый килобайт
+            avatar.seek(0)  # Вернем указатель в начало
+            logger.info(f"[CreatorProfileSerializer.update] файл успешно прочитан, размер прочитанных данных: {len(data)} байт")
+            
+            # Устанавливаем аватар
+            user.avatar = avatar
+            logger.info(f"[CreatorProfileSerializer.update] user.avatar после присвоения: {user.avatar} (тип: {type(user.avatar)})")
+            
+        except Exception as e:
+            logger.error(f"[CreatorProfileSerializer.update] ошибка при доступе к файлу: {e}")
+            # Попробуем сохранить файл вручную
             try:
-                print(f"DEBUG - CreatorProfileSerializer.update - размер файла: {avatar.size} байт")
-                print(f"DEBUG - CreatorProfileSerializer.update - имя файла: {avatar.name}")
-                print(f"DEBUG - CreatorProfileSerializer.update - content_type: {avatar.content_type}")
+                from django.core.files.storage import default_storage
+                from django.core.files.base import ContentFile
+                import os
+                import traceback
                 
-                # Проверяем чтение файла
-                avatar.seek(0)  # Убедимся, что указатель в начале файла
-                data = avatar.read(1024)  # Прочитаем первый килобайт
-                avatar.seek(0)  # Вернем указатель в начало
-                print(f"DEBUG - CreatorProfileSerializer.update - файл успешно прочитан, размер прочитанных данных: {len(data)} байт")
+                logger.error(f"[CreatorProfileSerializer.update] Полный стек ошибки: {traceback.format_exc()}")
+                
+                # Сохраняем файл во временный файл
+                temp_path = default_storage.save(f"avatars/temp_{avatar.name}", ContentFile(avatar.read()))
+                avatar.seek(0)  # Возвращаем указатель в начало файла
+                logger.info(f"[CreatorProfileSerializer.update] файл успешно сохранен во временный файл: {temp_path}")
                 
                 # Устанавливаем аватар
                 user.avatar = avatar
-                print(f"DEBUG - CreatorProfileSerializer.update - user.avatar после присвоения: {user.avatar} (тип: {type(user.avatar)})")
-                
-            except Exception as e:
-                print(f"DEBUG - CreatorProfileSerializer.update - ошибка при доступе к файлу: {e}")
-                # Попробуем сохранить файл вручную
-                try:
-                    from django.core.files.storage import default_storage
-                    from django.core.files.base import ContentFile
-                    import os
-                    
-                    # Сохраняем файл во временный файл
-                    temp_path = default_storage.save(f"avatars/temp_{avatar.name}", ContentFile(avatar.read()))
-                    avatar.seek(0)  # Возвращаем указатель в начало файла
-                    print(f"DEBUG - CreatorProfileSerializer.update - файл успешно сохранен во временный файл: {temp_path}")
-                    
-                    # Устанавливаем аватар
-                    user.avatar = avatar
-                    print(f"DEBUG - CreatorProfileSerializer.update - user.avatar после присвоения: {user.avatar} (тип: {type(user.avatar)})")
-                except Exception as e2:
-                    print(f"DEBUG - CreatorProfileSerializer.update - ошибка при ручном сохранении файла: {e2}")
-            
-            # Сохраняем пользователя сразу после установки аватара
-            try:
-                user.save()
-                print(f"DEBUG - CreatorProfileSerializer.update - пользователь сохранен с аватаром")
-                
-                # Проверяем, что файл сохранен
-                if user.avatar and hasattr(user.avatar, 'path'):
-                    print(f"DEBUG - CreatorProfileSerializer.update - путь к файлу аватара: {user.avatar.path}")
-                    import os
-                    if os.path.exists(user.avatar.path):
-                        print(f"DEBUG - CreatorProfileSerializer.update - файл существует на диске, размер: {os.path.getsize(user.avatar.path)} байт")
-                    else:
-                        print(f"DEBUG - CreatorProfileSerializer.update - файл не существует на диске: {user.avatar.path}")
-            except Exception as e:
-                print(f"DEBUG - CreatorProfileSerializer.update - ошибка при сохранении пользователя с аватаром: {e}")
-        else:
-            print("DEBUG - CreatorProfileSerializer.update - аватар не был передан")
-            
-        # Отладка поля gender в user_data и его установка
-        print("DEBUG - CreatorProfileSerializer.update - gender в user_data:", user_data.get('gender'))
-        gender = user_data.get('gender')
-        if gender is not None:
-            print("DEBUG - Установка поля gender:", gender)
-            user.gender = gender
-            
-        # Обработка других полей пользователя
-        for attr, value in user_data.items():
-            if attr != 'gender' and value is not None:  # Пропускаем gender, т.к. мы уже его обработали выше
-                setattr(user, attr, value)
-                
-        print("DEBUG - CreatorProfileSerializer.update - gender после установки:", user.gender)
+                logger.info(f"[CreatorProfileSerializer.update] user.avatar после присвоения: {user.avatar} (тип: {type(user.avatar)})")
+            except Exception as e2:
+                logger.error(f"[CreatorProfileSerializer.update] ошибка при ручном сохранении файла: {e2}")
+                logger.error(f"[CreatorProfileSerializer.update] Полный стек ошибки: {traceback.format_exc()}")
         
-        # Проверяем директорию для сохранения аватаров
-        import os
-        from django.conf import settings
-        avatar_dir = os.path.join(settings.MEDIA_ROOT, 'avatars')
-        print(f"DEBUG - CreatorProfileSerializer.update - директория для аватаров: {avatar_dir}")
-        print(f"DEBUG - CreatorProfileSerializer.update - директория существует: {os.path.exists(avatar_dir)}")
-        print(f"DEBUG - CreatorProfileSerializer.update - права доступа: {oct(os.stat(avatar_dir).st_mode)[-3:]}")
-        
-        # Сохраняем пользователя
-        print("DEBUG - CreatorProfileSerializer.update - сохранение пользователя...")
-        user.save()
-        print("DEBUG - CreatorProfileSerializer.update - пользователь сохранен")
-        
-        # Проверяем, сохранился ли аватар
-        if avatar is not None:
-            print(f"DEBUG - CreatorProfileSerializer.update - аватар после сохранения: {user.avatar}")
-            if user.avatar:
-                avatar_path = user.avatar.path
-                print(f"DEBUG - CreatorProfileSerializer.update - путь к файлу аватара: {avatar_path}")
-                print(f"DEBUG - CreatorProfileSerializer.update - файл существует: {os.path.exists(avatar_path)}")
-                if os.path.exists(avatar_path):
-                    print(f"DEBUG - CreatorProfileSerializer.update - размер файла: {os.path.getsize(avatar_path)} байт")
+        # Сохраняем пользователя сразу после установки аватара
+        try:
+            user.save()
+            logger.info(f"[CreatorProfileSerializer.update] пользователь сохранен с аватаром")
+            
+            # Проверяем, что файл сохранен
+            if user.avatar and hasattr(user.avatar, 'path'):
+                logger.info(f"[CreatorProfileSerializer.update] путь к файлу аватара: {user.avatar.path}")
+                
+                # Проверяем существование файла на диске
+                import os
+                if os.path.exists(user.avatar.path):
+                    logger.info(f"[CreatorProfileSerializer.update] файл аватара существует на диске")
+                else:
+                    logger.error(f"[CreatorProfileSerializer.update] файл аватара НЕ существует на диске!")
             else:
-                print("DEBUG - CreatorProfileSerializer.update - аватар не сохранился!")
-        else:
-            print("DEBUG - CreatorProfileSerializer.update - аватар не был передан")
-
-        # --- tags
+                logger.error(f"[CreatorProfileSerializer.update] после сохранения user.avatar отсутствует или не имеет path")
+        except Exception as e:
+            import traceback
+            logger.error(f"[CreatorProfileSerializer.update] ошибка при сохранении пользователя: {e}")
+            logger.error(f"[CreatorProfileSerializer.update] Полный стек ошибки: {traceback.format_exc()}")
         if tags_data is not None:
             from django.utils.text import slugify
             tags_to_set = []
@@ -633,26 +619,24 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
 
         # --- social links
         if social_links is not None:
-            print("\n" + "#" * 80)
-            print(f"DEBUG - CreatorProfileSerializer.update - Обработка social_links: {social_links}")
-            print("DEBUG - Тип social_links:", type(social_links))
+            logger.info(f"[CreatorProfileSerializer.update] Обработка social_links: {social_links}")
+            logger.info(f"[CreatorProfileSerializer.update] Тип social_links: {type(social_links)}")
             
             # Удаляем существующие ссылки
             current_links = list(instance.social_links.all())
-            print(f"DEBUG - Удаляем текущие ссылки: {current_links}")
+            logger.info(f"[CreatorProfileSerializer.update] Удаляем текущие ссылки: {current_links}")
             instance.social_links.all().delete()
             
-            print(f"DEBUG - Создаем новые ссылки:")
+            logger.info(f"[CreatorProfileSerializer.update] Создаем новые ссылки")
             for i, link in enumerate(social_links):
-                print(f"  {i+1}. {link}")
+                logger.info(f"[CreatorProfileSerializer.update] Ссылка {i+1}: {link}")
                 try:
                     new_link = SocialLink.objects.create(creator_profile=instance, **link)
-                    print(f"     Создано: {new_link}")
+                    logger.info(f"[CreatorProfileSerializer.update] Создано: {new_link}")
                 except Exception as e:
-                    print(f"     ОШИБКА: {str(e)}")
-            print("#" * 80 + "\n")
+                    logger.error(f"[CreatorProfileSerializer.update] Ошибка при создании ссылки: {str(e)}")
         else:
-            print("DEBUG - CreatorProfileSerializer.update - social_links is None, пропускаем обработку")
+            logger.info("[CreatorProfileSerializer.update] social_links is None, пропускаем обработку")
 
         return instance
 

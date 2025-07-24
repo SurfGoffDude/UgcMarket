@@ -310,7 +310,7 @@ const CreatorProfileEditPage: React.FC = () => {
       } = data;
       
       // Формируем объект с полями User только если они изменились
-      const userFields: Record<string, any> = {};
+      const userFields: Record<string, unknown> = {};
       
       if (creator?.user?.first_name !== first_name && first_name !== undefined) {
         userFields.first_name = first_name;
@@ -373,17 +373,18 @@ const CreatorProfileEditPage: React.FC = () => {
         formData.append(key, JSON.stringify(value));
       } else if (key === 'user') {
         // Проверка, что объект user не пустой и содержит нужные поля
-        if (Object.keys(value as Record<string, any>).length > 0) {
+        if (Object.keys(value as Record<string, unknown>).length > 0) {
 
           formData.append(key, JSON.stringify(value));
           
           // Для надёжности также передаём user.gender и user.bio как отдельные поля
-          if ((value as Record<string, any>).gender !== undefined) {
-            formData.append('user.gender', (value as Record<string, any>).gender);
+          const userValue = value as Record<string, unknown>;
+          if (userValue.gender !== undefined) {
+            formData.append('user.gender', String(userValue.gender));
           }
           
-          if ((value as Record<string, any>).bio !== undefined) {
-            formData.append('user.bio', (value as Record<string, any>).bio);
+          if (userValue.bio !== undefined) {
+            formData.append('user.bio', String(userValue.bio));
           }
         }
       } else if (key === 'available_for_hire') {
@@ -432,26 +433,36 @@ const CreatorProfileEditPage: React.FC = () => {
       } else {
         navigate(`/creator-profile?updated=true`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       
       // Обрабатываем ошибку и показываем уведомление
       
       let errorMessage = 'Произошла ошибка при обновлении профиля';
       
       // Попытка извлечения сообщения об ошибке в разных форматах
-      if (err.response?.data) {
-        const data = err.response.data;
-        
-        if (typeof data === 'string') {
-          errorMessage = data;
-        } else if (data.detail) {
-          errorMessage = data.detail;
-        } else {
-          // Попытка извлечь текст ошибки из вложенных полей
+      // Приводим неизвестную ошибку к типу с известной структурой
+      interface AxiosErrorType {
+        response?: {
+          data?: unknown;
+          status?: number;
+        };
+        message?: string;
+      }
+      
+      const axiosError = err as AxiosErrorType;
+      if (axiosError.response && axiosError.response.data) {
+        // Обработка ошибок от API
+        const responseData = axiosError.response.data;
+        if (typeof responseData === 'string') {
+          errorMessage = responseData;
+        } else if (typeof responseData === 'object' && responseData !== null && 'detail' in responseData && typeof responseData.detail === 'string') {
+          errorMessage = responseData.detail;
+        } else if (typeof responseData === 'object' && responseData !== null) {     // Попытка извлечь текст ошибки из вложенных полей
           const fieldErrors: Record<string, string> = {};
           
-          // Обрабатываем ошибки во вложенных объектах, например user.username
-          Object.entries(data).forEach(([key, value]) => {
+          // Собираем ошибки полей из ответа API
+          const errorData = responseData as Record<string, unknown>;
+          Object.entries(errorData).forEach(([key, value]) => {
             if (typeof value === 'string') {
               fieldErrors[key] = value;
             } else if (Array.isArray(value)) {
@@ -470,7 +481,7 @@ const CreatorProfileEditPage: React.FC = () => {
           
           // Устанавливаем ошибки для полей формы
           Object.entries(fieldErrors).forEach(([field, message]) => {
-            form.setError(field as any, {
+            form.setError(field as keyof typeof data, {
               type: 'manual',
               message: message,
             });

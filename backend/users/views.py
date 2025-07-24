@@ -447,17 +447,32 @@ class CreatorProfileViewSet(viewsets.ModelViewSet):
         
         print("DEBUG - Обработанные данные перед передачей сериализатору:", processed_data)
         
-        serializer = self.get_serializer(instance, data=processed_data, partial=True)
+        # Создаем контекст для передачи аватара в сериализатор
+        context = self.get_serializer_context()
+        
+        # Если аватар есть в processed_data, добавляем его в контекст
+        if 'avatar' in processed_data:
+            context['avatar_file'] = processed_data['avatar']
+            logger.info(f"[CreatorProfileViewSet.partial_update] Добавлен аватар в контекст: {processed_data['avatar']}")
+        
+        serializer = self.get_serializer(instance, data=processed_data, partial=True, context=context)
         valid = serializer.is_valid(raise_exception=False)
         
         if not valid:
-            print("DEBUG - Ошибки валидации:", serializer.errors)
+            logger.error(f"[CreatorProfileViewSet.partial_update] Ошибки валидации: {serializer.errors}")
             raise ValidationError(serializer.errors)
         
         # Проверяем, что аватар попал в validated_data
-        print(f"DEBUG - Ключи в validated_data: {serializer.validated_data.keys()}")
+        logger.info(f"[CreatorProfileViewSet.partial_update] Ключи в validated_data: {serializer.validated_data.keys()}")
         if 'avatar' in serializer.validated_data:
-            print(f"DEBUG - Аватар в validated_data: {serializer.validated_data['avatar']}")
+            logger.info(f"[CreatorProfileViewSet.partial_update] Аватар в validated_data: {serializer.validated_data['avatar']}")
+        else:
+            logger.warning(f"[CreatorProfileViewSet.partial_update] Аватар НЕ попал в validated_data, но есть в контексте: {'avatar_file' in context}")
+            
+        # Добавляем аватар в validated_data, если его там нет, но он есть в контексте
+        if 'avatar' not in serializer.validated_data and 'avatar_file' in context:
+            logger.info(f"[CreatorProfileViewSet.partial_update] Добавляем аватар из контекста в validated_data")
+            serializer.validated_data['avatar'] = context['avatar_file']
             print(f"DEBUG - Тип аватара в validated_data: {type(serializer.validated_data['avatar'])}")
             print(f"DEBUG - Размер аватара в validated_data: {serializer.validated_data['avatar'].size} байт")
         else:
